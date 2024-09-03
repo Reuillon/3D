@@ -160,6 +160,7 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="viewmodel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
@@ -182,6 +183,7 @@
     <None Include="SHADERS\framebuffer.vs" />
     <None Include="SHADERS\model.fs" />
     <None Include="SHADERS\model.vs" />
+    <None Include="SHADERS\static.fs" />
     <None Include="SHADERS\static.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

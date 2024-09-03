@@ -51,6 +51,9 @@
     <ClCompile Include="Level.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="viewmodel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="SHADERS\color.fs">
@@ -78,6 +81,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="SHADERS\static.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\static.fs">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

@@ -23,27 +23,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(GLFWwindow* window);
 
+unsigned int loadTexture(char const* path);
+
+void initShadowMap();
+void staticRender(Shader& shader, Model m, float xR);
+
+void renderScene(const Shader& shader);
+void renderCube();
+void renderQuad();
 
 // RESOLUTION
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
 
-//FRAMEBUFFER VARIABLES
-unsigned int framebuffer;
-unsigned int textureColorbuffer;
-unsigned int rbo;
-unsigned int quadVAO, quadVBO;
-float quadVertices[] =
-{ // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-     // positions   // texCoords
-     -1.0f,  1.0f,  0.0f, 1.0f,
-     -1.0f, -1.0f,  0.0f, 0.0f,
-      1.0f, -1.0f,  1.0f, 0.0f,
 
-     -1.0f,  1.0f,  0.0f, 1.0f,
-      1.0f, -1.0f,  1.0f, 0.0f,
-      1.0f,  1.0f,  1.0f, 1.0f
-};
 
 
 camera c(SCR_WIDTH, SCR_HEIGHT, 52);
@@ -86,52 +79,6 @@ GLFWwindow* init()
     //ENABLE DEPTHBUFFER
     glEnable(GL_DEPTH_TEST);
     
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    //VERTEX ARRAY OBJECT FRAMEBUFFER
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    // create a color attachment texture
-    
-    glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    // attach it to currently bound framebuffer object
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
-    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-  
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    /*
-    glEnable(GL_CULL_FACE);
-    //glCullFace(GL_FRONT);  
-    glFrontFace(GL_CCW);
-    */
-    
     return window;
 }
 //glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
@@ -161,7 +108,7 @@ int reset = 0;
 
 
 
-
+unsigned int planeVAO;
 
 int main()
 {
@@ -169,12 +116,40 @@ int main()
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
-
+    glEnable(GL_DEPTH_TEST);
     // build and compile our shader program
     // ------------------------------------
     Shader ourShader("SHADERS/color.vs", "SHADERS/color.fs");
-    Shader fBuffer("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
-    
+    Shader staticShader("SHADERS/static.vs", "SHADERS/static.fs");
+    Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs");
+
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+    // ------------------------------------------------------------------
+    float planeVertices[] = {
+        // positions            // normals         // texcoords
+         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+        -25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+
+         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+         25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f
+    };
+    // plane VAO
+    unsigned int planeVBO;
+    glGenVertexArrays(1, &planeVAO);
+    glGenBuffers(1, &planeVBO);
+    glBindVertexArray(planeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glBindVertexArray(0);
+
 
     //MODEL ANIMATIONS
     Model anim("Models/GUN/PEESTOLOLD.fbx");
@@ -217,29 +192,59 @@ int main()
     //////
     //////
 
-    ourShader.use();
-    fBuffer.use();
-    fBuffer.setInt("screenTexture", 0);
+    //ourShader.use();
+    //fBuffer.use();
+    //fBuffer.setInt("screenTexture", 0);
     // framebuffer configuration
     // -------------------------
     
-    
+  
 
     float xL = 0;
+    Model map("Models/DUST2/source/shit.fbx");
+    Model thingy("Models/DUST2/source/THINGY.fbx");
     
 
-    Model map("Models/DUST2/source/shit.fbx");
-    Animation mapAnim("Models/DUST2/source/shit.fbx", &map, 0);
-    Animator mapAnmtr(&mapAnim);
-   
+    unsigned int woodTexture = loadTexture("TEXTURES/wood.png");
+    
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    
+    // configure depth map FBO
+    // -----------------------
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    unsigned int depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+    // create depth texture
+    unsigned int depthMap;
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    // attach depth texture as FBO's depth buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    staticShader.use();
+    staticShader.setInt("diffuseTexture", 0);
+    staticShader.setInt("shadowMap", 1);
+    glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
+
+    
 
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        
-        
+
+        xL += 20.0 * deltaTime;
         
         //SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
         switch (thisAnim)
@@ -357,23 +362,24 @@ int main()
         processInput(window);
         
        
-        //UPDATE CAMERA POSITIONS
-        c.update();
-        ourShader.use();
-        ourShader.setVec3("viewPos", c.cameraPos);
+       
+       
        
 
 
         
+        glClearColor(0.1f, 0.2f, 0.4f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now      
         
-      
-
+        //UPDATE CAMERA POSITIONS
+        c.update();
+        
+        /*
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 1000.0f);
         glm::mat4 view = c.view;
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-
+        glm::mat3 normal;
+        */
         ///ANIMATION CONTROLS
         ///
         /// 
@@ -416,56 +422,38 @@ int main()
         {
             reset = 1;
             thisAnim = 6;
-        }if (glfwGetKey(window, GLFW_KEY_8))
+        }
+        if (glfwGetKey(window, GLFW_KEY_8))
         {
             reset = 1;
             thisAnim = 7;
-        }if (glfwGetKey(window, GLFW_KEY_0))
+        }
+        if (glfwGetKey(window, GLFW_KEY_0))
         {
             reset = 1;
             thisAnim = 9;
         }
         }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = c.view;
+        glm::mat4 normal;
 
-      
+        /**/
+        ourShader.use();
+        ourShader.setVec3("viewPos", c.cameraPos);
+        ourShader.setMat4("projection", projection);
+        ourShader.setMat4("view", view);
 
         //DIR LIGHT
         ourShader.setFloat("material.shininess", 1.0f);
         ourShader.setFloat("material2.shininess", 1.0f);
-       
-
-        // point light 1
-        ourShader.setVec3("pointLights[0].position", 0.0f, 1.0f, 0.0f);
-        ourShader.setVec3("pointLights[0].ambient", 0.1f, 0.1f, 0.1f);
-        ourShader.setVec3("pointLights[0].diffuse", 0.4f, 0.4f, 0.4f);
-        ourShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-        ourShader.setFloat("pointLights[0].constant", 2.0f);
-        ourShader.setFloat("pointLights[0].linear", 0.25f);
-        ourShader.setFloat("pointLights[0].quadratic", 0.1f);
-
-        /*
-        * 
-        * 
-        ourShader.setVec3("dirLight.direction", 3.5f, -2.0f, 1.0f);
-        ourShader.setVec3("dirLight.ambient", 0.33f, 0.33f, 0.33f);
-        ourShader.setVec3("dirLight.diffuse", 1.0f *0.25f + 0.3f , 0.64f * 0.25f + 0.3f, 0.0f + 0.3f);
-        ourShader.setVec3("dirLight.specular", 0.2f, 0.2f, 0.2f);
-        */
-        //INITIALIZE DIRECTIONAL LIGHT
-        xL += 0.05f * deltaTime;
-
-        if (xL > 1.0f)
-        {
-            xL = -1.0f;
-        }
-
-        /**/
-        ourShader.setVec3("dirLight.direction", 0.1f, -0.7f, xL);
+        ourShader.setVec3("dirLight.direction", 0.1f, -0.7f, 1.0f);
         ourShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
         ourShader.setVec3("dirLight.diffuse", 0.33f, 0.33f, 0.33f);
         ourShader.setVec3("dirLight.specular", 0.15f, 0.15f, 0.15f);
         
-        glm::mat3 normal;
+       
         
         //CALCULATE BONE TRANSFORM
         auto transforms = animator.GetFinalBoneMatrices();
@@ -474,22 +462,12 @@ int main()
             ourShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
             
         }
-        
-        //first pass
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glClearColor(0.1f, 0.2f, 0.4f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
-        
-        glEnable(GL_DEPTH_TEST);
-        
         //INITIALIZE OBJECT ORIENTATIONS
         glm::mat4 animOBJ = glm::mat4(1.0f);
         animOBJ = glm::inverse(animOBJ) * glm::inverse(c.view);
         animOBJ = glm::scale(animOBJ, glm::vec3(0.1f, 0.1f, 0.1f));
         animOBJ = glm::rotate(animOBJ, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
         animOBJ = glm::translate(animOBJ, glm::vec3(x, y + shakeX, z + shakeY));
-      
-        //ENABLE DEPTHBUFFER
         
         //SEND OBJECT DATA TO SHADER AND DRAW
         ourShader.setMat4("model", animOBJ);
@@ -497,40 +475,69 @@ int main()
         ourShader.setMat3("inverse", normal);
         
         anim.draw(ourShader);
+        
+        
+
+        //STATIC OBJECT RENDER
+        glm::mat4 lightProjection, lightView;
+        glm::mat4 lightSpaceMatrix;
+        float near_plane = 1.0f, far_plane = 7.5f;
+        //lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
+        lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+        lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(5.0, 1.0, 10.0));
+        lightSpaceMatrix = lightProjection * lightView;
+        // render scene from light's point of view
+        depthShader.use();
+        depthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        renderScene(depthShader);
+        staticRender(depthShader, thingy, xL);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // reset viewport
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        
+
+        // 2. render scene as normal using the generated depth/shadow map  
+        // --------------------------------------------------------------
+        staticShader.use();
+        
+        staticShader.setMat4("projection", projection);
+        staticShader.setMat4("view", view);
+        // set light uniforms
+        staticShader.setVec3("viewPos", c.cameraPos);
+        staticShader.setVec3("lightPos", lightPos);
+        staticShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        renderScene(staticShader);
+        staticRender(staticShader, thingy, xL);
+
+
+
+
+
+
+
 
         
 
-        //STATIC OBJECT
-        transforms = mapAnmtr.GetFinalBoneMatrices();
-        ourShader.setMat4("finalBonesMatrices[" + std::to_string(0) + "]", transforms[0]);
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(18.0f, -9.0f, 0.0f));
-        model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.04f, 0.04f, 0.04f));
-        ourShader.setMat4("model", model);
-        normal = glm::mat3(glm::transpose(glm::inverse(model)));
-        ourShader.setMat3("inverse", normal);
-        map.draw(ourShader);
+
+
+
         
-        ///
-        ///
-        ///
-        /// 
-        /// 
-        /// 
+        /*
+        */
 
-        // second pass
-        glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
 
-        fBuffer.use();
-        glBindVertexArray(quadVAO);
-        glDisable(GL_DEPTH_TEST);
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
+ 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -579,18 +586,7 @@ int main()
         }
         */
 
-        /*
-         ourShader.setVec3("spotLight.position", c.cameraPos);
-        ourShader.setVec3("spotLight.direction", glm::vec3(c.front.x , c.front.y + 0.1 + shakeX * 2, c.front.z+ -shakeY * 4));
-        ourShader.setVec3("spotLight.ambient", 0.2f, 0.2f, 0.2f);
-        ourShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
-        ourShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
-        ourShader.setFloat("spotLight.constant", 1.0f);
-        ourShader.setFloat("spotLight.linear", 0.09f);
-        ourShader.setFloat("spotLight.quadratic", 0.032f);
-        ourShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        ourShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(20.0f)));
-        */
+ 
 
          
          
@@ -601,10 +597,7 @@ int main()
     
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
-    glDeleteVertexArrays(1, &quadVAO);
-    glDeleteBuffers(1, &quadVBO);
-    glDeleteRenderbuffers(1, &rbo);
-    glDeleteFramebuffers(1, &framebuffer);
+    
     glfwTerminate();
     return 0;
 }
@@ -614,6 +607,44 @@ int main()
 
 
 
+
+//renders a model without animation
+void staticRender(Shader &shader, Model m, float xR)
+{
+    
+    glm::mat3 normal;
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-2.0f, 0.5f, 3.0f));
+    model = glm::rotate(model,  90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, (xR + 90) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.08f, 0.08f, 0.08f));
+    shader.setMat4("model", model);
+    normal = glm::mat3(glm::transpose(glm::inverse(model)));
+    shader.setMat3("inverse", normal);
+    m.draw(shader);
+
+}
+
+
+void initShadowMap()
+{
+    /*
+    glGenFramebuffers(1, &depthMapFBO);
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    */
+}
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
@@ -755,6 +786,165 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 
+
+
+// renders the 3D scene
+// --------------------
+void renderScene(const Shader& shader)
+{
+    // floor
+    glm::mat4 model = glm::mat4(1.0f);
+    shader.setMat4("model", model);
+    glBindVertexArray(planeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    // cubes
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(2.0f, 0.0f, 1.0));
+    model = glm::scale(model, glm::vec3(0.5f));
+    shader.setMat4("model", model);
+    renderCube();
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 2.0));
+    model = glm::rotate(model, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
+    model = glm::scale(model, glm::vec3(0.25));
+    shader.setMat4("model", model);
+    renderCube();
+}
+
+
+// renderCube() renders a 1x1 3D cube in NDC.
+// -------------------------------------------------
+unsigned int cubeVAO = 0;
+unsigned int cubeVBO = 0;
+void renderCube()
+{
+    // initialize (if necessary)
+    if (cubeVAO == 0)
+    {
+        float vertices[] = {
+            // back face
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
+             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+            -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+            // front face
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+             1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+            -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+            // left face
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+            -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+            -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+            // right face
+             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
+             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
+            // bottom face
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+             1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+            -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+            // top face
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+             1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+             1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
+             1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
+        };
+        glGenVertexArrays(1, &cubeVAO);
+        glGenBuffers(1, &cubeVBO);
+        // fill buffer
+        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        // link vertex attributes
+        glBindVertexArray(cubeVAO);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+    // render Cube
+    glBindVertexArray(cubeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+            // positions        // texture Coords
+            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //MOUSE SINGLE INPUT
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
@@ -763,4 +953,41 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         reset = 1;
         thisAnim = 9;
     }
+}
+
+unsigned int loadTexture(char const * path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
 }
