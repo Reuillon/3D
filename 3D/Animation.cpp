@@ -14,7 +14,18 @@ Animation::Animation(const std::string& animationPath, Model* model, int anim)
 	ReadMissingBones(animation, *model);
 }
 
-
+void Animation::initialize(const std::string& animationPath, Model* model, int anim)
+{
+	scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
+	assert(scene && scene->mRootNode);
+	auto animation = scene->mAnimations[anim];
+	m_Duration = animation->mDuration;
+	m_TicksPerSecond = animation->mTicksPerSecond;
+	aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
+	globalTransformation = globalTransformation.Inverse();
+	ReadHierarchyData(m_RootNode, scene->mRootNode);
+	ReadMissingBones(animation, *model);
+}
 Bone* Animation::FindBone(const std::string& name)
 {
 	auto iter = std::find_if(m_Bones.begin(), m_Bones.end(),

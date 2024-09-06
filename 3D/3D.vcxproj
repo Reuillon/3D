@@ -168,6 +168,7 @@
     <ClInclude Include="assimp_glm_helpers.h" />
     <ClInclude Include="Bone.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Viewmodel.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Mesh.h" />
@@ -175,6 +176,8 @@
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="SHADERS\cLight.fs" />
+    <None Include="SHADERS\cLight.vs" />
     <None Include="SHADERS\color.fs" />
     <None Include="SHADERS\color.vs" />
     <None Include="SHADERS\depth.fs" />

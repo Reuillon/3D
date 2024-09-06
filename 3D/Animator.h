@@ -12,8 +12,10 @@ class Animator
 {
 	public:
 		Animator(Animation* animation);
+		Animator();
 		void UpdateAnimation(float dt);
 		void PlayAnimation(Animation* pAnimation);
+		void initialize(Animation* animation);
 		void loopAnim(bool loop);
 		void PauseAnim();
 		void ResetAnim();

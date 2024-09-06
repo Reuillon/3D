@@ -43,6 +43,10 @@ public:
     // constructor, expects a filepath to a 3D model.
     Model(string const& path, bool gamma = false);
 
+    Model();
+
+    void initialize(std::string const& path);
+
     // draws the model, and thus all its meshes
     void draw(Shader& shader);
   

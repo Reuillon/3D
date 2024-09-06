@@ -12,7 +12,19 @@ Animator::Animator(Animation* animation)
 		m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
 }
 
+Animator::Animator(){}
 
+void Animator::initialize(Animation* animation)
+{
+	m_CurrentTime = 0.0;
+	m_CurrentAnimation = animation;
+	isLoop = true;
+	hasEnded = false;
+	m_FinalBoneMatrices.reserve(100);
+
+	for (int i = 0; i < 100; i++)
+		m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
+}
 
 
 void Animator::loopAnim(bool loop)

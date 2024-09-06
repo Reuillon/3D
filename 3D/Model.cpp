@@ -6,6 +6,15 @@ Model::Model(string const& path, bool gamma) : gammaCorrection(gamma)
     loadModel(path);
 }
 
+Model::Model()
+{
+
+}
+
+void Model::initialize(std::string const& path)
+{
+    loadModel(path);
+}
 
 void Model::draw(Shader& shader)
 {

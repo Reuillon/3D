@@ -41,6 +41,7 @@ class Animation
 		{
 			return m_BoneInfoMap;
 		}
+		void initialize(const std::string& animationPath, Model* model, int anim);
 	private:
 		float m_Duration;
 		int m_TicksPerSecond;
@@ -49,7 +50,6 @@ class Animation
 		std::map<std::string, BoneInfo> m_BoneInfoMap;
 		Assimp::Importer importer;
 		const aiScene* scene;
-
 		void ReadMissingBones(const aiAnimation* animation, Model& model);
 		void ReadHierarchyData(AssimpNodeData& dest, const aiNode* src);
 		

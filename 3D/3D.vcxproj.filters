@@ -86,6 +86,12 @@
     <None Include="SHADERS\static.fs">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="SHADERS\cLight.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\cLight.vs">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -116,6 +122,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Level.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Viewmodel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

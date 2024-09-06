@@ -1,12 +1,11 @@
 //STANDARD LIBRARY
 #include <iostream>
 
-
 //MY CLASSES
 #include "stb_image.h"
 #include "Shader.h"
 #include "Camera.h"
-
+#include "Viewmodel.h"
 #include "Animator.h"
 #include "Model.h"
 
@@ -15,7 +14,7 @@
 //OPENGL LIBRARIES
 #include <GLFW/glfw3.h>
 
-//PRE DEFINED FUNCTIONS FOR GLFW INPUT
+//GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -23,25 +22,30 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(GLFWwindow* window);
 
-unsigned int loadTexture(char const* path);
 
-void initShadowMap();
-void staticRender(Shader& shader, Model m, float xR);
-
-void renderScene(const Shader& shader);
+//INITIALIZE OBJECTS
 void renderCube();
 void renderQuad();
+void initShadowMap();
+
+
+//RENDER FUNCTIONS
+void lightCube(const Shader& shader);
+void renderScene(const Shader& shader);
+void staticRender(Shader& shader, Model m, float xR);
+
+unsigned int loadTexture(char const* path);
 
 // RESOLUTION
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
 
-
-
+const unsigned int SHADOW_WIDTH = 2560, SHADOW_HEIGHT = 1440;
+unsigned int depthMapFBO;
+unsigned int depthMap;
 
 camera c(SCR_WIDTH, SCR_HEIGHT, 52);
 
-float timer = 0;
 GLFWwindow* init()
 {
 
@@ -77,26 +81,32 @@ GLFWwindow* init()
     }
    //stbi_set_flip_vertically_on_load(true);
     //ENABLE DEPTHBUFFER
-    glEnable(GL_DEPTH_TEST);
     
+    
+    // configure depth map FBO
+    // -----------------------
+    glGenFramebuffers(1, &depthMapFBO);
+    // create depth texture
+
+    initShadowMap();
     return window;
 }
-//glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+
 
 //DELTATIME VALUES
 double deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+//FRAME TIMER
+double currtime;
 
 
 //VIEWMODEL POSITIONING AND BEHAVIOUR
 double xoffset = 0.0f;
 double yoffset = 0.0f;
 float x = 4.68005f, y = -0.52, z = 0.1333;
-double xBand = 0.0f;
-double yBand = 0.0f;
-float shakeX = 0.0f;
-float shakeY = 0.0f;
+double xBand = 0.0f, yBand = 0.0f;
+float shakeX = 0.0f, shakeY = 0.0f;
 
 
 double sensitivity = 0.05f;
@@ -106,10 +116,14 @@ int thisAnim = 4;
 int playAnim = 1;
 int reset = 0;
 
+float xC = 0, yC = 0, zC = 0;
 
+glm::mat4 lightProjection, lightView;
+glm::mat4 lightSpaceMatrix;
+float near_plane = 1.0f, far_plane = 7.5f;
 
 unsigned int planeVAO;
-
+glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
 int main()
 {
    
@@ -117,12 +131,14 @@ int main()
     // --------------------
     GLFWwindow* window = init();
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
     // build and compile our shader program
     // ------------------------------------
-    Shader ourShader("SHADERS/color.vs", "SHADERS/color.fs");
+    Shader viewShader("SHADERS/color.vs", "SHADERS/color.fs");
     Shader staticShader("SHADERS/static.vs", "SHADERS/static.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs");
-
+    Shader lShader("SHADERS/cLight.vs", "SHADERS/cLight.fs");
+    Viewmodel v(12, "Models/GUN/PEESTOL.fbx");
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float planeVertices[] = {
@@ -135,6 +151,7 @@ int main()
         -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
          25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f
     };
+    
     // plane VAO
     unsigned int planeVBO;
     glGenVertexArrays(1, &planeVAO);
@@ -150,49 +167,18 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glBindVertexArray(0);
 
-
-    //MODEL ANIMATIONS
-    Model anim("Models/GUN/PEESTOLOLD.fbx");
-    Animation rot("Models/GUN/PEESTOL.fbx", &anim, 0);
-    Animation rot1("Models/GUN/PEESTOL.fbx", &anim, 1);
-    Animation rot2("Models/GUN/PEESTOL.fbx", &anim, 2);
-    Animation rot3("Models/GUN/PEESTOL.fbx", &anim, 3);
-    Animation rot4("Models/GUN/PEESTOL.fbx", &anim, 4);
-    Animation rot5("Models/GUN/PEESTOL.fbx", &anim, 5);
-    Animation rot6("Models/GUN/PEESTOL.fbx", &anim, 6);
-    Animation rot7("Models/GUN/PEESTOL.fbx", &anim, 7);
-    Animation rot8("Models/GUN/PEESTOL.fbx", &anim, 8);
-    Animation rot9("Models/GUN/PEESTOL.fbx", &anim, 9);
-    Animation rot10("Models/GUN/PEESTOL.fbx", &anim, 12);
-
-
     
-    
-    
-
-  
+   
 
 
 
+ 
 
-
-
-    //FRAME TIMER
-    double currtime;
-    double cutoff = 0.175f;
-    
-
-
-
-  
-
-    Animator animator(&rot);
-    animator.loopAnim(false);
     //////
     //////
     //////
 
-    //ourShader.use();
+    //viewShader.use();
     //fBuffer.use();
     //fBuffer.setInt("screenTexture", 0);
     // framebuffer configuration
@@ -204,39 +190,13 @@ int main()
     Model map("Models/DUST2/source/shit.fbx");
     Model thingy("Models/DUST2/source/THINGY.fbx");
     
-
     unsigned int woodTexture = loadTexture("TEXTURES/wood.png");
     
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
-    // configure depth map FBO
-    // -----------------------
-    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-    unsigned int depthMapFBO;
-    glGenFramebuffers(1, &depthMapFBO);
-    // create depth texture
-    unsigned int depthMap;
-    glGenTextures(1, &depthMap);
-    glBindTexture(GL_TEXTURE_2D, depthMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-    // attach depth texture as FBO's depth buffer
-    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     staticShader.use();
     staticShader.setInt("diffuseTexture", 0);
     staticShader.setInt("shadowMap", 1);
-    glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
-
     
 
     // render loop
@@ -245,100 +205,9 @@ int main()
     {
 
         xL += 20.0 * deltaTime;
-        
-        //SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
-        switch (thisAnim)
-        {
-
-            case 0:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot10);
-                break;
-            }
-            
-            case 1:
-            {
-                animator.loopAnim(true);
-                animator.PlayAnimation(&rot1);
-                break;
-            }
-            case 2:
-            {
-                animator.loopAnim(true);
-                animator.PlayAnimation(&rot2);
-                break;
-            }
-            case 3:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot3);
-                break;
-            }
-            case 4:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot4);
-                break;
-            } case 5:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot5);
-                break;
-            } case 6:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot6);
-                break;
-            } case 7:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot7);
-                break;
-            } case 8:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot8);
-                break;
-            }case 9:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot9);
-                break;
-            }
-            
-
-           
-            default:
-            {
-                animator.loopAnim(false);
-                animator.PlayAnimation(&rot1);
-                break;
-            }
-        }
-
-        //SIMPLE ANIMATION CONTROLLER
-        if (playAnim == 1)
-        {
-            animator.UpdateAnimation(deltaTime);
-        }
-        else
-        {
-            animator.PauseAnim();
-        }
-        if (animator.finishedAnim() == true)
-        {
-            animator.ResetAnim();
-            thisAnim = 2;
-        }
-        if (reset == 1)
-        {
-            animator.ResetAnim();
-            reset = 0;
-        }
        
 
-
+        //glm::vec3 lightPos(-2.0f + xC, 4.0f + yC, -1.0f + zC);
         //VIEWMODEL INIT
         //std::cout << xBand << "\n";
         xBand = xoffset;
@@ -361,132 +230,26 @@ int main()
         // -----
         processInput(window);
         
-       
-       
-       
-       
-
-
-        
         glClearColor(0.1f, 0.2f, 0.4f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now      
         
         //UPDATE CAMERA POSITIONS
         c.update();
-        
-        /*
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 1000.0f);
-        glm::mat4 view = c.view;
-        glm::mat3 normal;
-        */
-        ///ANIMATION CONTROLS
-        ///
-        /// 
-        ///
-        {
 
-         
-
-        if (glfwGetKey(window, GLFW_KEY_1))
-        {
-            reset = 1;
-            thisAnim = 0;
-        }
-        if (glfwGetKey(window, GLFW_KEY_2))
-        {
-            reset = 1;
-            thisAnim = 1;
-        }
-        if (glfwGetKey(window, GLFW_KEY_3))
-        {
-            reset = 1;
-            thisAnim = 2;
-        }
-        if (glfwGetKey(window, GLFW_KEY_4))
-        {
-            reset = 1;
-            thisAnim = 3;
-        }
-        if (glfwGetKey(window, GLFW_KEY_5))
-        {
-            reset = 1;
-            thisAnim = 4;
-        }
-        if (glfwGetKey(window, GLFW_KEY_6))
-        {
-            reset = 1;
-            thisAnim = 5;
-        }
-        if (glfwGetKey(window, GLFW_KEY_7))
-        {
-            reset = 1;
-            thisAnim = 6;
-        }
-        if (glfwGetKey(window, GLFW_KEY_8))
-        {
-            reset = 1;
-            thisAnim = 7;
-        }
-        if (glfwGetKey(window, GLFW_KEY_0))
-        {
-            reset = 1;
-            thisAnim = 9;
-        }
-        }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = c.view;
         glm::mat4 normal;
-
-        /**/
-        ourShader.use();
-        ourShader.setVec3("viewPos", c.cameraPos);
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-
-        //DIR LIGHT
-        ourShader.setFloat("material.shininess", 1.0f);
-        ourShader.setFloat("material2.shininess", 1.0f);
-        ourShader.setVec3("dirLight.direction", 0.1f, -0.7f, 1.0f);
-        ourShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
-        ourShader.setVec3("dirLight.diffuse", 0.33f, 0.33f, 0.33f);
-        ourShader.setVec3("dirLight.specular", 0.15f, 0.15f, 0.15f);
         
-       
-        
-        //CALCULATE BONE TRANSFORM
-        auto transforms = animator.GetFinalBoneMatrices();
-        for (int i = 0; i < transforms.size(); ++i)
-        {
-            ourShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
-            
-        }
-        //INITIALIZE OBJECT ORIENTATIONS
-        glm::mat4 animOBJ = glm::mat4(1.0f);
-        animOBJ = glm::inverse(animOBJ) * glm::inverse(c.view);
-        animOBJ = glm::scale(animOBJ, glm::vec3(0.1f, 0.1f, 0.1f));
-        animOBJ = glm::rotate(animOBJ, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-        animOBJ = glm::translate(animOBJ, glm::vec3(x, y + shakeX, z + shakeY));
-        
-        //SEND OBJECT DATA TO SHADER AND DRAW
-        ourShader.setMat4("model", animOBJ);
-        normal = glm::mat3(glm::transpose(glm::inverse(animOBJ)));
-        ourShader.setMat3("inverse", normal);
-        
-        anim.draw(ourShader);
-        
-        
-
+      
         //STATIC OBJECT RENDER
-        glm::mat4 lightProjection, lightView;
-        glm::mat4 lightSpaceMatrix;
-        float near_plane = 1.0f, far_plane = 7.5f;
+
         //lightProjection = glm::perspective(glm::radians(45.0f), (GLfloat)SHADOW_WIDTH / (GLfloat)SHADOW_HEIGHT, near_plane, far_plane); // note that if you use a perspective projection matrix you'll have to change the light position as the current light position isn't enough to reflect the whole scene
         lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-        lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(5.0, 1.0, 10.0));
+        lightView = glm::lookAt(lightPos, glm::vec3(1.0f), glm::vec3(5.0, 1.0, 10.0));
         lightSpaceMatrix = lightProjection * lightView;
         // render scene from light's point of view
+        
         depthShader.use();
         depthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
@@ -495,16 +258,21 @@ int main()
         glClear(GL_DEPTH_BUFFER_BIT);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
+        glEnable(GL_DEPTH_TEST);
+        glCullFace(GL_FRONT);
         renderScene(depthShader);
         staticRender(depthShader, thingy, xL);
+      
+        glCullFace(GL_BACK);
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // reset viewport
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-        
-
+       
         // 2. render scene as normal using the generated depth/shadow map  
         // --------------------------------------------------------------
+        /**/
         staticShader.use();
         
         staticShader.setMat4("projection", projection);
@@ -519,38 +287,22 @@ int main()
         glBindTexture(GL_TEXTURE_2D, depthMap);
         renderScene(staticShader);
         staticRender(staticShader, thingy, xL);
-
-
-
-
-
-
-
-
         
+        lShader.use();
+        lShader.setMat4("projection", projection);
+        lShader.setMat4("view", view);
+        lShader.setVec3("viewPos", c.cameraPos);
+        lightCube(lShader);
 
-
-
-
-        
-        /*
-        */
-
-
- 
-
+        v.render(c, viewShader, window);
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
         
         //PRINT FRAMERATE
-        timer += deltaTime;
-        if (timer > 0.25f)
-        {
-            std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
-            timer = 0;
-        }
+        std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
+
         //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
 
 
@@ -559,45 +311,43 @@ int main()
         /// 
         /// 
         /// 
-        /*
         if (glfwGetKey(window, GLFW_KEY_UP))
         {
-            y += 0.001f;
+            //y += 0.001f;
+            yC += 10 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_DOWN))
         {
-            y -= 0.001f;
+            //y -= 0.001f;
+            yC -= 10 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_RIGHT))
         {
-            x += 0.001f;
+           // x += 0.001f;
+           xC += 10 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT))
         {
-            x -= 0.001f;
+           // x -= 0.001f;
+           xC -= 10 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_E))
         {
-            z += 0.001f;
+           // z += 0.001f;
+            zC += 10 * deltaTime;
+
         }
         if (glfwGetKey(window, GLFW_KEY_F))
         {
-            z -= 0.001f;
+            // z -= 0.001f;
+            zC -= 10 * deltaTime;
+
         }
-        */
-
- 
-
-         
-         
-         
 
     }
 
-    
     // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    
+    // 
     glfwTerminate();
     return 0;
 }
@@ -608,42 +358,28 @@ int main()
 
 
 
-//renders a model without animation
-void staticRender(Shader &shader, Model m, float xR)
-{
-    
-    glm::mat3 normal;
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-2.0f, 0.5f, 3.0f));
-    model = glm::rotate(model,  90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, (xR + 90) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.08f, 0.08f, 0.08f));
-    shader.setMat4("model", model);
-    normal = glm::mat3(glm::transpose(glm::inverse(model)));
-    shader.setMat3("inverse", normal);
-    m.draw(shader);
-
-}
 
 
+//CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
 {
-    /*
-    glGenFramebuffers(1, &depthMapFBO);
+    
     glGenTextures(1, &depthMap);
     glBindTexture(GL_TEXTURE_2D, depthMap);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    // attach depth texture as FBO's depth buffer
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    */
+    
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -655,13 +391,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-
 //CONTINOUS INPUT
 float modi = 1;
 float swayT = 0;
 void processInput(GLFWwindow* window)
 {
-
 
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
@@ -735,7 +469,6 @@ void processInput(GLFWwindow* window)
 
 }
 
-
 //MOUSE MOVEMENT
 double lastX = SCR_WIDTH / 2.0f;
 double lastY = SCR_HEIGHT / 2.0f;
@@ -758,64 +491,101 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     c.camRot(xoffset, yoffset);
 }
 
-
 //SCROLL INPUT
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     c.fovMod((float)yoffset);
 }
 
-//KEY SINGLE INPUT 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key == GLFW_KEY_P && action == GLFW_PRESS)
     {
-        playAnim *= -1;
+        // v.setState(0);
 
     }
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
-        reset = 1;
+        //  v.setState(1);
     }
 
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
-        reset = 1;
-        thisAnim = 7;
+        // v.setState(2);
     }
 }
 
+//renders a model without animation
+void staticRender(Shader& shader, Model m, float xR)
+{
+    shader.use();
 
+    shader.setMat4("projection", c.projection);
+    shader.setMat4("view", c.view);
+    // set light uniforms
+    shader.setVec3("viewPos", c.cameraPos);
+    shader.setVec3("lightPos", lightPos);
+    shader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glm::mat3 normal;
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(-2.0f / 10, 0.5f / 10, 3.0f / 40));
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, (xR + 90) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.08f / 10, 0.08f / 10, 0.08f / 10));
+    shader.setMat4("model", model);
+
+    m.draw(shader);
+
+}
 
 // renders the 3D scene
 // --------------------
 void renderScene(const Shader& shader)
 {
+
     // floor
+    glCullFace(GL_FRONT);
     glm::mat4 model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3(1.0f / 10));
     shader.setMat4("model", model);
     glBindVertexArray(planeVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glCullFace(GL_BACK);
+
     // cubes
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
-    model = glm::scale(model, glm::vec3(0.5f));
+    model = glm::translate(model, glm::vec3(0.0f, 1.5f/10, 0.0));
+    model = glm::scale(model, glm::vec3(0.5f/10));
     shader.setMat4("model", model);
     renderCube();
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(2.0f, 0.0f, 1.0));
-    model = glm::scale(model, glm::vec3(0.5f));
+    model = glm::translate(model, glm::vec3(2.0f/10, 0.0f, 1.0/10));
+    model = glm::scale(model, glm::vec3(0.5f/10));
     shader.setMat4("model", model);
     renderCube();
     model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 2.0));
+    model = glm::translate(model, glm::vec3(-1.0f/10, 0.0f, 2.0/10));
     model = glm::rotate(model, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
-    model = glm::scale(model, glm::vec3(0.25));
+    model = glm::scale(model, glm::vec3(0.25/10));
     shader.setMat4("model", model);
     renderCube();
 }
 
+void lightCube(const Shader& shader)
+{
+    
+    glm::mat4 model = glm::mat4(1.0f);
+    // cubes
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(xC, yC, zC));
+    model = glm::scale(model, glm::vec3(0.01f));
+    shader.setMat4("model", model);
+    renderCube();
+}
 
 // renderCube() renders a 1x1 3D cube in NDC.
 // -------------------------------------------------

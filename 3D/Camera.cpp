@@ -7,7 +7,7 @@ camera::camera(const unsigned int width, const unsigned int height, const unsign
 	scrWidth = width;
 	scrHeight = height;
 	fov = cFov;
-	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.1f, 1000.0f);
+	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 1.0f, 1000.0f);
 }
 void camera::forward(float speed)
 {
