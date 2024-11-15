@@ -180,7 +180,12 @@
     <None Include="SHADERS\cLight.vs" />
     <None Include="SHADERS\color.fs" />
     <None Include="SHADERS\color.vs" />
+    <None Include="SHADERS\debug.fs" />
+    <None Include="SHADERS\debug.vs" />
+    <None Include="SHADERS\debugDepth.fs" />
+    <None Include="SHADERS\debugDepth.vs" />
     <None Include="SHADERS\depth.fs" />
+    <None Include="SHADERS\depth.gs" />
     <None Include="SHADERS\depth.vs" />
     <None Include="SHADERS\framebuffer.fs" />
     <None Include="SHADERS\framebuffer.vs" />

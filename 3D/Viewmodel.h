@@ -71,7 +71,7 @@ class Viewmodel
 			model = glm::inverse(model) * glm::inverse(c.view);
 			model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
 			model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-			model = glm::translate(model, glm::vec3(4.68005f, -0.52, 0.1333));
+			model = glm::translate(model, glm::vec3(5.0f, -0.42, 0.1333));
 
 			//SEND OBJECT DATA TO SHADER AND DRAW
 			shader.setMat4("model", model);
@@ -106,7 +106,7 @@ class Viewmodel
 				case 0:
 				{
 					animate.loopAnim(false);
-					animate.PlayAnimation(&animation[10]);
+					animate.PlayAnimation(&animation[0]);
 					break;
 				}
 
@@ -166,7 +166,7 @@ class Viewmodel
 				default:
 				{
 					animate.loopAnim(false);
-					animate.PlayAnimation(&animation[1]);
+					animate.PlayAnimation(&animation[0]);
 					break;
 				}
 			}
@@ -182,7 +182,7 @@ class Viewmodel
 			if (animate.finishedAnim() == true)
 			{
 				animate.ResetAnim();
-				thisAnim = 2;
+				thisAnim = 0;
 			}
 			if (reset == 1)
 			{

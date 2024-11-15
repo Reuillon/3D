@@ -92,6 +92,21 @@
     <None Include="SHADERS\cLight.vs">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="SHADERS\depth.gs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\debug.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\debug.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\debugDepth.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\debugDepth.vs">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
