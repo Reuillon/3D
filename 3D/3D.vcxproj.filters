@@ -62,12 +62,6 @@
     <None Include="SHADERS\color.vs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\model.fs">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="SHADERS\model.vs">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="SHADERS\framebuffer.fs">
       <Filter>Shaders</Filter>
     </None>
@@ -86,25 +80,25 @@
     <None Include="SHADERS\static.fs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\cLight.fs">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="SHADERS\cLight.vs">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="SHADERS\depth.gs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\debug.fs">
+    <None Include="SHADERS\geometry.fs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\debug.vs">
+    <None Include="SHADERS\geometry.vs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\debugDepth.fs">
+    <None Include="SHADERS\lighting.fs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="SHADERS\debugDepth.vs">
+    <None Include="SHADERS\SSAO.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\SSAO.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\SSAOBlur.fs">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
