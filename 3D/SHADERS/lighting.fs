@@ -27,7 +27,7 @@ void main()
     float AmbientOcclusion = texture(ssao, TexCoords).r;
     
     // blinn-phong (in view-space)
-    vec3 ambient = vec3(0.3 * Diffuse * AmbientOcclusion); // here we add occlusion factor
+    vec3 ambient = vec3(0.5 * Diffuse * AmbientOcclusion); // here we add occlusion factor
     vec3 lighting  = ambient; 
     vec3 viewDir  = normalize(-FragPos); // viewpos is (0.0.0) in view-space
     // diffuse
