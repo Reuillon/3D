@@ -101,6 +101,9 @@
     <None Include="SHADERS\SSAOBlur.fs">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\lighting.vs">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

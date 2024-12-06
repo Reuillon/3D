@@ -28,8 +28,9 @@ std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
 void drawCascadeVolumeVisualizers(const std::vector<glm::mat4>& lightMatrices, Shader* shader);
 
 //INITIALIZE OBJECTS
-void initFramebuffer();
 void initShadowMap();
+void initFramebuffer();
+
 void initSSAO();
 
 //RENDER FUNCTIONS
@@ -51,7 +52,7 @@ float cameraFarPlane = 2000.0f;
 
 //FRAMEBUFFER
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gAlbedo;
+unsigned int gPosition, gNormal, gAlbedo, gShadow;
 unsigned int rboDepth;
 
 //SSAO
@@ -164,16 +165,18 @@ int main()
     // --------------------
     GLFWwindow* window = init();
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
     // build and compile our shader program
     // ------------------------------------
     Shader viewShader("SHADERS/color.vs", "SHADERS/color.fs");
 
-    //Shader staticShader("SHADERS/static.vs", "SHADERS/static.fs");
+    Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
+
+    Shader staticShader("SHADERS/static.vs", "SHADERS/static.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
 
     Shader shaderGeometryPass("SHADERS/geometry.vs", "SHADERS/geometry.fs");
-    Shader shaderLightingPass("SHADERS/SSAO.vs", "SHADERS/lighting.fs");
+    Shader shaderLightingPass("SHADERS/lighting.vs", "SHADERS/lighting.fs");
     Shader shaderSSAO("SHADERS/SSAO.vs", "SHADERS/SSAO.fs");
     Shader shaderSSAOBlur("SHADERS/SSAO.vs", "SHADERS/SSAOBlur.fs");
     
@@ -184,7 +187,9 @@ int main()
     
    
 
+    //Model map("Models/highway/source/hw.obj");
     Model map("Models/DUST2/source/2.fbx");
+
     Model shib("Models/shiba/1.fbx");
     Model gun("Models/DUST2/source/MACCY.obj");
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
@@ -199,15 +204,15 @@ int main()
 
     // lighting info
     // -------------
-    glm::vec3 lightPos = glm::vec3(2.0, 4.0, -2.0);
+    glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
     glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
 
 
-    /*
+    /**/
     staticShader.use();
     staticShader.setInt("diffuseTexture", 0);
-    staticShader.setInt("shadowMap", 1);
-    */
+   
+    
 
 
     shaderLightingPass.use();
@@ -215,6 +220,13 @@ int main()
     shaderLightingPass.setInt("gNormal", 1);
     shaderLightingPass.setInt("gAlbedo", 2);
     shaderLightingPass.setInt("ssao", 3);
+    shaderLightingPass.setInt("shadowMap", 4);
+
+    
+    shaderGeometryPass.use();
+    shaderGeometryPass.setInt("diffuseTexture", 0);
+
+
     shaderSSAO.use();
     shaderSSAO.setInt("gPosition", 0);
     shaderSSAO.setInt("gNormal", 1);
@@ -222,13 +234,68 @@ int main()
     shaderSSAOBlur.use();
     shaderSSAOBlur.setInt("ssaoInput", 0);
 
+    shadowShader.use();
+    shadowShader.setInt("texture1", 0);
+
+
+
+    c.update();
+    c.jump(-15);
+    c.forward(11.0);
+    c.right(8.0);
+    c.camRot(90, 0);
     
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    // create a color attachment texture
+    unsigned int textureColorbuffer;
+    glGenTextures(1, &textureColorbuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    unsigned int quadVAOs, quadVBOs;
+    glGenVertexArrays(1, &quadVAOs);
+    glGenBuffers(1, &quadVBOs);
+    glBindVertexArray(quadVAOs);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBOs);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
         lightDir = glm::normalize(glm::vec3(20.0f + xC, 50 + yC, 20.0f + zC));
-
+        glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
         currtime = glfwGetTime();
         float currentFrame = glfwGetTime();
@@ -239,27 +306,58 @@ int main()
         // -----
         processInput(window);
         
-       // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now      
-        
         //UPDATE CAMERA POSITIONS
        
+        c.update();
 
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-       
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_CLAMP);
+        glm::mat4 model;
+        //SHADOW PREPASS
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        const auto lightMatrices = getLightSpaceMatrices();
+        glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
+        for (size_t i = 0; i < lightMatrices.size(); ++i)
+        {
+            glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
+        }
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        /*
-        // 1. UBO setup
         
-        */
+        depthShader.use();
+        glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
+        glViewport(0, 0, depthMapResolution, depthMapResolution);
+        glClear(GL_DEPTH_BUFFER_BIT);
+          // peter panning
+        glDisable(GL_DEPTH_CLAMP);
+        staticRender(depthShader, map, 0, 0, 0, 0);
+        staticRender(depthShader, shib, glfwGetTime(), 0, -80, 2);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0, -15.5, -10));
+        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        depthShader.setMat4("model", model);
+        gun.draw(depthShader);
+        
+        // set light uniforms
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0, -15.5, -10));
+        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        depthShader.setMat4("model", model);
+        depthShader.setMat4("projection", c.projection);
+        depthShader.setMat4("view", c.view);
+        depthShader.use();  
 
-
-        // 2. render scene as normal using the generated depth/shadow map  
-        // --------------------------------------------------------------
-        /*
-        glViewport(0, 0, fb_width, fb_height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glCullFace(GL_BACK);
         staticShader.use();
+        // reset viewport
+        glViewport(0, 0, fb_width, fb_height);
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glClearColor(0.5f, 0.4f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
         const glm::mat4 view = c.view;
         staticShader.setMat4("projection", projection);
@@ -273,71 +371,60 @@ int main()
         {
             staticShader.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
         }
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, woodTexture);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-        // renderScene(staticShader);
-        staticRender(staticShader, map, 0,0 ,0,0);
-        //staticRender(staticShader, thingy, xL,xC, yC, zC);
-        */
+        staticRender(staticShader, map, 0, 0, 0, 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+        staticRender(staticShader, shib, glfwGetTime(), 0, -80, 2);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0, -15.5, -10));
+        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        staticShader.setMat4("model", model);
+        gun.draw(staticShader);
 
+        v.render(c, depthShader, window);
 
+        
+       
         // 1. geometry pass: render scene's geometry/color data into gbuffer
-       // -----------------------------------------------------------------
+        // -----------------------------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        c.update();
-
         shaderGeometryPass.use();
         shaderGeometryPass.setMat4("projection", c.projection);
         shaderGeometryPass.setMat4("view", c.view);
-        
+        // set light uniforms
+        shaderGeometryPass.setVec3("viewPos", c.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
-
         staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
         staticRender(shaderGeometryPass, shib, glfwGetTime(), 0, -80, 2);       
-        
         glBindTexture(GL_TEXTURE_2D, woodTexture);
 
         shaderGeometryPass.use();
         shaderGeometryPass.setMat4("projection", c.projection);
         shaderGeometryPass.setMat4("view", c.view);
         // set light uniforms
-
-        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0, -15.5, -10));
         model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
         shaderGeometryPass.setMat4("model", model);
-
         gun.draw(shaderGeometryPass);
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        //SHADOW PREPASS
-        depthShader.use();
-        glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
-        glViewport(0, 0, depthMapResolution, depthMapResolution);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        glCullFace(GL_FRONT);  // peter panning
-        staticRender(depthShader, map, 0, 0, 0, 0);
-        glCullFace(GL_BACK);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // reset viewport
-        glViewport(0, 0, fb_width, fb_height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
+   
         // 2. generate SSAO texture
-        // ------------------------
+              // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
         glClear(GL_COLOR_BUFFER_BIT);
         shaderSSAO.use();
         // Send kernel + rotation 
-        for (unsigned int i = 0; i < 32; ++i)
+        for (unsigned int i = 0; i < 64; ++i)
             shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
         shaderSSAO.setMat4("projection", c.projection);
         glActiveTexture(GL_TEXTURE0);
@@ -358,21 +445,24 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-       
-        /**/
+        
         // 4. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
         // -----------------------------------------------------------------------------------------------------
+        glViewport(0, 0, fb_width, fb_height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
         // send light relevant uniforms
-        glm::vec3 lightPosView = glm::vec3(c.view * glm::vec4(lightPos, 1.0));
-        shaderLightingPass.setVec3("light.Position", lightPosView);
-        shaderLightingPass.setVec3("light.Color", lightColor);
-        // Update attenuation parameters
-        const float linear = 0.09f;
-        const float quadratic = 0.032f;
-        shaderLightingPass.setFloat("light.Linear", linear);
-        shaderLightingPass.setFloat("light.Quadratic", quadratic);
+        shaderLightingPass.setMat4("view", c.view);
+        
+        // set light uniforms
+        shaderLightingPass.setVec3("viewPos", c.cameraPos);
+        shaderLightingPass.setVec3("lightDir", lightDir);
+        shaderLightingPass.setFloat("farPlane", cameraFarPlane);
+        shaderLightingPass.setInt("cascadeCount", shadowCascadeLevels.size());
+        for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
+        {
+            shaderLightingPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
+        }
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -381,19 +471,16 @@ int main()
         glBindTexture(GL_TEXTURE_2D, gAlbedo);
         glActiveTexture(GL_TEXTURE3); // add extra SSAO texture to lighting pass
         glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
+        glActiveTexture(GL_TEXTURE4); // add extra SSAO texture to lighting pass
+        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
         renderQuad();
+        
 
-        const auto lightMatrices = getLightSpaceMatrices();
-        glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
-        for (size_t i = 0; i < lightMatrices.size(); ++i)
-        {
-            glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
-        }
-        glBindBuffer(GL_UNIFORM_BUFFER, 0);
-        // render scene from light's point of view
+        v.render(c, viewShader, window);
+       
 
         //RENDERS VIEWMODEL
-        //v.render(c, viewShader, window);
+        
         
         
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -454,7 +541,6 @@ int main()
 //CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
 {
-    
     // configure depth map FBO
     // -----------------------
     glGenFramebuffers(1, &lightFBO);
@@ -588,6 +674,7 @@ void initFramebuffer()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedo, 0);
+ 
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
     unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     glDrawBuffers(3, attachments);
@@ -970,7 +1057,7 @@ glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane)
         maxZ *= zMult;
     }
 
-    const glm::mat4 lightProjection = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+    const glm::mat4 lightProjection = glm::ortho(maxX, minX, maxY,minY, minZ, maxZ);
     return lightProjection * lightView;
 }
 
