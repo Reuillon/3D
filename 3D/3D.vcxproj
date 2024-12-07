@@ -176,8 +176,8 @@
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="SHADERS\color.fs" />
-    <None Include="SHADERS\color.vs" />
+    <None Include="SHADERS\animated.fs" />
+    <None Include="SHADERS\animated.vs" />
     <None Include="SHADERS\depth.fs" />
     <None Include="SHADERS\depth.gs" />
     <None Include="SHADERS\depth.vs" />
@@ -187,11 +187,11 @@
     <None Include="SHADERS\geometry.vs" />
     <None Include="SHADERS\lighting.fs" />
     <None Include="Shaders\lighting.vs" />
+    <None Include="SHADERS\shadow.fs" />
+    <None Include="SHADERS\shadow.vs" />
     <None Include="SHADERS\SSAO.fs" />
     <None Include="SHADERS\SSAO.vs" />
     <None Include="SHADERS\SSAOBlur.fs" />
-    <None Include="SHADERS\static.fs" />
-    <None Include="SHADERS\static.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

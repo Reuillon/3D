@@ -25,7 +25,6 @@ void processInput(GLFWwindow* window);
 
 std::vector<glm::mat4> getLightSpaceMatrices();
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
-void drawCascadeVolumeVisualizers(const std::vector<glm::mat4>& lightMatrices, Shader* shader);
 
 //INITIALIZE OBJECTS
 void initShadowMap();
@@ -54,17 +53,31 @@ float cameraFarPlane = 2000.0f;
 unsigned int gBuffer;
 unsigned int gPosition, gNormal, gAlbedo, gShadow;
 unsigned int rboDepth;
+float quadVertices[] = 
+{ // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+    // positions   // texCoords
+    -1.0f,  1.0f,  0.0f, 1.0f,
+    -1.0f, -1.0f,  0.0f, 0.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+
+    -1.0f,  1.0f,  0.0f, 1.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+     1.0f,  1.0f,  1.0f, 1.0f
+};
+//SHADOWS
+unsigned int shadowFBO;
+unsigned int shadowMap;
+unsigned int rboShadow;
 
 //SSAO
 unsigned int ssaoFBO, ssaoBlurFBO;
 unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
 unsigned int noiseTexture;
+
 std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
 std::default_random_engine generator;
 std::vector<glm::vec3> ssaoKernel;
-
 std::vector<float> shadowCascadeLevels{ cameraFarPlane / 50.0f, cameraFarPlane / 25.0f, cameraFarPlane / 10.0f, cameraFarPlane / 2.0f };
-
 
 // lighting info
 // -------------
@@ -72,13 +85,10 @@ unsigned int matricesUBO;
 glm::vec3 lightDir = glm::normalize(glm::vec3(20.0f, 50.0f, 20.0f));
 unsigned int lightFBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 4096;
+constexpr unsigned int depthMapResolution = 4096 ;
 bool showQuad = false;
 
-
-
 std::vector<glm::mat4> lightMatricesCache;
-
 
 camera c(SCR_WIDTH, SCR_HEIGHT, 52);
 
@@ -125,9 +135,6 @@ GLFWwindow* init()
     return window;
 }
 
-
-
-
 //DELTATIME VALUES
 double deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -135,28 +142,19 @@ float lastFrame = 0.0f;
 //FRAME TIMER
 double currtime;
 
-
 //VIEWMODEL POSITIONING AND BEHAVIOUR
 double xoffset = 0.0f;
 double yoffset = 0.0f;
-
-
 double sensitivity = 0.05f;
-
-
 
 float xC = 0, yC = 0, zC = 0;
 
-
 float near_plane = 1.0f, far_plane = 7.5f;
-
 
 float ourLerp(float a, float b, float f)
 {
     return a + f * (b - a);
 }
-
-
 
 int main()
 {
@@ -168,11 +166,11 @@ int main()
     //glEnable(GL_CULL_FACE);
     // build and compile our shader program
     // ------------------------------------
-    Shader viewShader("SHADERS/color.vs", "SHADERS/color.fs");
+    Shader viewShader("SHADERS/animated.vs", "SHADERS/animated.fs");
 
     Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
 
-    Shader staticShader("SHADERS/static.vs", "SHADERS/static.fs");
+    Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
 
     Shader shaderGeometryPass("SHADERS/geometry.vs", "SHADERS/geometry.fs");
@@ -187,8 +185,8 @@ int main()
     
    
 
-    //Model map("Models/highway/source/hw.obj");
-    Model map("Models/DUST2/source/2.fbx");
+    Model map("Models/highway/source/hw.obj");
+    //Model map("Models/DUST2/source/2.fbx");
 
     Model shib("Models/shiba/1.fbx");
     Model gun("Models/DUST2/source/MACCY.obj");
@@ -207,13 +205,9 @@ int main()
     glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
     glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
 
-
     /**/
-    staticShader.use();
-    staticShader.setInt("diffuseTexture", 0);
-   
-    
-
+    shadowPass.use();
+    shadowPass.setInt("diffuseTexture", 0);
 
     shaderLightingPass.use();
     shaderLightingPass.setInt("gPosition", 0);
@@ -221,11 +215,9 @@ int main()
     shaderLightingPass.setInt("gAlbedo", 2);
     shaderLightingPass.setInt("ssao", 3);
     shaderLightingPass.setInt("shadowMap", 4);
-
     
     shaderGeometryPass.use();
     shaderGeometryPass.setInt("diffuseTexture", 0);
-
 
     shaderSSAO.use();
     shaderSSAO.setInt("gPosition", 0);
@@ -245,51 +237,6 @@ int main()
     c.right(8.0);
     c.camRot(90, 0);
     
-    unsigned int framebuffer;
-    glGenFramebuffers(1, &framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    // create a color attachment texture
-    unsigned int textureColorbuffer;
-    glGenTextures(1, &textureColorbuffer);
-    glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
-    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-    unsigned int rbo;
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
-    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-        // positions   // texCoords
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
-    };
-
-    unsigned int quadVAOs, quadVBOs;
-    glGenVertexArrays(1, &quadVAOs);
-    glGenBuffers(1, &quadVBOs);
-    glBindVertexArray(quadVAOs);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBOs);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -352,31 +299,31 @@ int main()
         depthShader.use();  
 
         glCullFace(GL_BACK);
-        staticShader.use();
+        shadowPass.use();
         // reset viewport
         glViewport(0, 0, fb_width, fb_height);
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-        glClearColor(0.5f, 0.4f, 1.0f, 1.0f);
+        glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.00784313725f * 2, 0.431372549f * 2, 0.678431373f * 2, 1.0f * 2);
         const glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
         const glm::mat4 view = c.view;
-        staticShader.setMat4("projection", projection);
-        staticShader.setMat4("view", view);
+        shadowPass.setMat4("projection", projection);
+        shadowPass.setMat4("view", view);
         // set light uniforms
-        staticShader.setVec3("viewPos", c.cameraPos);
-        staticShader.setVec3("lightDir", lightDir);
-        staticShader.setFloat("farPlane", cameraFarPlane);
-        staticShader.setInt("cascadeCount", shadowCascadeLevels.size());
+        shadowPass.setVec3("viewPos", c.cameraPos);
+        shadowPass.setVec3("lightDir", lightDir);
+        shadowPass.setFloat("farPlane", cameraFarPlane);
+        shadowPass.setInt("cascadeCount", shadowCascadeLevels.size());
         for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
         {
-            staticShader.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
+            shadowPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
         }
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-        staticRender(staticShader, map, 0, 0, 0, 0);
+        staticRender(shadowPass, map, 0, 0, 0, 0);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-        staticRender(staticShader, shib, glfwGetTime(), 0, -80, 2);
+        staticRender(shadowPass, shib, glfwGetTime(), 0, -80, 2);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         model = glm::mat4(1.0f);
@@ -384,10 +331,10 @@ int main()
         model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
-        staticShader.setMat4("model", model);
-        gun.draw(staticShader);
+        shadowPass.setMat4("model", model);
+        gun.draw(shadowPass);
 
-        v.render(c, depthShader, window);
+        //v.render(c, depthShader, window);
 
         
        
@@ -472,11 +419,11 @@ int main()
         glActiveTexture(GL_TEXTURE3); // add extra SSAO texture to lighting pass
         glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
         glActiveTexture(GL_TEXTURE4); // add extra SSAO texture to lighting pass
-        glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+        glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
         
 
-        v.render(c, viewShader, window);
+        //v.render(c, viewShader, window);
        
 
         //RENDERS VIEWMODEL
@@ -490,7 +437,6 @@ int main()
         
         //PRINT FRAMERATE
         std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
-
         //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
 
         /// VIEWMODEL POSITIONING
@@ -538,6 +484,7 @@ int main()
     return 0;
 }
 
+unsigned int quadVAOs, quadVBOs;
 //CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
 {
@@ -551,8 +498,8 @@ void initShadowMap()
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
@@ -580,7 +527,37 @@ void initShadowMap()
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, matricesUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     // create depth texture
-    
+    glGenVertexArrays(1, &quadVAOs);
+    glGenBuffers(1, &quadVBOs);
+    glBindVertexArray(quadVAOs);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBOs);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    glGenFramebuffers(1, &shadowFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+    // create a color attachment texture
+
+    glGenTextures(1, &shadowMap);
+    glBindTexture(GL_TEXTURE_2D, shadowMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowMap, 0);
+    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+
+    glGenRenderbuffers(1, &rboShadow);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboShadow);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rboShadow); // now actually attach it
+    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 void initSSAO()
@@ -689,7 +666,6 @@ void initFramebuffer()
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
-
 
 // renderQuad() renders a 1x1 XY quad in NDC
 // -----------------------------------------
@@ -862,76 +838,6 @@ void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float 
 
     m.draw(shader);
 
-}
-
-std::vector<GLuint> visualizerVAOs;
-std::vector<GLuint> visualizerVBOs;
-std::vector<GLuint> visualizerEBOs;
-void drawCascadeVolumeVisualizers(const std::vector<glm::mat4>& lightMatrices, Shader* shader)
-{
-    visualizerVAOs.resize(8);
-    visualizerEBOs.resize(8);
-    visualizerVBOs.resize(8);
-
-    const GLuint indices[] = {
-        0, 2, 3,
-        0, 3, 1,
-        4, 6, 2,
-        4, 2, 0,
-        5, 7, 6,
-        5, 6, 4,
-        1, 3, 7,
-        1, 7, 5,
-        6, 7, 3,
-        6, 3, 2,
-        1, 5, 4,
-        0, 1, 4
-    };
-
-    const glm::vec4 colors[] = {
-        {1.0, 0.0, 0.0, 0.5f},
-        {0.0, 1.0, 0.0, 0.5f},
-        {0.0, 0.0, 1.0, 0.5f},
-    };
-
-    for (int i = 0; i < lightMatrices.size(); ++i)
-    {
-        const auto corners = getFrustumCornersWorldSpace(lightMatrices[i]);
-        std::vector<glm::vec3> vec3s;
-        for (const auto& v : corners)
-        {
-            vec3s.push_back(glm::vec3(v));
-        }
-
-        glGenVertexArrays(1, &visualizerVAOs[i]);
-        glGenBuffers(1, &visualizerVBOs[i]);
-        glGenBuffers(1, &visualizerEBOs[i]);
-
-        glBindVertexArray(visualizerVAOs[i]);
-
-        glBindBuffer(GL_ARRAY_BUFFER, visualizerVBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, vec3s.size() * sizeof(glm::vec3), &vec3s[0], GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, visualizerEBOs[i]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-
-        glBindVertexArray(visualizerVAOs[i]);
-        shader->setVec4("color", colors[i % 3]);
-        glDrawElements(GL_TRIANGLES, GLsizei(36), GL_UNSIGNED_INT, 0);
-
-        glDeleteBuffers(1, &visualizerVBOs[i]);
-        glDeleteBuffers(1, &visualizerEBOs[i]);
-        glDeleteVertexArrays(1, &visualizerVAOs[i]);
-
-        glBindVertexArray(0);
-    }
-
-    visualizerVAOs.clear();
-    visualizerEBOs.clear();
-    visualizerVBOs.clear();
 }
 
 //MOUSE SINGLE INPUT
