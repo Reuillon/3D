@@ -147,7 +147,7 @@ double xoffset = 0.0f;
 double yoffset = 0.0f;
 double sensitivity = 0.05f;
 
-float xC = 0, yC = 0, zC = 0;
+float xC = -45.9203, yC = 35.2217, zC = -53.3815;
 
 float near_plane = 1.0f, far_plane = 7.5f;
 
@@ -158,35 +158,35 @@ float ourLerp(float a, float b, float f)
 
 int main()
 {
-   
+    
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
+
+
     // build and compile our shader program
     // ------------------------------------
     Shader viewShader("SHADERS/animated.vs", "SHADERS/animated.fs");
-
     Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
-
     Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
-
     Shader shaderGeometryPass("SHADERS/geometry.vs", "SHADERS/geometry.fs");
     Shader shaderLightingPass("SHADERS/lighting.vs", "SHADERS/lighting.fs");
     Shader shaderSSAO("SHADERS/SSAO.vs", "SHADERS/SSAO.fs");
     Shader shaderSSAOBlur("SHADERS/SSAO.vs", "SHADERS/SSAOBlur.fs");
     
     Viewmodel v(7, "Models/GUN/PEESTOL.fbx");
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
     
     
    
 
-    Model map("Models/highway/source/hw.obj");
+    //Model map("Models/highway/source/hw.obj");
     //Model map("Models/DUST2/source/2.fbx");
+    Model map("Models/NTOWN/NTOWN.obj");
+    //Model map("Models/RUST/RUST.obj");
+
 
     Model shib("Models/shiba/1.fbx");
     Model gun("Models/DUST2/source/MACCY.obj");
@@ -202,7 +202,7 @@ int main()
 
     // lighting info
     // -------------
-    glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
+   
     glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
 
     /**/
@@ -241,6 +241,7 @@ int main()
     // -----------
     while (!glfwWindowShouldClose(window))
     {
+        
         lightDir = glm::normalize(glm::vec3(20.0f + xC, 50 + yC, 20.0f + zC));
         glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -256,7 +257,7 @@ int main()
         //UPDATE CAMERA POSITIONS
        
         c.update();
-
+        glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_DEPTH_CLAMP);
         glm::mat4 model;
@@ -270,33 +271,35 @@ int main()
         }
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+        // set light uniforms
+        model = glm::mat4(1.0f);
         
+        
+        
+        
+        depthShader.setMat4("model", model);
+        depthShader.setMat4("projection", c.projection);
+        depthShader.setMat4("view", c.view);
         depthShader.use();
+   
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
           // peter panning
         glDisable(GL_DEPTH_CLAMP);
         staticRender(depthShader, map, 0, 0, 0, 0);
+        
         staticRender(depthShader, shib, glfwGetTime(), 0, -80, 2);
+        
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0, -15.5, -10));
-        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, ((float)(-glfwGetTime() * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
         depthShader.setMat4("model", model);
         gun.draw(depthShader);
         
-        // set light uniforms
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0, -15.5, -10));
-        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
-        depthShader.setMat4("model", model);
-        depthShader.setMat4("projection", c.projection);
-        depthShader.setMat4("view", c.view);
-        depthShader.use();  
+        
 
         glCullFace(GL_BACK);
         shadowPass.use();
@@ -304,7 +307,7 @@ int main()
         glViewport(0, 0, fb_width, fb_height);
         glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.00784313725f * 2, 0.431372549f * 2, 0.678431373f * 2, 1.0f * 2);
+        glClearColor(0.00784313725f, 0.431372549f, 0.678431373f, 1.0f);
         const glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
         const glm::mat4 view = c.view;
         shadowPass.setMat4("projection", projection);
@@ -318,23 +321,26 @@ int main()
         {
             shadowPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
         }
+        shadowPass.setFloat("clampVal", 0.01f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         staticRender(shadowPass, map, 0, 0, 0, 0);
+        shadowPass.setFloat("clampVal", 0.005f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         staticRender(shadowPass, shib, glfwGetTime(), 0, -80, 2);
+        shadowPass.setFloat("clampVal", 0.005f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0, -15.5, -10));
-        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, ((float)(-glfwGetTime() * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
         shadowPass.setMat4("model", model);
         gun.draw(shadowPass);
 
-        //v.render(c, depthShader, window);
+        v.render(c, depthShader, window);
 
         
        
@@ -345,7 +351,6 @@ int main()
         shaderGeometryPass.use();
         shaderGeometryPass.setMat4("projection", c.projection);
         shaderGeometryPass.setMat4("view", c.view);
-        // set light uniforms
         shaderGeometryPass.setVec3("viewPos", c.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
@@ -356,12 +361,7 @@ int main()
         shaderGeometryPass.use();
         shaderGeometryPass.setMat4("projection", c.projection);
         shaderGeometryPass.setMat4("view", c.view);
-        // set light uniforms
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0, -15.5, -10));
-        model = glm::rotate(model, ((float)(-glfwGetTime() * 100.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        
         shaderGeometryPass.setMat4("model", model);
         gun.draw(shaderGeometryPass);
    
@@ -393,10 +393,12 @@ int main()
         renderQuad();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         
+
+        glEnable(GL_FRAMEBUFFER_SRGB);
         // 4. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
         // -----------------------------------------------------------------------------------------------------
         glViewport(0, 0, fb_width, fb_height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
         // send light relevant uniforms
         shaderLightingPass.setMat4("view", c.view);
@@ -421,9 +423,15 @@ int main()
         glActiveTexture(GL_TEXTURE4); // add extra SSAO texture to lighting pass
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
-        
 
-        //v.render(c, viewShader, window);
+
+        glDisable(GL_CULL_FACE);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        v.render(c, viewShader, window);
+        glDisable(GL_FRAMEBUFFER_SRGB);
+
+        //
        
 
         //RENDERS VIEWMODEL
@@ -436,9 +444,9 @@ int main()
         glfwPollEvents();
         
         //PRINT FRAMERATE
-        std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
+        //std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
         //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
-
+        //std::cout << xC << "   " << yC << "   " << zC << "   " << "\n";
         /// VIEWMODEL POSITIONING
         /// 
         /// 
@@ -498,8 +506,8 @@ void initShadowMap()
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
     constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
@@ -826,7 +834,6 @@ void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float 
 
     //glActiveTexture(GL_TEXTURE1);
    // glBindTexture(GL_TEXTURE_2D, depthMap);
-    glm::mat3 normal;
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(xV, -17.5 + zV ,  75 + yV));
     model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));

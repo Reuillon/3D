@@ -18,6 +18,7 @@ void Viewmodel::render(camera c, Shader& shader, GLFWwindow* window)
 {
 	float currentFrame = glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
+
 	lastFrame = currentFrame;
 
 	shader.use();
@@ -26,12 +27,12 @@ void Viewmodel::render(camera c, Shader& shader, GLFWwindow* window)
 	shader.setMat4("view", c.view);
 
 	//DIR LIGHT
-	shader.setFloat("material.shininess", 10.0f);
+
 	shader.setFloat("material2.shininess", 10.0f);
-	shader.setVec3("dirLight.direction", 20.0f, 50.0f, 20.0f);
-	shader.setVec3("dirLight.ambient", 0.25f, 0.25f, 0.25f);
-	shader.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
-	shader.setVec3("dirLight.specular", 0.4f, 0.4f, 0.4f);
+	
+	shader.setVec3("material2.diffuse", 1.0f, 1.0f, 1.0f);
+	shader.setVec3("dirLight.direction", 20.0f + -45.9203, 50.0f + 35.2217, 20.0f + -53.3815);
+
 
 
 
@@ -143,7 +144,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	default:
 	{
 		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[0]);
+		animate.PlayAnimation(&animation[2]);
 		break;
 	}
 	}
@@ -159,7 +160,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (animate.finishedAnim() == true)
 	{
 		animate.ResetAnim();
-		thisAnim = 0;
+		thisAnim = 2;
 	}
 	if (reset == 1)
 	{

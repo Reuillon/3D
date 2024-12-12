@@ -14,7 +14,7 @@ uniform sampler2DArray shadowMap;
 uniform vec3 lightDir;
 uniform vec3 viewPos;
 uniform float farPlane;
-
+uniform float clampVal;
 uniform mat4 view;
 
 layout (std140) uniform LightSpaceMatrices
@@ -61,7 +61,7 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
     // calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(fs_in.Normal);
     float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-    bias = clamp(bias, 0.0,0.007);
+    bias = clamp(bias, 0.0, clampVal);
     const float biasModifier = 0.5f;
     if (layer == cascadeCount)
     {
@@ -95,7 +95,7 @@ void main()
     vec3 ambient = 0.5 * color;
     
     float shadow = ShadowCalculation(fs_in.FragPos);                      
-    vec3 lighting = (ambient + (1.0 - (shadow)));    
+    vec3 lighting = (ambient + (1.0 - (shadow) * 1.25));    
 
     FragColor = vec4(lighting, 1.0);
 }

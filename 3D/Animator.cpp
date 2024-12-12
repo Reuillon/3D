@@ -37,7 +37,6 @@ float timerA = 0;
 void Animator::UpdateAnimation(float dt) 
 {
 	m_DeltaTime = dt;
-
 	if (m_CurrentAnimation)
 	{
 		if (isLoop)
