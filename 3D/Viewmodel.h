@@ -17,7 +17,7 @@ class Viewmodel
 		float lastFrame = 0.0f;
 
 		//ANIMATION CONTROLLER
-		int thisAnim = 4;
+		int thisAnim = 6;
 		int playAnim = 1;
 		int reset = 0;
 
@@ -25,7 +25,7 @@ class Viewmodel
 	public:
 		Viewmodel(short int animLength, std::string path);
 
-		void render(camera c, Shader& shader, GLFWwindow* window);
+		void render(camera& c, Shader& shader, GLFWwindow* window);
 
 		void animController(GLFWwindow* window);
 

@@ -42,6 +42,8 @@ struct Material
     bool hasTex;
     glm::vec3 Diffuse;
     glm::vec3 Specular;
+    float roughness;
+    float metallic;
     float Shininess;
 };
 

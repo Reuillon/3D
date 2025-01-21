@@ -1,4 +1,4 @@
-//STANDARD LIBRARY
+﻿//STANDARD LIBRARY
 #include <iostream>
 #include <random>
 
@@ -35,6 +35,7 @@ void initSSAO();
 //RENDER FUNCTIONS
 void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
 void renderQuad();
+void renderSphere();
 unsigned int loadTexture(char const* path);
 
 // RESOLUTION
@@ -46,8 +47,14 @@ int fb_width;
 int fb_height;
 
 
-float cameraNearPlane = 1.0f;
+float cameraNearPlane = 0.1f;
 float cameraFarPlane = 2000.0f;
+
+//PBR VARIABLES
+int  b = 7;
+int nrRows = 4;
+int nrColumns = 4;
+float spacing = 2.0;
 
 //FRAMEBUFFER
 unsigned int gBuffer;
@@ -64,6 +71,7 @@ float quadVertices[] =
      1.0f, -1.0f,  1.0f, 0.0f,
      1.0f,  1.0f,  1.0f, 1.0f
 };
+
 //SHADOWS
 unsigned int shadowFBO;
 unsigned int shadowMap;
@@ -148,50 +156,83 @@ double yoffset = 0.0f;
 double sensitivity = 0.05f;
 
 float xC = -45.9203, yC = 35.2217, zC = -53.3815;
+float xQ = 0, yQ = 0, zQ = 0;
 
 float near_plane = 1.0f, far_plane = 7.5f;
 
-float ourLerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}
+
+bool shoot = false;
+
 
 int main()
 {
-    
+ 
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+ 
+    // ░▒▓███████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓███████▓▒░ ░▒▓███████▓▒░ 
+    //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
+    //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
+    // ░▒▓██████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓███████▓▒░ ░▒▓██████▓▒░  
+    //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
+    //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
+    //░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░
 
-
-    // build and compile our shader program
-    // ------------------------------------
+    //VIEWMODEL
     Shader viewShader("SHADERS/animated.vs", "SHADERS/animated.fs");
+
+    //SHADOWS
     Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
     Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
+    
     Shader shaderGeometryPass("SHADERS/geometry.vs", "SHADERS/geometry.fs");
     Shader shaderLightingPass("SHADERS/lighting.vs", "SHADERS/lighting.fs");
+
+    //POSTPROCESSING
     Shader shaderSSAO("SHADERS/SSAO.vs", "SHADERS/SSAO.fs");
     Shader shaderSSAOBlur("SHADERS/SSAO.vs", "SHADERS/SSAOBlur.fs");
     
-    Viewmodel v(7, "Models/GUN/PEESTOL.fbx");
-    
-    
-   
+    //PBR
+    Shader shaderPBR("SHADERS/pbr.vs", "SHADERS/pbr.fs");
+    Shader shaderPBRT("SHADERS/pbr.vs", "SHADERS/pbrTexture.fs");
 
+
+
+    //░▒▓██████████████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░       ░▒▓███████▓▒░ 
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░        
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░        
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓█▓▒░       ░▒▓██████▓▒░  
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
+    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓███████▓▒░ 
+    //Viewmodel v(7, "Models/GUN/Bolt.fbx");
+    //Viewmodel v(7, "Models/GUN/BS2.fbx");
+    Viewmodel v(7, "Models/GUN/DEGGLETMP.fbx");
+    
     //Model map("Models/highway/source/hw.obj");
-    //Model map("Models/DUST2/source/2.fbx");
-    Model map("Models/NTOWN/NTOWN.obj");
+    //Model map("Models/NTOWN/NTOWN.obj");
     //Model map("Models/RUST/RUST.obj");
 
 
-    Model shib("Models/shiba/1.fbx");
-    Model gun("Models/DUST2/source/MACCY.obj");
-    unsigned int woodTexture = loadTexture("TEXTURES/white.png");
+  //  Model shib("Models/shiba/1.fbx");
+    Model gun("Models/DUST2/source/BS2.fbx");
+    //Model gun("Models/DUST2/source/REVOLVER.obj");
+    //Model gun("Models/GUN/PEESTOL.obj");
+    //Model gun("Models/GUN/BS2.obj");
     
+    unsigned int woodTexture = loadTexture("TEXTURES/white.png");
+    unsigned int whiteTexture = loadTexture("TEXTURES/wood.jpg");
+    
+    //PBR TEXTURES
+    unsigned int albedo = loadTexture("TEXTURES/albedo2.png");
+    unsigned int normal = loadTexture("TEXTURES/normal2.png");
+    unsigned int metallic = loadTexture("TEXTURES/metallic2.png");
+    unsigned int roughness = loadTexture("TEXTURES/roughness2.png");
+    unsigned int ao = loadTexture("TEXTURES/ao.png");
  
     //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -205,7 +246,7 @@ int main()
    
     glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
 
-    /**/
+    /*
     shadowPass.use();
     shadowPass.setInt("diffuseTexture", 0);
 
@@ -228,20 +269,61 @@ int main()
 
     shadowShader.use();
     shadowShader.setInt("texture1", 0);
+    */
+    
+  
+    shaderPBR.use();
+    shaderPBR.setVec3("albedo", 0.9f, 0.1, 0.9f);
+    shaderPBR.setFloat("ao", 1.0f);
+    shaderPBRT.use();
+    shaderPBRT.setInt("albedoMap", 0);
+    shaderPBRT.setInt("normalMap", 1);
+    shaderPBRT.setInt("metallicMap", 2);
+    shaderPBRT.setInt("roughnessMap", 3);
+    shaderPBRT.setInt("aoMap", 4);
 
 
+    //TEMP
+    // lights
+    // ------
+    glm::vec3 lightPositions[] = 
+    {
+        glm::vec3(-10.0f,  10.0f, 10.0f),
+        glm::vec3(10.0f,  10.0f, 10.0f),
+        glm::vec3(-10.0f, -10.0f, 10.0f),
+        glm::vec3(10.0f, -10.0f, 10.0f)
+       
+    };
+    glm::vec3 lightColors[] = 
+    {
+        glm::vec3(300.0f, 300.0f * 0.7f, 300.0f * 0.33f),
+        glm::vec3(300.0f, 300.0f, 300.0f),
+        glm::vec3(300.0f, 300.0f, 300.0f),
+        glm::vec3(300.0f, 300.0f, 300.0f)
+    };
 
+    /*
     c.update();
     c.jump(-15);
     c.forward(11.0);
     c.right(8.0);
     c.camRot(90, 0);
-    
-    // render loop
-    // -----------
+    */
+
+
+    // ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓██████████████▓▒░░▒▓████████▓▒░▒▓█▓▒░      ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░  
+    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
+    //░▒▓█▓▒░       ▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
+    //░▒▓█▓▒▒▓███▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░  
+    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
+    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
+    // ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░  
     while (!glfwWindowShouldClose(window))
     {
-        
+        if (shoot)
+        {
+            std::cout << "printButton\n";
+        }
         lightDir = glm::normalize(glm::vec3(20.0f + xC, 50 + yC, 20.0f + zC));
         glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -257,12 +339,14 @@ int main()
         //UPDATE CAMERA POSITIONS
        
         c.update();
+        
+
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_DEPTH_CLAMP);
         glm::mat4 model;
         //SHADOW PREPASS
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.831f / 9, 0.807f / 9, 0.823f / 9, 1.0f);
         const auto lightMatrices = getLightSpaceMatrices();
         glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
         for (size_t i = 0; i < lightMatrices.size(); ++i)
@@ -273,10 +357,10 @@ int main()
 
         // set light uniforms
         model = glm::mat4(1.0f);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        
-        
-        
+        /*
         depthShader.setMat4("model", model);
         depthShader.setMat4("projection", c.projection);
         depthShader.setMat4("view", c.view);
@@ -285,9 +369,10 @@ int main()
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
-          // peter panning
+         
+        // peter panning
         glDisable(GL_DEPTH_CLAMP);
-        staticRender(depthShader, map, 0, 0, 0, 0);
+       // staticRender(depthShader, map, 0, 0, 0, 0);
         
         staticRender(depthShader, shib, glfwGetTime(), 0, -80, 2);
         
@@ -324,7 +409,7 @@ int main()
         shadowPass.setFloat("clampVal", 0.01f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-        staticRender(shadowPass, map, 0, 0, 0, 0);
+        //staticRender(shadowPass, map, 0, 0, 0, 0);
         shadowPass.setFloat("clampVal", 0.005f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
@@ -338,9 +423,9 @@ int main()
         model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
         shadowPass.setMat4("model", model);
+        glDisable(GL_CULL_FACE);
         gun.draw(shadowPass);
-
-        v.render(c, depthShader, window);
+        glEnable(GL_CULL_FACE);
 
         
        
@@ -354,17 +439,19 @@ int main()
         shaderGeometryPass.setVec3("viewPos", c.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
-        staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
+        //staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
         staticRender(shaderGeometryPass, shib, glfwGetTime(), 0, -80, 2);       
         glBindTexture(GL_TEXTURE_2D, woodTexture);
-
+        glDisable(GL_CULL_FACE);
         shaderGeometryPass.use();
         shaderGeometryPass.setMat4("projection", c.projection);
         shaderGeometryPass.setMat4("view", c.view);
-        
         shaderGeometryPass.setMat4("model", model);
         gun.draw(shaderGeometryPass);
-   
+        glEnable(GL_CULL_FACE);
+
+
+
         // 2. generate SSAO texture
               // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -383,6 +470,8 @@ int main()
         renderQuad();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+
         // 3. blur SSAO texture to remove noise
         // ------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
@@ -395,6 +484,9 @@ int main()
         
 
         glEnable(GL_FRAMEBUFFER_SRGB);
+
+
+
         // 4. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
         // -----------------------------------------------------------------------------------------------------
         glViewport(0, 0, fb_width, fb_height);
@@ -423,18 +515,86 @@ int main()
         glActiveTexture(GL_TEXTURE4); // add extra SSAO texture to lighting pass
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
-
-
+        
+         */
         glDisable(GL_CULL_FACE);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, woodTexture);
-        v.render(c, viewShader, window);
-        glDisable(GL_FRAMEBUFFER_SRGB);
-
-        //
-       
+        glBindTexture(GL_TEXTURE_2D, whiteTexture);
 
         //RENDERS VIEWMODEL
+        //v.render(c, viewShader, window);
+        glDisable(GL_FRAMEBUFFER_SRGB);
+        glEnable (GL_CULL_FACE);
+
+       
+        //PBR TESTING
+        shaderPBRT.use();
+        shaderPBRT.setMat4("projection", c.projection);
+
+        shaderPBRT.setMat4("view", c.view);
+        shaderPBRT.setVec3("camPos", c.cameraPos);
+        /**/
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, normal);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, metallic);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, roughness);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, ao);
+        shaderPBR.setVec3("albedo", 0.6f, 0.0, 0.9f);
+        shaderPBR.setFloat("ao", 1.0f);
+        // render rows*column number of spheres with varying metallic/roughness values scaled by rows and columns respectively
+        model = glm::mat4(1.0f);
+        for (int row = 0; row < nrRows; ++row)
+        {
+            //shaderPBR.setFloat("metallic", (float)row / (float)nrRows);
+            for (int col = 0; col < nrColumns; ++col)
+            {
+                // we clamp the roughness to 0.05 - 1.0 as perfectly smooth surfaces (roughness of 0.0) tend to look a bit off
+                // on direct lighting.
+                //shaderPBR.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
+
+                model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(
+                    (col - (nrColumns / 2)) * spacing,
+                    (row - (nrRows / 2)) * spacing,
+                    0.0f
+                ));
+                shaderPBRT.setMat4("model", model);
+                shaderPBRT.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+                renderSphere();
+            }
+        }
+      
+        // render light source (simply re-render sphere at light positions)
+        // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
+        // keeps the codeprint small.
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            shaderPBRT.setVec3("albedo", lightColors[i][0], lightColors[i][1], lightColors[i][2]);
+            glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
+            newPos = lightPositions[i];
+            shaderPBRT.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
+            shaderPBRT.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
+
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, newPos);
+            model = glm::scale(model, glm::vec3(0.5f));
+            shaderPBRT.setMat4("model", model);
+            shaderPBRT.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+            renderSphere();
+        }
+        shaderPBR.setVec3("albedo", 0.147f, 0.147f, 0.147f);
+        shaderPBR.setFloat("ao", 1.0f);
+        shaderPBR.setFloat("metallic", 0.1f + xQ );
+        shaderPBR.setFloat("roughness", 0.1f + yQ );
+
+        glDisable(GL_CULL_FACE);
+        staticRender(shaderPBRT, gun, glfwGetTime() / 2, 0, -70, 17.5);
+
         
         
         
@@ -447,6 +607,7 @@ int main()
         //std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
         //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
         //std::cout << xC << "   " << yC << "   " << zC << "   " << "\n";
+       // std::cout << xQ << "   " << yQ << "   " << "\n";
         /// VIEWMODEL POSITIONING
         /// 
         /// 
@@ -455,21 +616,25 @@ int main()
         {
             //y += 0.001f;
             yC += 10 * deltaTime;
+            yQ += 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_DOWN))
         {
             //y -= 0.001f;
             yC -= 10 * deltaTime;
+            yQ -= 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_RIGHT))
         {
            // x += 0.001f;
            xC += 10 * deltaTime;
+           xQ += 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT))
         {
            // x -= 0.001f;
            xC -= 10 * deltaTime;
+           xQ -= 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_E))
         {
@@ -566,6 +731,11 @@ void initShadowMap()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+}
+
+float ourLerp(float a, float b, float f)
+{
+    return a + f * (b - a);
 }
 
 void initSSAO()
@@ -706,6 +876,134 @@ void renderQuad()
     glBindVertexArray(0);
 }
 
+// renders (and builds at first invocation) a sphere
+// -------------------------------------------------
+unsigned int sphereVAO = 0;
+unsigned int indexCount;
+void renderSphere()
+{
+    if (sphereVAO == 0)
+    {
+        glGenVertexArrays(1, &sphereVAO);
+
+        unsigned int vbo, ebo;
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+
+        std::vector<glm::vec3> positions;
+        std::vector<glm::vec2> uv;
+        std::vector<glm::vec3> normals;
+        std::vector<unsigned int> indices;
+
+        const unsigned int X_SEGMENTS = 64;
+        const unsigned int Y_SEGMENTS = 64;
+        const float PI = 3.14159265359f;
+        for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+        {
+            for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
+            {
+                float xSegment = (float)x / (float)X_SEGMENTS;
+                float ySegment = (float)y / (float)Y_SEGMENTS;
+                float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+                float yPos = std::cos(ySegment * PI);
+                float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+                positions.push_back(glm::vec3(xPos, yPos, zPos));
+                uv.push_back(glm::vec2(xSegment, ySegment));
+                normals.push_back(glm::vec3(xPos, yPos, zPos));
+            }
+        }
+
+        bool oddRow = false;
+        for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
+        {
+            if (!oddRow) // even rows: y == 0, y == 2; and so on
+            {
+                for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+                {
+                    indices.push_back(y * (X_SEGMENTS + 1) + x);
+                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                }
+            }
+            else
+            {
+                for (int x = X_SEGMENTS; x >= 0; --x)
+                {
+                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                    indices.push_back(y * (X_SEGMENTS + 1) + x);
+                }
+            }
+            oddRow = !oddRow;
+        }
+        indexCount = static_cast<unsigned int>(indices.size());
+
+        std::vector<float> data;
+        for (unsigned int i = 0; i < positions.size(); ++i)
+        {
+            data.push_back(positions[i].x);
+            data.push_back(positions[i].y);
+            data.push_back(positions[i].z);
+            if (normals.size() > 0)
+            {
+                data.push_back(normals[i].x);
+                data.push_back(normals[i].y);
+                data.push_back(normals[i].z);
+            }
+            if (uv.size() > 0)
+            {
+                data.push_back(uv[i].x);
+                data.push_back(uv[i].y);
+            }
+        }
+        glBindVertexArray(sphereVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+        unsigned int stride = (3 + 2 + 3) * sizeof(float);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    }
+
+    glBindVertexArray(sphereVAO);
+    glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
+}
+
+//renders a model without animation
+void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV)
+{
+    shader.use();
+
+    shader.setMat4("projection", c.projection);
+    shader.setMat4("view", c.view);
+    // set light uniforms
+
+
+    //glActiveTexture(GL_TEXTURE1);
+   // glBindTexture(GL_TEXTURE_2D, depthMap);
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(xV, -17.5 + zV, 75 + yV));
+    /*
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, (xR * 100.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));  
+    model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
+    */
+    model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
+    shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+    m.draw(shader);
+
+}
+
+
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -822,38 +1120,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-//renders a model without animation
-void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV)
-{
-    shader.use();
-
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    // set light uniforms
-   
-
-    //glActiveTexture(GL_TEXTURE1);
-   // glBindTexture(GL_TEXTURE_2D, depthMap);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(xV, -17.5 + zV ,  75 + yV));
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, (xR * 100.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.05f , 0.05f , 0.05f ));
-    shader.setMat4("model", model);
-
-    m.draw(shader);
-
-}
 
 //MOUSE SINGLE INPUT
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-     
+       
     }
+    
 }
 
 unsigned int loadTexture(char const * path)

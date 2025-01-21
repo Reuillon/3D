@@ -31,7 +31,7 @@ void main()
     vec3 ambient = vec3(0.6 * Diffuse )* AmbientOcclusion; 
     // diffuse
 
-    vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lightColor * AmbientOcclusion;
+    vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lightColor;
     // specular
     vec3 viewDir = normalize(-FragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
@@ -41,7 +41,7 @@ void main()
     vec3 specular = spec * lightColor;    
     // calculate shadow
                      
-    vec3 lighting = (ambient * (diffuse + specular) * texture(shadowMap, TexCoords).rgb ) * color  ;    
+    vec3 lighting = (ambient * (diffuse + specular) * texture(shadowMap, TexCoords).rgb) * color  ;    
     
     FragColor = vec4(lighting, 1.0);
     //FragColor = vec4((diffuse ), 1.0) ;

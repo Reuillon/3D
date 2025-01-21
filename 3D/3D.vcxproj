@@ -187,6 +187,9 @@
     <None Include="SHADERS\geometry.vs" />
     <None Include="SHADERS\lighting.fs" />
     <None Include="Shaders\lighting.vs" />
+    <None Include="SHADERS\pbr.fs" />
+    <None Include="SHADERS\pbr.vs" />
+    <None Include="SHADERS\pbrTexture.fs" />
     <None Include="SHADERS\shadow.fs" />
     <None Include="SHADERS\shadow.vs" />
     <None Include="SHADERS\SSAO.fs" />

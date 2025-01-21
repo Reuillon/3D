@@ -75,21 +75,22 @@ private:
     //SET BONE DATA
     void SetVertexBoneData(Vertex& vertex, int boneID, float weight);
 
+    //LOADS MATERIAL DATA REGARDLESS OF TEXTURE PRESENCE
     Material loadMaterial(aiMaterial* mat) 
     {
         Material material;
         aiColor3D color(0.f, 0.f, 0.f);
         float shininess;
+        float roughness;
+        float metallic;
+
 
         mat->Get(AI_MATKEY_COLOR_DIFFUSE, color);
         material.Diffuse = glm::vec3(color.r, color.b, color.g);
-
-        mat->Get(AI_MATKEY_COLOR_SPECULAR, color);
-        material.Specular = glm::vec3(color.r, color.b, color.g);
-
-        mat->Get(AI_MATKEY_SHININESS, shininess);
-        material.Shininess = shininess;
-
+        mat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+        material.roughness = roughness;
+        mat->Get(AI_MATKEY_REFLECTIVITY, metallic);
+        material.metallic = metallic;
         return material;
     }
     

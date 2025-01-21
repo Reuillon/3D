@@ -38,7 +38,7 @@ void Model::loadModel(string const& path)
 {
     // read file via ASSIMP
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace );
     // check for errors
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
     {
@@ -145,9 +145,25 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     // process materials
     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
     aiColor3D color(0.f, 0.f, 0.f);
+    
+    float roughness = 0.0f;
+    float metallic = 1.5f;
+    
+    //GET MATERIAL COLOR 
     material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+
+    std::cout << color.r << ", " << color.g << ", " << color.b << " | ";
+
+    //GET ROUGHNESS VALUE
+    material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+    std::cout << roughness << " ";
     
-    
+
+    //GET METALLIC VALUE
+    material->Get(AI_MATKEY_REFLECTIVITY, metallic);
+   
+    std::cout << metallic << "\n";
+
     // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
     // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
     // Same applies to other texture as the following list summarizes:

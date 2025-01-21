@@ -104,6 +104,15 @@
     <None Include="SHADERS\animated.vs">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="SHADERS\pbr.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\pbr.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="SHADERS\pbrTexture.fs">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">

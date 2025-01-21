@@ -13,9 +13,12 @@ Viewmodel::Viewmodel(short int animLength, std::string path)
 	animate.initialize(&animation[0]);
 	animate.UpdateAnimation(deltaTime);
 }
-
-void Viewmodel::render(camera c, Shader& shader, GLFWwindow* window)
+float recoil = 0.0;
+float recoilX = 0.0;
+void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 {
+	c.pitch += recoil * 1.1;
+	c.yaw += recoilX * 1.1;
 	float currentFrame = glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
 
@@ -48,8 +51,11 @@ void Viewmodel::render(camera c, Shader& shader, GLFWwindow* window)
 	glm::mat4 normal = glm::mat4(1.0f);
 	model = glm::inverse(model) * glm::inverse(c.view);
 	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+	//model = glm::rotate(model, 85 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
+	//model = glm::translate(model, glm::vec3(4.2f, -0.42, 0.1333));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-	model = glm::translate(model, glm::vec3(5.0f, -0.42, 0.1333));
+	model = glm::translate(model, glm::vec3(4.35f, -0.42, -0.0333));
+	//model = glm::translate(model, glm::vec3(4.25f, -0.42, 0.0));
 
 	//SEND OBJECT DATA TO SHADER AND DRAW
 	shader.setMat4("model", model);
@@ -75,28 +81,31 @@ void Viewmodel::render(camera c, Shader& shader, GLFWwindow* window)
 
 	m.draw(shader);
 }
+float thisTimer = 0.0;
 
+float randomNum = 0.0;
 void Viewmodel::animController(GLFWwindow* window)
 {
+	
 	//SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
 	switch (thisAnim)
 	{
 	case 0:
 	{
-		animate.loopAnim(false);
+		animate.loopAnim(true);
 		animate.PlayAnimation(&animation[0]);
 		break;
 	}
 
 	case 1:
 	{
-		animate.loopAnim(true);
+		animate.loopAnim(false);
 		animate.PlayAnimation(&animation[1]);
 		break;
 	}
 	case 2:
 	{
-		animate.loopAnim(true);
+		animate.loopAnim(false);
 		animate.PlayAnimation(&animation[2]);
 		break;
 	}
@@ -144,7 +153,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	default:
 	{
 		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[2]);
+		animate.PlayAnimation(&animation[6]);
 		break;
 	}
 	}
@@ -160,7 +169,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (animate.finishedAnim() == true)
 	{
 		animate.ResetAnim();
-		thisAnim = 2;
+		thisAnim = 0;
 	}
 	if (reset == 1)
 	{
@@ -168,7 +177,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		reset = 0;
 	}
 
-
+	
 	///ANIMATION CONTROLS
 	///
 	/// 
@@ -177,7 +186,9 @@ void Viewmodel::animController(GLFWwindow* window)
 	{
 		reset = 1;
 		thisAnim = 0;
+		
 	}
+
 	if (glfwGetKey(window, GLFW_KEY_2))
 	{
 		reset = 1;
@@ -185,10 +196,12 @@ void Viewmodel::animController(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_3))
 	{
+
+
 		reset = 1;
 		thisAnim = 2;
 	}
-	if (glfwGetKey(window, GLFW_KEY_4))
+	if (glfwGetKey(window, GLFW_KEY_R))
 	{
 		reset = 1;
 		thisAnim = 3;
@@ -198,6 +211,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		reset = 1;
 		thisAnim = 4;
 	}
+	
 	if (glfwGetKey(window, GLFW_KEY_6))
 	{
 		reset = 1;
@@ -218,7 +232,54 @@ void Viewmodel::animController(GLFWwindow* window)
 		reset = 1;
 		thisAnim = 9;
 	}
-
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1))
+	{
+		thisTimer += deltaTime;
+		if (thisTimer < 0.015)
+		{
+			reset = 1;
+			thisAnim = 4;
+		}
+		
+		
+	}
+	else
+	{
+		if (thisTimer == 0.0)
+		{
+			
+		}
+		if (thisTimer < 0.165 && thisTimer > 0.0)
+		{
+			thisTimer += deltaTime;
+		}
+		
+		if (thisTimer > 0.165)
+		{
+			thisTimer = 0;
+		}
+		
+		
+	}
+	if (thisTimer == 0.0)
+	{
+		randomNum = ((rand() % 401) - 200);
+	}
+	if (thisTimer < 0.030 && thisTimer > 0.015)
+	{
+		recoil = 300.5f * deltaTime;
+		recoilX = randomNum * deltaTime;
+	}
+	if (thisTimer < 0.165 && thisTimer > 0.030)
+	{
+		recoil = -(35.5f * deltaTime);
+		recoilX = -(recoilX / 3) * deltaTime;
+	}
+	if (thisTimer > 0.135)
+	{
+		recoil = 0;
+		recoilX = 0;
+	}
 }
 
 void Viewmodel::setState(int set)
