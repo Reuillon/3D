@@ -40,6 +40,8 @@ struct Texture
 struct Material
 {
     bool hasTex;
+    bool hasRoughnessMap;
+    bool hasMetallicMap;
     glm::vec3 Diffuse;
     glm::vec3 Specular;
     float roughness;
@@ -54,9 +56,13 @@ class Mesh
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
         std::vector<Texture> textures;
+        Texture albedo;
+        Texture metallic;
+        Texture roughness;
+        Texture normal;
         Material material;
         unsigned int VAO;
-        Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures, Material material);
+        Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Texture albedo, Texture Metallic, Texture Roughness, Material material);
         void draw(Shader& shader);
     private:
         unsigned int VBO, EBO;

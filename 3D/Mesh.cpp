@@ -1,10 +1,12 @@
 #include "Mesh.h"
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures, Material material)
+Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, Texture albedo, Texture metallic, Texture roughness,Material material)
 {
 	this->vertices = vertices;
 	this->indices = indices;
-	this->textures = textures;
+    this->albedo = albedo;
+    this->metallic = metallic;
+    this->roughness = roughness;
     this->material = material;
 	setupMesh();
 }
@@ -51,6 +53,8 @@ void Mesh::setupMesh()
     glEnableVertexAttribArray(6);
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, m_Weights));
     glBindVertexArray(0);
+    
+
 }
 void Mesh::draw(Shader &shader)
 {
@@ -58,43 +62,46 @@ void Mesh::draw(Shader &shader)
     unsigned int diffuseNr = 1;
     unsigned int specularNr = 1;
     unsigned int normalNr = 1;
-    unsigned int heightNr = 1;
-  
-    for (unsigned int i = 0; i < textures.size(); i++)
-    {
-        glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
-        // retrieve texture number (the N in diffuse_textureN)
-        std::string number;
-        std::string name = textures[i].type;
-        if (name == "material.texture_diffuse")
-            number = std::to_string(diffuseNr++);
-        else if (name == "material.texture_specular")
-            number = std::to_string(specularNr++); // transfer unsigned int to string
-        else if (name == "material.texture_normal")
-            number = std::to_string(normalNr++); // transfer unsigned int to string
-        else if (name == "material.texture_height")
-            number = std::to_string(heightNr++); // transfer unsigned int to string
+    unsigned int heightNr = 1;  
 
-        // now set the sampler to the correct texture unit
-        glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
-        // and finally bind the texture
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
-    }   
-    
-    //DEFAULT MATERIAL COLOR IF NO TEXTURE IS FOUND
-    if (material.hasTex == true)
+    if (material.hasTex)
     {
-        shader.setFloat("useTexture", 1.0f);
+        shader.setFloat("hasTexture", 1.0f);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, albedo.id);
+        //glActiveTexture(GL_TEXTURE1);
+        //glBindTexture(GL_TEXTURE_2D, 0);
     }
     else
     {
-        shader.setFloat("useTexture", 0.0f);
-        shader.setFloat("material2.shininess", material.Shininess);
-        shader.setVec3("material2.diffuse", material.Diffuse);
-        shader.setVec3("material2.specular", material.Specular);
+        shader.setFloat("hasTexture", 0.0f);
+        shader.setVec3("baseColor", material.Diffuse);
     }
+    if (material.hasMetallicMap)
+    {
+        shader.setFloat("hasMetallic", 1.0f);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, metallic.id);
+    }
+    else
+    {
+        shader.setFloat("hasMetallic", 0.0f);
+        shader.setFloat("metal", material.metallic);
+    }
+    if (material.hasRoughnessMap)
+    {
+        shader.setFloat("hasRoughness", 1.0f);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, roughness.id);
+    }
+    else
+    {
+        shader.setFloat("hasRoughness", 0.0f);
+        shader.setFloat("rough", material.roughness);
+    }
+   
     
-
+    
     
     // draw mesh
     glBindVertexArray(VAO);

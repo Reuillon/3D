@@ -82,7 +82,6 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     // data to fill
     vector<Vertex> vertices;
     vector<unsigned int> indices;
-    vector<Texture> textures;
 
     // walk through each of the mesh's vertices
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -144,62 +143,85 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     }
     // process materials
     aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-    aiColor3D color(0.f, 0.f, 0.f);
-    
-    float roughness = 0.0f;
-    float metallic = 1.5f;
-    
-    //GET MATERIAL COLOR 
-    material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
 
-    std::cout << color.r << ", " << color.g << ", " << color.b << " | ";
-
-    //GET ROUGHNESS VALUE
-    material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
-    std::cout << roughness << " ";
-    
-
-    //GET METALLIC VALUE
-    material->Get(AI_MATKEY_REFLECTIVITY, metallic);
-   
-    std::cout << metallic << "\n";
-
-    // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
-    // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
-    // Same applies to other texture as the following list summarizes:
-    // diffuse: texture_diffuseN
-    // specular: texture_specularN
-    // normal: texture_normalN
+    //TEXTURE MAPS FOR INITIALIZATION
     
     // 1. diffuse maps
-    vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-    textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+    std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+    Texture diffuse;
+    if (diffuseMaps.size() > 0)
+    {
+        diffuse = diffuseMaps[0];
+    }
+    
+    // 3. normal maps
+    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
+    
+    //THESE MIGHT BE USELESS IN THE LONG TERM.....
+    /*
     // 2. specular maps
     vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-    // 3. normal maps
-    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
-    textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+    
     // 4. height maps
     std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_height");
     textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
-    
+    */
+
+    //ROUGHNESS
+    std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_height");
+    Texture roughness;
+    if (roughnessMaps.size() > 0)
+    {
+        roughness = roughnessMaps[0];
+    }
+
+
+    //METALLIC
+    std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_height");
+    Texture metallic;
+    if (metallicMaps.size() > 0)
+    {
+        metallic = metallicMaps[0];
+    }
+
+
     ExtractBoneWeightForVertices(vertices, mesh, scene);
     //create material setting;
     Material m = loadMaterial(material);
-    if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
-    {
-        m.hasTex = true;
-    }
-    else
-    {
-        m.hasTex = false;
-    }
     
-   
+ 
+    //GET MATERIAL COLOR 
+    
+    m.hasTex = material->GetTextureCount(aiTextureType_DIFFUSE);
+    m.hasRoughnessMap = material->GetTextureCount(aiTextureType_SHININESS);
+    m.hasMetallicMap = material->GetTextureCount(aiTextureType_METALNESS);
+
+    //std::cout << "MAPS: D, R, M " << m.hasTex << " " << m.hasRoughnessMap << " " << m.hasMetallicMap << " " << "\n";
+
+    //SET DEFAULT COLOR (USED WHEN NO DEFAULT TEXTURE IS PRESENT)
+    material->Get(AI_MATKEY_COLOR_DIFFUSE, m.Diffuse);
+
+    m.Diffuse.b = m.Diffuse.b + m.Diffuse.g;
+    m.Diffuse.g = m.Diffuse.b - m.Diffuse.g;
+    m.Diffuse.b = m.Diffuse.b - m.Diffuse.g;
+    std::cout << "\n\n\n" << m.Diffuse.r << ", " << m.Diffuse.g << ", " << m.Diffuse.b << " | \n\n\n";
+
+
+    //SET ROUGHNESS AND METALLIC VALUES FROM MODEL DATA (USED FOR WHEN NO ROUGHNESS OR METALLIC MAPS ARE PRESENT)
+    m.roughness = -1.0f;
+    m.metallic = -1.0f;
+    material->Get(AI_MATKEY_ROUGHNESS_FACTOR, m.roughness);
+    material->Get(AI_MATKEY_REFLECTIVITY, m.metallic);
+    
+    /*
+    //GET ROUGHNESS VALUE
+    std::cout << "\n" << m.roughness << " ";
+    std::cout << m.metallic << "\n";
+    */
 
     // return a mesh object created from the extracted mesh data
-    return Mesh(vertices, indices, textures, m);
+    return Mesh(vertices, indices, diffuse, metallic, roughness, m);
 }
 
 void Model::ExtractBoneWeightForVertices(std::vector<Vertex>& vertices, aiMesh* mesh, const aiScene* scene)
