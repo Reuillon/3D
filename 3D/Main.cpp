@@ -227,7 +227,7 @@ int main()
 
 
     //Model shib("Models/shiba/1.fbx");
-    Model gun("Models/DUST2/source/BS2.fbx");
+    Model gun("Models/DUST2/source/BS1.fbx");
     //Model macHand("Models/MAC10VIEWMODEL.obj");
     //Model gun("Models/DUST2/source/REVOLVER.obj");
     //Model gun("Models/GUN/PEESTOL.obj");
@@ -294,7 +294,7 @@ int main()
     shaderPBRT.setInt("aoMap", 4);
     shaderPBRT.setInt("irradianceMap", 5);
     shaderPBRT.setInt("prefilterMap", 6);
-    shaderPBRT.setInt("brdLUT", 7);
+    shaderPBRT.setInt("brdfLUT", 7);
 
     backgroundShader.use();
     backgroundShader.setInt("environmentMap", 0);
@@ -312,10 +312,10 @@ int main()
     };
     glm::vec3 lightColors[] = 
     {
-        glm::vec3(10.0f, 10.0f, 10.0f),
-        glm::vec3(20.0f, 20.0f, 20.0f),
-        glm::vec3(20.0f, 20.0f, 20.0f),
-        glm::vec3(20.0f, 20.0f, 20.0f)
+        glm::vec3(200.0f, 200.0f, 200.0f),
+        glm::vec3(200.0f, 200.0f, 200.0f),
+        glm::vec3(200.0f, 200.0f, 200.0f),
+        glm::vec3(200.0f, 200.0f, 200.0f)
     };
 
 
@@ -333,7 +333,7 @@ int main()
     // ---------------------------------
     stbi_set_flip_vertically_on_load(true);
     int width, height, nrComponents;
-    float* data = stbi_loadf("TEXTURES/hdri/newport_loft.hdr", &width, &height, &nrComponents, 0);
+    float* data = stbi_loadf("TEXTURES/hdri/meadow_2k.hdr", &width, &height, &nrComponents, 0);
     unsigned int hdrTexture;
     if (data)
     {
@@ -586,7 +586,7 @@ int main()
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_DEPTH_CLAMP);
-        int a;
+        
         
         const auto lightMatrices = getLightSpaceMatrices();
         glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
@@ -787,14 +787,12 @@ int main()
         
 
         
-        /* */
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
-        for (unsigned int i = 0; i < 0; ++i)
+        for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
         {
-            shaderPBRT.setVec3("albedo", lightColors[i][0], lightColors[i][1], lightColors[i][2]);
-            glm::vec3 newPos = lightPositions[i];
+            glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
             newPos = lightPositions[i];
             shaderPBRT.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
             shaderPBRT.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
@@ -819,7 +817,7 @@ int main()
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, brdfLUTTexture);
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
         staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, 0, -65, 17.5);
         //staticRender(shaderPBRT, macHand, 0, 0, -40, 17.5);
        
@@ -1304,11 +1302,11 @@ void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float 
     model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));  
     model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
     */
-    model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    //model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
 
-   // model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(-0.7f, 0.7f, 0.7f));
+    model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));
     shader.setMat4("model", model);
     shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m.draw(shader);
