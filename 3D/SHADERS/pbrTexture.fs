@@ -131,10 +131,12 @@ void main()
     {
         metallic = texture(metallicMap, TexCoords).r;
     }
+ 
+  
 
     // input lighting data
-    vec3 N = getNormalFromMap();
-    //vec3 N = normalize(Normal);
+   // vec3 N = getNormalFromMap();
+    vec3 N = normalize(Normal);
     vec3 V = normalize(camPos - WorldPos);
     vec3 R = reflect(-V, N); 
 
@@ -195,6 +197,9 @@ void main()
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    
+    
+
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuse + specular) ;
