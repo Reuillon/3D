@@ -153,7 +153,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	default:
 	{
 		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[6]);
+		animate.PlayAnimation(&animation[3]);
 		break;
 	}
 	}
@@ -169,7 +169,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (animate.finishedAnim() == true)
 	{
 		animate.ResetAnim();
-		thisAnim = 0;
+		thisAnim = 2;
 	}
 	if (reset == 1)
 	{
@@ -204,7 +204,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_R))
 	{
 		reset = 1;
-		thisAnim = 3;
+		thisAnim = 7;
 	}
 	if (glfwGetKey(window, GLFW_KEY_5))
 	{
@@ -238,7 +238,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		if (thisTimer < 0.015)
 		{
 			reset = 1;
-			thisAnim = 4;
+			thisAnim = 9;
 		}
 		
 		
