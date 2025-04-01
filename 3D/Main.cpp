@@ -193,7 +193,7 @@ int main()
     //░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░
 
     //VIEWMODEL
-    Shader viewShader("SHADERS/animated.vs", "SHADERS/animated.fs");
+    Shader viewShader("SHADERS/animated.vs", "SHADERS/pbrTexture.fs");
 
     //SHADOWS
     Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
@@ -229,7 +229,8 @@ int main()
     //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓███████▓▒░ 
     //Viewmodel v(7, "Models/GUN/Bolt.fbx");
     //Viewmodel v(7, "Models/GUN/BS2.fbx");
-    Viewmodel v(11, "Models/GUN/PEESTOL.fbx");
+    //Viewmodel v(11, "Models/GUN/PEESTOL.fbx");
+    Viewmodel v(7, "Models/GUN/DEGGLETMP.fbx");
     //Viewmodel v(7, "Models/DUST2/source/AKKA.fbx");
     
     //Model map("Models/highway/source/hw.obj");
@@ -344,7 +345,7 @@ int main()
     // initialize static shader uniforms before rendering
     // --------------------------------------------------
     glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 2000.0f);
-    shaderPBRT.use();
+   
     shaderPBRT.setMat4("projection", c.projection);
     backgroundShader.use();
     backgroundShader.setMat4("projection", c.projection);

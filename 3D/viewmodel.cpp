@@ -25,19 +25,19 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	lastFrame = currentFrame;
 
 	shader.use();
-	shader.setVec3("viewPos", c.cameraPos);
+
+	shader.setInt("albedoMap", 0);
+	shader.setInt("normalMap", 1);
+	shader.setInt("metallicMap", 2);
+	shader.setInt("roughnessMap", 3);
+	shader.setInt("aoMap", 4);
+	shader.setInt("irradianceMap", 5);
+	shader.setInt("prefilterMap", 6);
+	shader.setInt("brdfLUT", 7);
+
 	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
-
-	//DIR LIGHT
-
-	shader.setFloat("material2.shininess", 10.0f);
-	
-	shader.setVec3("material2.diffuse", 1.0f, 1.0f, 1.0f);
-	shader.setVec3("dirLight.direction", 20.0f + -45.9203, 50.0f + 35.2217, 20.0f + -53.3815);
-
-
-
+	shader.setVec3("camPos", c.cameraPos);
 
 	//CALCULATE BONE TRANSFORM
 	auto transforms = animate.GetFinalBoneMatrices();
@@ -48,7 +48,6 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	}
 	//INITIALIZE OBJECT ORIENTATIONS
 	glm::mat4 model = glm::mat4(1.0f);
-	glm::mat4 normal = glm::mat4(1.0f);
 	model = glm::inverse(model) * glm::inverse(c.view);
 	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
 	//model = glm::rotate(model, 85 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -59,9 +58,8 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 
 	//SEND OBJECT DATA TO SHADER AND DRAW
 	shader.setMat4("model", model);
-	normal = glm::mat3(glm::transpose(glm::inverse(model)));
-	shader.setMat3("inverse", normal);
-
+	
+	shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
 
 	//INITIALIZE OBJECT ORIENTATIONS
 	glm::mat4 viewModel = glm::mat4(1.0f);
@@ -153,7 +151,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	default:
 	{
 		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[3]);
+		animate.PlayAnimation(&animation[1]);
 		break;
 	}
 	}
@@ -169,7 +167,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (animate.finishedAnim() == true)
 	{
 		animate.ResetAnim();
-		thisAnim = 2;
+		thisAnim = 0;
 	}
 	if (reset == 1)
 	{
@@ -204,7 +202,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_R))
 	{
 		reset = 1;
-		thisAnim = 7;
+		thisAnim = 3;
 	}
 	if (glfwGetKey(window, GLFW_KEY_5))
 	{
@@ -238,7 +236,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		if (thisTimer < 0.015)
 		{
 			reset = 1;
-			thisAnim = 9;
+			thisAnim = 5;
 		}
 		
 		
@@ -265,17 +263,17 @@ void Viewmodel::animController(GLFWwindow* window)
 	{
 		randomNum = ((rand() % 401) - 200);
 	}
-	if (thisTimer < 0.030 && thisTimer > 0.015)
+	if (thisTimer < 0.045 && thisTimer > 0.010)
 	{
-		recoil = 300.5f * deltaTime;
-		recoilX = randomNum * deltaTime;
+		recoil = 85.5f * deltaTime;
+		recoilX = randomNum * 0.25f * deltaTime;
 	}
-	if (thisTimer < 0.165 && thisTimer > 0.030)
+	if (thisTimer < 0.185 && thisTimer > 0.045)
 	{
-		recoil = -(35.5f * deltaTime);
-		recoilX = -(recoilX / 3) * deltaTime;
+		recoil = -(25.5f * deltaTime);
+		recoilX = -(recoilX / 3) * deltaTime * 0.25f;
 	}
-	if (thisTimer > 0.135)
+	if (thisTimer > 0.160)
 	{
 		recoil = 0;
 		recoilX = 0;
