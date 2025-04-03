@@ -58,20 +58,6 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 
 	//SEND OBJECT DATA TO SHADER AND DRAW
 	shader.setMat4("model", model);
-	
-	shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-
-	//INITIALIZE OBJECT ORIENTATIONS
-	glm::mat4 viewModel = glm::mat4(1.0f);
-	viewModel = glm::inverse(viewModel) * glm::inverse(c.view);
-	viewModel = glm::scale(viewModel, glm::vec3(10.0f, 10.0f, 10.0f));
-	viewModel = glm::rotate(viewModel, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-	viewModel = glm::translate(viewModel, glm::vec3(0, 0, 0));
-
-
-	//SEND OBJECT DATA TO SHADER AND DRAW
-
-
 
 	animate.loopAnim(true);
 	animController(window);
@@ -167,7 +153,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (animate.finishedAnim() == true)
 	{
 		animate.ResetAnim();
-		thisAnim = 0;
+		thisAnim = 1;
 	}
 	if (reset == 1)
 	{
@@ -202,7 +188,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_R))
 	{
 		reset = 1;
-		thisAnim = 3;
+		thisAnim = 6;
 	}
 	if (glfwGetKey(window, GLFW_KEY_5))
 	{
@@ -236,7 +222,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		if (thisTimer < 0.015)
 		{
 			reset = 1;
-			thisAnim = 5;
+			thisAnim = 7;
 		}
 		
 		
@@ -263,9 +249,9 @@ void Viewmodel::animController(GLFWwindow* window)
 	{
 		randomNum = ((rand() % 401) - 200);
 	}
-	if (thisTimer < 0.045 && thisTimer > 0.010)
+	if (thisTimer < 0.045 && thisTimer > 0.005)
 	{
-		recoil = 85.5f * deltaTime;
+		recoil = 95.5f * deltaTime;
 		recoilX = randomNum * 0.25f * deltaTime;
 	}
 	if (thisTimer < 0.185 && thisTimer > 0.045)

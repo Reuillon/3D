@@ -51,51 +51,30 @@ int fb_height;
 float cameraNearPlane = 0.1f;
 float cameraFarPlane = 2000.0f;
 
-//PBR VARIABLES
-int  b = 7;
-int nrRows = 4;
-int nrColumns = 4;
-float spacing = 2.0;
+
 
 //FRAMEBUFFER PROPERTIES
 unsigned int gBuffer;
 unsigned int gPosition, gNormal, gAlbedo, gShadow;
-unsigned int rboDepth;
-float quadVertices[] = 
-{ // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-    // positions   // texCoords
-    -1.0f,  1.0f,  0.0f, 1.0f,
-    -1.0f, -1.0f,  0.0f, 0.0f,
-     1.0f, -1.0f,  1.0f, 0.0f,
-
-    -1.0f,  1.0f,  0.0f, 1.0f,
-     1.0f, -1.0f,  1.0f, 0.0f,
-     1.0f,  1.0f,  1.0f, 1.0f
-};
 
 //SHADOWS
 unsigned int shadowFBO;
 unsigned int shadowMap;
-unsigned int rboShadow;
 
 //SSAO
 unsigned int ssaoFBO, ssaoBlurFBO;
 unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
 unsigned int noiseTexture;
 
-std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
-std::default_random_engine generator;
+
 std::vector<glm::vec3> ssaoKernel;
 std::vector<float> shadowCascadeLevels{ cameraFarPlane / 50.0f, cameraFarPlane / 25.0f, cameraFarPlane / 10.0f, cameraFarPlane / 2.0f };
 
 //PBR FRAMEBUFFER PROPERTIES
-unsigned int captureFBO;
-unsigned int captureRBO;
 unsigned int irradianceMap;
 unsigned int envCubemap;
 unsigned int brdfLUTTexture;
 unsigned int prefilterMap;
-unsigned int hdrTexture;
 
 // lighting info
 // -------------
@@ -103,10 +82,8 @@ unsigned int matricesUBO;
 glm::vec3 lightDir = glm::normalize(glm::vec3(20.0f, 50.0f, 20.0f));
 unsigned int lightFBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 4096 ;
-bool showQuad = false;
+constexpr unsigned int depthMapResolution = 4096;
 
-std::vector<glm::mat4> lightMatricesCache;
 
 camera c(SCR_WIDTH, SCR_HEIGHT, 52);
 
@@ -119,9 +96,9 @@ GLFWwindow* init()
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    #ifdef __APPLE__
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    #endif
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RENDERER", glfwGetPrimaryMonitor(), NULL);
     if (window == NULL)
     {
@@ -145,11 +122,11 @@ GLFWwindow* init()
         std::cout << "Failed to initialize GLAD" << std::endl;
         exit(-1);
     }
-    
+
     initShadowMap();
     initSSAO();
     initFramebuffer();
-    initPBR("TEXTURES/hdri/meadow_2k.hdr");
+    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     return window;
 }
 
@@ -171,19 +148,18 @@ float xQ = 0, yQ = 0, zQ = 0;
 float near_plane = 1.0f, far_plane = 7.5f;
 
 
-bool shoot = false;
 
 
 int main()
 {
- 
+
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
- 
+
     // ░▒▓███████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓███████▓▒░ ░▒▓███████▓▒░ 
     //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
     //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
@@ -196,17 +172,17 @@ int main()
     Shader viewShader("SHADERS/animated.vs", "SHADERS/pbrTexture.fs");
 
     //SHADOWS
-    Shader shadowShader("SHADERS/framebuffer.vs", "SHADERS/framebuffer.fs");
     Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
-    
+
+    //DEFERRED RENDERING
     Shader shaderGeometryPass("SHADERS/geometry.vs", "SHADERS/geometry.fs");
     Shader shaderLightingPass("SHADERS/lighting.vs", "SHADERS/lighting.fs");
 
     //POSTPROCESSING
     Shader shaderSSAO("SHADERS/SSAO.vs", "SHADERS/SSAO.fs");
     Shader shaderSSAOBlur("SHADERS/SSAO.vs", "SHADERS/SSAOBlur.fs");
-    
+
     //PBR
     Shader shaderPBRT("SHADERS/pbr.vs", "SHADERS/pbrTexture.fs");
     Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
@@ -230,76 +206,68 @@ int main()
     //Viewmodel v(7, "Models/GUN/Bolt.fbx");
     //Viewmodel v(7, "Models/GUN/BS2.fbx");
     //Viewmodel v(11, "Models/GUN/PEESTOL.fbx");
-    Viewmodel v(7, "Models/GUN/DEGGLETMP.fbx");
+    Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
     //Viewmodel v(7, "Models/DUST2/source/AKKA.fbx");
-    
+
     //Model map("Models/highway/source/hw.obj");
-    //Model map("Models/NTOWN/NTOWN.obj");
+    Model map("Models/NTOWN/NTOWN.obj");
     //Model map("Models/RUST/RUST.obj");
 
 
     //Model shib("Models/shiba/1.fbx");
-    Model gun("Models/DUST2/source/BS1.fbx");
+    //Model gun("Models/DUST2/source/BS1.fbx");
+    
     //Model gun("Models/DUST2/source/KNIFE.fbx");
     //Model gun("Models/GUN/DEGGLETMP.fbx");
+    stbi_set_flip_vertically_on_load(false);
+    Model gun("Models/GUN/MORT.fbx");
     //Model gun("Models/DUST2/source/REV.fbx");
     //Model macHand("Models/MAC10VIEWMODEL.obj");
     //Model gun("Models/DUST2/source/REVOLVER.obj");
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
-    
+
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
     unsigned int darkTexture = loadTexture("TEXTURES/dark.png");
     unsigned int whiteTexture = loadTexture("TEXTURES/wood.jpg");
-    
-    /*
-    //PBR TEXTURES
-    unsigned int albedo = loadTexture("TEXTURES/albedo.png");
-    unsigned int normal = loadTexture("TEXTURES/normalU.png");
-    unsigned int metallic = loadTexture("TEXTURES/metallic.png");
-    unsigned int roughness = loadTexture("TEXTURES/roughness.png");
-    unsigned int ao = loadTexture("TEXTURES/ao.png");
-    
-    unsigned int sAlbedo = loadTexture("TEXTURES/SPLOTCHY/splotch_albedo.png");
-    unsigned int sNormal = loadTexture("TEXTURES/SPLOTCHY/splotch_normal.png");
-    unsigned int sMetallic = loadTexture("TEXTURES/SPLOTCHY/splotch_metallic.png");
-    unsigned int sRoughness = loadTexture("TEXTURES/SPLOTCHY/splotch_roughness.png");
-    unsigned int sAO = loadTexture("TEXTURES/SPLOTCHY/splotch_AO.png");
-    */
+
+  
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    
+
 
     // lighting info
     // -------------
-   
+
     glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
 
     /*
+    //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
     shadowPass.setInt("diffuseTexture", 0);
 
+    //DEFERRED LIGHTING PASS
     shaderLightingPass.use();
     shaderLightingPass.setInt("gPosition", 0);
     shaderLightingPass.setInt("gNormal", 1);
     shaderLightingPass.setInt("gAlbedo", 2);
     shaderLightingPass.setInt("ssao", 3);
     shaderLightingPass.setInt("shadowMap", 4);
-    
+
+    //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
     shaderGeometryPass.setInt("diffuseTexture", 0);
 
+    //SSAO PASS
     shaderSSAO.use();
     shaderSSAO.setInt("gPosition", 0);
     shaderSSAO.setInt("gNormal", 1);
     shaderSSAO.setInt("texNoise", 2);
     shaderSSAOBlur.use();
     shaderSSAOBlur.setInt("ssaoInput", 0);
-
-    shadowShader.use();
-    shadowShader.setInt("texture1", 0);
     */
+    
 
     shaderPBRT.use();
     shaderPBRT.setInt("albedoMap", 0);
@@ -316,15 +284,15 @@ int main()
     //TEMP
     // lights
     // ------
-    glm::vec3 lightPositions[] = 
+    glm::vec3 lightPositions[] =
     {
         glm::vec3(-10.0f,  10.0f, 00.0f),
         glm::vec3(10.0f,  10.0f, 00.0f),
         glm::vec3(-10.0f, -10.0f, 10.0f),
         glm::vec3(10.0f, -10.0f, 10.0f)
-       
+
     };
-    glm::vec3 lightColors[] = 
+    glm::vec3 lightColors[] =
     {
         glm::vec3(200.0f, 200.0f, 200.0f),
         glm::vec3(200.0f, 200.0f, 200.0f),
@@ -333,19 +301,19 @@ int main()
     };
 
 
-   
-  
 
 
 
-    
+
+
+
 
 
 
     // initialize static shader uniforms before rendering
     // --------------------------------------------------
-    glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 2000.0f);
-   
+    glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
+
     shaderPBRT.setMat4("projection", c.projection);
     backgroundShader.use();
     backgroundShader.setMat4("projection", c.projection);
@@ -353,14 +321,6 @@ int main()
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
-
-    /*
-    c.update();
-    c.jump(-15);
-    c.forward(11.0);
-    c.right(8.0);
-    c.camRot(90, 0);
-    */
 
 
     // ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓██████████████▓▒░░▒▓████████▓▒░▒▓█▓▒░      ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░  
@@ -372,10 +332,7 @@ int main()
     // ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░  
     while (!glfwWindowShouldClose(window))
     {
-        if (shoot)
-        {
-            std::cout << "printButton\n";
-        }
+     
         lightDir = glm::normalize(glm::vec3(20.0f + xC, 50 + yC, 20.0f + zC));
         glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -387,27 +344,27 @@ int main()
         // input
         // -----
         processInput(window);
-        
-        //UPDATE CAMERA POSITIONS
-       
-        c.update();
-        
 
-       
-        
+        //UPDATE CAMERA POSITIONS
+
+        c.update();
+
+
+
+
         glm::mat4 model;
-        
+
         //SHADOW PREPASS
         //glClearColor(0.831f / 2, 0.807f / 2, 0.823f / 2, 1.0f);
         glClearColor(1.0f, 0.87f, 0.64f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+
         /* */
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_DEPTH_CLAMP);
-        
-        
+
+
+
         const auto lightMatrices = getLightSpaceMatrices();
         glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
         for (size_t i = 0; i < lightMatrices.size(); ++i)
@@ -418,24 +375,24 @@ int main()
 
         // set light uniforms
         model = glm::mat4(1.0f);
-       
-        
-        /*
+
+
+        /*   
         depthShader.setMat4("model", model);
         depthShader.setMat4("projection", c.projection);
         depthShader.setMat4("view", c.view);
         depthShader.use();
-   
+
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
-         
+
         // peter panning
         glDisable(GL_DEPTH_CLAMP);
-       // staticRender(depthShader, map, 0, 0, 0, 0);
-        
+        staticRender(depthShader, map, 0, 0, 0, 0);
+
         staticRender(depthShader, shib, glfwGetTime(), 0, -80, 2);
-        
+
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0, -15.5, -10));
         model = glm::rotate(model, ((float)(-glfwGetTime() * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -443,8 +400,8 @@ int main()
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
         depthShader.setMat4("model", model);
         gun.draw(depthShader);
-        
-        
+
+
 
         glCullFace(GL_BACK);
         shadowPass.use();
@@ -469,7 +426,7 @@ int main()
         shadowPass.setFloat("clampVal", 0.01f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-        //staticRender(shadowPass, map, 0, 0, 0, 0);
+        staticRender(shadowPass, map, 0, 0, 0, 0);
         shadowPass.setFloat("clampVal", 0.005f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
@@ -487,8 +444,8 @@ int main()
         gun.draw(shadowPass);
         glEnable(GL_CULL_FACE);
 
-        
-       
+
+
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -499,8 +456,8 @@ int main()
         shaderGeometryPass.setVec3("viewPos", c.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
-        //staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
-        staticRender(shaderGeometryPass, shib, glfwGetTime(), 0, -80, 2);       
+        staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
+        staticRender(shaderGeometryPass, shib, glfwGetTime(), 0, -80, 2);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
         glDisable(GL_CULL_FACE);
         shaderGeometryPass.use();
@@ -517,7 +474,7 @@ int main()
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
         glClear(GL_COLOR_BUFFER_BIT);
         shaderSSAO.use();
-        // Send kernel + rotation 
+        // Send kernel + rotation
         for (unsigned int i = 0; i < 64; ++i)
             shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
         shaderSSAO.setMat4("projection", c.projection);
@@ -541,7 +498,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        
+
 
         glEnable(GL_FRAMEBUFFER_SRGB);
 
@@ -554,7 +511,7 @@ int main()
         shaderLightingPass.use();
         // send light relevant uniforms
         shaderLightingPass.setMat4("view", c.view);
-        
+
         // set light uniforms
         shaderLightingPass.setVec3("viewPos", c.cameraPos);
         shaderLightingPass.setVec3("lightDir", lightDir);
@@ -575,17 +532,17 @@ int main()
         glActiveTexture(GL_TEXTURE4); // add extra SSAO texture to lighting pass
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
-        
         */
+     
 
-        
-       
+
+
         //PBR TESTING
         shaderPBRT.use();
         shaderPBRT.setMat4("projection", c.projection);
         shaderPBRT.setMat4("view", c.view);
         shaderPBRT.setVec3("camPos", c.cameraPos);
-      
+
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
@@ -604,22 +561,16 @@ int main()
             renderSphere();
         }
 
-        glDisable(GL_CULL_FACE);
+       
 
         /*
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, normal);
         */
-      
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-        glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-        staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, 0, -65, 17.5);
+
+        
         //staticRender(shaderPBRT, macHand, 0, 0, -40, 17.5);
-       
+
         glDisable(GL_CULL_FACE);
         backgroundShader.use();
         backgroundShader.setMat4("view", c.view);
@@ -628,10 +579,16 @@ int main()
         //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance ma
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
         renderCube();
-        glEnable(GL_CULL_FACE);
-        glDisable(GL_CULL_FACE);
         //glActiveTexture(GL_TEXTURE0);
-       // glBindTexture(GL_TEXTURE_2D, whiteTexture);
+        //glBindTexture(GL_TEXTURE_2D, whiteTexture);
+        
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+        staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, 0, -65, 17.5);
 
         //RENDERS VIEWMODEL
         v.render(c, viewShader, window);
@@ -642,7 +599,7 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
-        
+
         //PRINT FRAMERATE
         std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
         //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
@@ -666,19 +623,19 @@ int main()
         }
         if (glfwGetKey(window, GLFW_KEY_RIGHT))
         {
-           // x += 0.001f;
-           xC += 10 * deltaTime;
-           xQ += 0.2 * deltaTime;
+            // x += 0.001f;
+            xC += 10 * deltaTime;
+            xQ += 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT))
         {
-           // x -= 0.001f;
-           xC -= 10 * deltaTime;
-           xQ -= 0.2 * deltaTime;
+            // x -= 0.001f;
+            xC -= 10 * deltaTime;
+            xQ -= 0.2 * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_E))
         {
-           // z += 0.001f;
+            // z += 0.001f;
             zC += 10 * deltaTime;
 
         }
@@ -697,10 +654,23 @@ int main()
     return 0;
 }
 
-unsigned int quadVAOs, quadVBOs;
+
 //CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
 {
+    unsigned int quadVAOs, quadVBOs;
+    unsigned int rboShadow;
+    float quadVertices[] =
+    { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
     // configure depth map FBO
     // -----------------------
     glGenFramebuffers(1, &lightFBO);
@@ -780,12 +750,14 @@ float ourLerp(float a, float b, float f)
 
 void initSSAO()
 {
+    std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
+    std::default_random_engine generator;
     // also create framebuffer to hold SSAO processing stage 
     // -----------------------------------------------------
 
     glGenFramebuffers(1, &ssaoFBO);  glGenFramebuffers(1, &ssaoBlurFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-    
+
     // SSAO color buffer
     glGenTextures(1, &ssaoColorBuffer);
     glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
@@ -810,7 +782,7 @@ void initSSAO()
 
     // generate sample kernel
     // ----------------------
-    
+
     for (unsigned int i = 0; i < 64; ++i)
     {
         glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
@@ -843,6 +815,7 @@ void initSSAO()
 
 void initFramebuffer()
 {
+    unsigned int rboDepth;
     glGenFramebuffers(1, &gBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
 
@@ -869,7 +842,7 @@ void initFramebuffer()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedo, 0);
- 
+
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
     unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     glDrawBuffers(3, attachments);
@@ -887,6 +860,9 @@ void initFramebuffer()
 
 void initPBR(const char* hdrPath)
 {
+    unsigned int captureFBO;
+    unsigned int captureRBO;
+    unsigned int hdrTexture;
     Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
     Shader brdfShader("SHADERS/brdf.vs", "SHADERS/brdf.fs");
 
@@ -1132,13 +1108,14 @@ void renderQuad()
 // -------------------------------------------------
 unsigned int sphereVAO = 0;
 unsigned int indexCount;
+unsigned int vbo, ebo;
 void renderSphere()
 {
     if (sphereVAO == 0)
     {
         glGenVertexArrays(1, &sphereVAO);
 
-        unsigned int vbo, ebo;
+
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);
 
@@ -1308,24 +1285,25 @@ void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float 
     shader.setMat4("projection", c.projection);
     shader.setMat4("view", c.view);
     // set light uniforms
-    
+
 
     //glActiveTexture(GL_TEXTURE1);
    // glBindTexture(GL_TEXTURE_2D, depthMap);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(xV, -17.5 + zV, 75 + yV));
+   
     /*
     model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::rotate(model, (xR * 100.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));  
+    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
     */
     //model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-
+    model = glm::translate(model, glm::vec3(xV, -17.5 + zV, 75 + yV));
     model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));
+    /* */
     shader.setMat4("model", model);
     shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m.draw(shader);
@@ -1347,8 +1325,6 @@ float modi = 1;
 float swayT = 0;
 void processInput(GLFWwindow* window)
 {
-
-
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
     {
         glfwSetWindowShouldClose(window, true);
@@ -1455,18 +1431,18 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-       
+
     }
-    
+
 }
 
-unsigned int loadTexture(char const * path)
+unsigned int loadTexture(char const* path)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
-    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data)
     {
         GLenum format;
@@ -1574,7 +1550,7 @@ glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane)
         maxZ *= zMult;
     }
 
-    const glm::mat4 lightProjection = glm::ortho(maxX, minX, maxY,minY, minZ, maxZ);
+    const glm::mat4 lightProjection = glm::ortho(maxX, minX, maxY, minY, minZ, maxZ);
     return lightProjection * lightView;
 }
 
