@@ -21,6 +21,7 @@ class Level
 private:
 	std::vector<Model> models;
 	std::vector<Shader> shaders;
+	std::vector<glm::vec3> lights;
 	int mCount = 0;
 
 public:

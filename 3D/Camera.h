@@ -12,8 +12,8 @@ class camera
 		unsigned int scrHeight = 1;
 		float yaw = -90.0f;
 		float pitch = 0.0f;
-		float fov = 90;
-		
+		float fov = 95;
+		float mSpeed = 0.0;
 		camera(const unsigned int width, const unsigned int height, const unsigned int cFov);
 		glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 		glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);

@@ -4,7 +4,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include <GLFW/glfw3.h>
-
+#include "Input.h"
 class Viewmodel
 {
 	private:
@@ -15,14 +15,17 @@ class Viewmodel
 
 		double deltaTime = 0.0f;
 		float lastFrame = 0.0f;
-
 		//ANIMATION CONTROLLER
-		int thisAnim = 6;
+		int thisAnim = 1;
 		int playAnim = 1;
 		int reset = 0;
-
+		
 
 	public:
+		float spread;
+		float length;
+		float thickness;
+		
 		Viewmodel(short int animLength, std::string path);
 
 		void render(camera& c, Shader& shader, GLFWwindow* window);
@@ -30,4 +33,6 @@ class Viewmodel
 		void animController(GLFWwindow* window);
 
 		void setState(int set);
-};
+}; 
+
+extern Input &input;

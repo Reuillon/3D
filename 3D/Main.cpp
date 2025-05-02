@@ -2,6 +2,7 @@
 #include <iostream>
 #include <random>
 
+
 //MY CLASSES
 #include "stb_image.h"
 #include "Shader.h"
@@ -9,11 +10,14 @@
 #include "Viewmodel.h"
 #include "Animator.h"
 #include "Model.h"
+#include "Input.h"
 
 #include "Level.h"
 
 //OPENGL LIBRARIES
 #include <GLFW/glfw3.h>
+
+
 
 //GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -34,6 +38,7 @@ void initSSAO();
 
 //RENDER FUNCTIONS
 void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
+void mapRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
 void renderQuad();
 void renderSphere();
 void renderCube();
@@ -48,8 +53,8 @@ int fb_width;
 int fb_height;
 
 
-float cameraNearPlane = 0.1f;
-float cameraFarPlane = 2000.0f;
+float cameraNearPlane = 1.0f;
+float cameraFarPlane = 10000.0f;
 
 
 
@@ -95,7 +100,8 @@ GLFWwindow* init()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+    glfwWindowHint(GLFW_REFRESH_RATE, 500);
+    glfwSwapInterval(1);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -107,13 +113,14 @@ GLFWwindow* init()
         exit(-1);
     }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0);
+  
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetMouseButtonCallback(window, &Input::mouse_button_callback);
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -126,7 +133,10 @@ GLFWwindow* init()
     initShadowMap();
     initSSAO();
     initFramebuffer();
-    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
+    initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    //initPBR("TEXTURES/hdri/meadow_2k.hdr");
     return window;
 }
 
@@ -138,28 +148,33 @@ float lastFrame = 0.0f;
 double currtime;
 
 //VIEWMODEL POSITIONING AND BEHAVIOUR
-double xoffset = 0.0f;
-double yoffset = 0.0f;
+static double xoffsetS = 0.0f;
+static double yoffsetS = 0.0f;
 double sensitivity = 0.05f;
 
 float xC = -45.9203, yC = 35.2217, zC = -53.3815;
 float xQ = 0, yQ = 0, zQ = 0;
 
-float near_plane = 1.0f, far_plane = 7.5f;
+float near_plane = cameraNearPlane, far_plane = cameraFarPlane;
 
-
-
-
+Input& input = Input::getInstance();
+int x = 0;
 int main()
 {
+   
 
+ 
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
+    //GLOBAL INPUT OBJECT
+   
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
+ 
     // ░▒▓███████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓███████▓▒░ ░▒▓███████▓▒░ 
     //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
     //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
@@ -167,6 +182,9 @@ int main()
     //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
     //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
     //░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░
+
+    //UI
+    Shader crosshair("SHADERS/depth.vs", "SHADERS/UI.fs");
 
     //VIEWMODEL
     Shader viewShader("SHADERS/animated.vs", "SHADERS/pbrTexture.fs");
@@ -203,24 +221,27 @@ int main()
     //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
     //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
     //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓███████▓▒░ 
-    //Viewmodel v(7, "Models/GUN/Bolt.fbx");
     //Viewmodel v(7, "Models/GUN/BS2.fbx");
-    //Viewmodel v(11, "Models/GUN/PEESTOL.fbx");
-    Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
+    Viewmodel v(12, "Models/GUN/PEESTOL.fbx");
+    //Viewmodel v(11, "Models/GUN/Bolt.fbx");
+    //Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
     //Viewmodel v(7, "Models/DUST2/source/AKKA.fbx");
 
     //Model map("Models/highway/source/hw.obj");
-    Model map("Models/NTOWN/NTOWN.obj");
+    //Model map("Models/NTOWN/NTOWN.obj");
+    Model map("Models/NEWDUST/DUST.fbx");
+    //Model map("Models/Aztec/aztec.fbx");
     //Model map("Models/RUST/RUST.obj");
 
 
     //Model shib("Models/shiba/1.fbx");
-    //Model gun("Models/DUST2/source/BS1.fbx");
+    Model gun("Models/DUST2/source/BS1.fbx");
+    //stbi_set_flip_vertically_on_load(false);
+    //Model gun("Models/CITYBLOCK/source/city_block.fbx");
     
     //Model gun("Models/DUST2/source/KNIFE.fbx");
     //Model gun("Models/GUN/DEGGLETMP.fbx");
-    stbi_set_flip_vertically_on_load(false);
-    Model gun("Models/GUN/MORT.fbx");
+    
     //Model gun("Models/DUST2/source/REV.fbx");
     //Model macHand("Models/MAC10VIEWMODEL.obj");
     //Model gun("Models/DUST2/source/REVOLVER.obj");
@@ -308,6 +329,7 @@ int main()
 
 
 
+    
 
 
     // initialize static shader uniforms before rendering
@@ -332,8 +354,9 @@ int main()
     // ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░  
     while (!glfwWindowShouldClose(window))
     {
-     
-        lightDir = glm::normalize(glm::vec3(20.0f + xC, 50 + yC, 20.0f + zC));
+       
+        //lightDir = glm::normalize(glm::vec3(30.0f, -80, 30.0f));
+        lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
         glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
         currtime = glfwGetTime();
@@ -412,7 +435,7 @@ int main()
         glClearColor(0.00784313725f, 0.431372549f, 0.678431373f, 1.0f);
         const glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
         const glm::mat4 view = c.view;
-        shadowPass.setMat4("projection", projection);
+        shadowPass.setMat4("projection", c.projection);
         shadowPass.setMat4("view", view);
         // set light uniforms
         shadowPass.setVec3("viewPos", c.cameraPos);
@@ -542,13 +565,30 @@ int main()
         shaderPBRT.setMat4("projection", c.projection);
         shaderPBRT.setMat4("view", c.view);
         shaderPBRT.setVec3("camPos", c.cameraPos);
+        shaderPBRT.setVec3("lightDir", lightDir);
 
+        glm::vec3 lightPositions[] =
+        {
+            glm::vec3(-10.0f,  10.0f, 00.0f),
+            glm::vec3(10.0f,  10.0f, 00.0f),
+            glm::vec3(-10.0f, -10.0f, 10.0f),
+            glm::vec3(10.0f, -10.0f, 10.0f)
+
+        };
+        glm::vec3 lightColors[] =
+        {
+            glm::vec3(200.0f, 200.0f, 200.0f),
+            glm::vec3(200.0f, 200.0f, 200.0f),
+            glm::vec3(200.0f, 200.0f, 200.0f),
+            glm::vec3(200.0f, 200.0f, 200.0f)
+        };
+        /*
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
-        for (unsigned int i = 0; i < sizeof(lightPositions) / sizeof(lightPositions[0]); ++i)
+        for (unsigned int i = 0; i < 4; ++i)
         {
-            glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
+            glm::vec3 newPos = lightPositions[i] + glm::vec3(0.0, 0.0, 0.0);
             newPos = lightPositions[i];
             shaderPBRT.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
             shaderPBRT.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
@@ -560,7 +600,7 @@ int main()
             shaderPBRT.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
             renderSphere();
         }
-
+        */
        
 
         /*
@@ -568,6 +608,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, normal);
         */
 
+       
         
         //staticRender(shaderPBRT, macHand, 0, 0, -40, 17.5);
 
@@ -575,9 +616,13 @@ int main()
         backgroundShader.use();
         backgroundShader.setMat4("view", c.view);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance ma
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
+       
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+        
+        //BLURS MAP
+       // glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+        
+        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
         renderCube();
         //glActiveTexture(GL_TEXTURE0);
         //glBindTexture(GL_TEXTURE_2D, whiteTexture);
@@ -588,21 +633,76 @@ int main()
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE7);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-        staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, 0, -65, 17.5);
 
+        glEnable(GL_CULL_FACE);
+
+        c.fov = 70;
+        c.update();
+        //staticRender(shaderPBRT, gun, 0, 0, -65, 17.5);
+        staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, -15, -65, 17.5);
+
+        mapRender(shaderPBRT, map, 0, 0, 0, 0);
+        
+
+        glDisable(GL_CULL_FACE);
         //RENDERS VIEWMODEL
         v.render(c, viewShader, window);
-        glDisable(GL_FRAMEBUFFER_SRGB);
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
         glEnable(GL_CULL_FACE);
+
+       
+        
+        
+
+        crosshair.use();
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
+        model = glm::translate(model, glm::vec3(v.spread, 0.0, 0.0f));
+        crosshair.setMat4("model", model);
+        crosshair.setMat4("projection", c.projection);
+        crosshair.setMat4("view", c.view);
+        renderQuad();
+
+
+        
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
+        model = glm::translate(model, glm::vec3(-v.spread, 0.0, 0.0f));
+        crosshair.setMat4("model", model);
+        crosshair.setMat4("projection", c.projection);
+        crosshair.setMat4("view", c.view);
+        renderQuad();
+
+     
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
+        model = glm::translate(model, glm::vec3(0.0, v.spread * 1.1, 0.0f));
+        crosshair.setMat4("model", model);
+        crosshair.setMat4("projection", c.projection);
+        crosshair.setMat4("view", c.view);
+        renderQuad();
+
+
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
+        model = glm::translate(model, glm::vec3(0.0, -v.spread * 1.1, 0.0f));
+        crosshair.setMat4("model", model);
+        crosshair.setMat4("projection", c.projection);
+        crosshair.setMat4("view", c.view);
+        renderQuad();
+ 
+        
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
+ 
         glfwPollEvents();
 
         //PRINT FRAMERATE
         std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
-        //std::cout << c.fov << " " << x << " " << y << " " << z << "\n\n\n\n\n\n";
+        //std::cout << xoffsetS << "\n";
         //std::cout << xC << "   " << yC << "   " << zC << "   " << "\n";
         //std::cout << xQ << "   " << yQ << "   " << "\n";
         /// VIEWMODEL POSITIONING
@@ -645,8 +745,18 @@ int main()
             zC -= 10 * deltaTime;
 
         }
-
+        /*  
+        
+        for (int i = 0; i < 500000000; i++)
+        {
+            x += 1;
+        }
+        */
+      
+        
     }
+
+  
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // 
@@ -884,7 +994,7 @@ void initPBR(const char* hdrPath)
     stbi_set_flip_vertically_on_load(true);
     int width, height, nrComponents;
     float* data = stbi_loadf(hdrPath, &width, &height, &nrComponents, 0);
-
+    stbi_set_flip_vertically_on_load(false);
     if (data)
     {
         glGenTextures(1, &hdrTexture);
@@ -1296,20 +1406,40 @@ void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float 
     model = glm::rotate(model, (xR * 100.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
+    //model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
     */
     //model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::translate(model, glm::vec3(xV, -17.5 + zV, 75 + yV));
     model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, ((float)(-xR * 75.0f) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));
-    /* */
+    /* 
+    model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));*/
     shader.setMat4("model", model);
     shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m.draw(shader);
 
 }
+//renders a model without animation
+void mapRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV)
+{
+    shader.use();
 
+    shader.setMat4("projection", c.projection);
+    shader.setMat4("view", c.view);
+    glm::mat4 model = glm::mat4(1.0f);
+
+    
+    
+    model = glm::scale(model, glm::vec3(6.25f, 6.25f, 6.25f));
+    //model = glm::scale(model, glm::vec3(1.25f, 1.25f, 1.25f));
+    //model = glm::translate(model, glm::vec3(-65.0f, -2.5f, 10.0f));
+    shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+    m.draw(shader);
+
+}
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
@@ -1387,18 +1517,17 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     /**/
     double xpos = (xposIn);
     double ypos = (yposIn);
-    xoffset = xpos - lastX;
-    yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    xoffsetS = xpos - lastX;
+    yoffsetS = lastY - ypos; // reversed since y-coordinates go from bottom to top
     lastX = xpos;
     lastY = ypos;
 
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    xoffsetS *= sensitivity;
+    yoffsetS *= sensitivity;
 
-    lastX = xpos;
-    lastY = ypos;
 
-    c.camRot(xoffset, yoffset);
+
+    c.camRot(xoffsetS, yoffsetS);
 }
 
 //SCROLL INPUT

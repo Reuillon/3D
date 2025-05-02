@@ -58,12 +58,7 @@ void Mesh::setupMesh()
 }
 void Mesh::draw(Shader &shader)
 {
-    // bind appropriate textures
-    unsigned int diffuseNr = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr = 1;
-    unsigned int heightNr = 1;  
-
+  
     if (material.hasTex)
     {
         shader.setFloat("hasTexture", 1.0f);
