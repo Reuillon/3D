@@ -27,8 +27,8 @@ uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
 
 // lights
-
-uniform vec3 lightDir;
+uniform vec3 lightPositions[4];
+uniform vec3 lightColors[4];
 
 uniform vec3 camPos;
 
@@ -109,7 +109,7 @@ void main()
        
     if(hasTexture < 0.5)
     {
-        albedo = pow(baseColor, vec3(1.0/2.2));
+        albedo = baseColor;
     }
     else
     {
@@ -117,8 +117,7 @@ void main()
     }
     if(hasRoughness < 0.5)
     {
-        
-        roughness = pow(rough, 2.2);
+        roughness = rough;
     }
     else
     {
@@ -126,14 +125,14 @@ void main()
     }
     if(hasMetallic < 0.5)
     {
-        metallic = pow(metal, 2.2);
+        metallic = metal;
     }
     else
     {
         metallic = texture(metallicMap, TexCoords).r;
     }
-    
-   
+ 
+  
 
     // input lighting data
    // vec3 N = getNormalFromMap();
@@ -152,18 +151,16 @@ void main()
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    //vec3 Lo = vec3(-lightDir);
-    
+    for(int i = 0; i < 4; ++i) 
+    {
         // calculate per-light radiance
         //LIGHT DIRECTION
-        vec3 L = normalize(vec3(0.0));
+        vec3 L = normalize(lightPositions[i] - WorldPos);
 
         vec3 H = normalize(V + L);
-        float distance = length(-WorldPos);
+        float distance = length(lightPositions[i] - WorldPos);
         float attenuation = 1.0 / (distance * distance);
-        //vec3 radiance = vec3(1.0 * 20, 0.75 * 20, 0.14* 20);
-        vec3 radiance = pow(vec3(1.0 * 100, 0.6 * 100, 0.2 * 10), vec3(1.0/2.2));
-        //vec3 radiance = vec3(0.0  , 0.0 , 0.0);
+        vec3 radiance = lightColors[i] * attenuation;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);   
@@ -172,7 +169,7 @@ void main()
         
         vec3 numerator    = NDF * G * F;
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
-        vec3 specular = (numerator / denominator);
+        vec3 specular = numerator / denominator;
         
          // kS is equal to Fresnel
         vec3 kS = F;
@@ -190,30 +187,29 @@ void main()
 
         // add to outgoing radiance Lo
         Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
-      
+    }   
     
     // ambient lighting (we now use IBL as the ambient term)
-     F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     
-     kS = F;
-     kD = 1.0 - kS;
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
     
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse      = irradiance * albedo;
     
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-    const float MAX_REFLECTION_LOD = 16.0;
+    const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     
     
 
-    specular = prefilteredColor * (F * brdf.x + brdf.y);
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuse + specular) ;
-    //ambient = ambient / (ambient+ vec3(1.0));
-    //ambient = pow(ambient, vec3(1.0/1.1));
+    
     vec3 color = ambient + Lo;
 
     // HDR tonemapping
