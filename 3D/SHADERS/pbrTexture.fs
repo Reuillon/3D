@@ -102,6 +102,16 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 // ----------------------------------------------------------------------------
 void main()
 {		
+
+
+     // input lighting data
+   // vec3 N = getNormalFromMap();
+    vec3 N = normalize(Normal);
+
+    //VIEW DIRECTION
+    vec3 V = normalize(camPos - WorldPos);
+
+
     // material properties
     vec3 albedo;
     float metallic;
@@ -118,7 +128,8 @@ void main()
     if(hasRoughness < 0.5)
     {
         
-        roughness = pow(rough, 2.2);
+        roughness = pow(rough, 2.2) ;
+        
     }
     else
     {
@@ -127,20 +138,19 @@ void main()
     if(hasMetallic < 0.5)
     {
         metallic = pow(metal, 2.2);
+
     }
     else
     {
         metallic = texture(metallicMap, TexCoords).r;
     }
-    
+    if (roughness > 0.5)
+    {
+        //V =normalize(camPos);
+    }
    
 
-    // input lighting data
-   // vec3 N = getNormalFromMap();
-    vec3 N = normalize(Normal);
-
-    //VIEW DIRECTION
-    vec3 V = normalize(camPos - WorldPos);
+   
     
     //REFLECT DIRECTION
     vec3 R = reflect(-V, N); 
@@ -156,13 +166,13 @@ void main()
     
         // calculate per-light radiance
         //LIGHT DIRECTION
-        vec3 L = normalize(vec3(0.0));
+        vec3 L = vec3(0.0);
 
         vec3 H = normalize(V + L);
         float distance = length(-WorldPos);
         float attenuation = 1.0 / (distance * distance);
         //vec3 radiance = vec3(1.0 * 20, 0.75 * 20, 0.14* 20);
-        vec3 radiance = pow(vec3(1.0 * 100, 0.6 * 100, 0.2 * 10), vec3(1.0/2.2));
+        vec3 radiance = pow(vec3(1.0 * 10, 0.6 * 10, 0.2 * 10), vec3(1.0/2.2));
         //vec3 radiance = vec3(0.0  , 0.0 , 0.0);
 
         // Cook-Torrance BRDF
