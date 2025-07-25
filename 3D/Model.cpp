@@ -205,7 +205,6 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     m.Diffuse.b = m.Diffuse.b + m.Diffuse.g;
     m.Diffuse.g = m.Diffuse.b - m.Diffuse.g;
     m.Diffuse.b = m.Diffuse.b - m.Diffuse.g;
-    std::cout << "\n\n\n" << m.Diffuse.r << ", " << m.Diffuse.g << ", " << m.Diffuse.b << " | \n\n\n";
 
 
     //SET ROUGHNESS AND METALLIC VALUES FROM MODEL DATA (USED FOR WHEN NO ROUGHNESS OR METALLIC MAPS ARE PRESENT)
@@ -214,11 +213,12 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     material->Get(AI_MATKEY_ROUGHNESS_FACTOR, m.roughness);
     material->Get(AI_MATKEY_REFLECTIVITY, m.metallic);
     
-    /*
+    /* */
     //GET ROUGHNESS VALUE
-    std::cout << "\n" << m.roughness << " ";
-    std::cout << m.metallic << "\n";
-    */
+    //std::cout << "\n\n\n" << m.Diffuse.r << ", " << m.Diffuse.g << ", " << m.Diffuse.b << " | \n\n\n";
+    //std::cout << "\n" << m.roughness << " ";
+    //std::cout << m.metallic << "\n";
+   
 
     // return a mesh object created from the extracted mesh data
     return Mesh(vertices, indices, diffuse, metallic, roughness, m);

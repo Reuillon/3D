@@ -13,7 +13,8 @@ class Shader
 		unsigned int ID;
 		
 		Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
-		
+		Shader();
+
 		void use();
 
 		void setBool(const std::string &name, bool value) const;

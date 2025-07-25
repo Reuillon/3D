@@ -96,7 +96,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	shader.setInt("prefilterMap", 6);
 	shader.setInt("brdfLUT", 7);
 	c.fov = 45;
-	c.update();
+	c.update(deltaTime);
 	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
 	shader.setVec3("camPos", c.cameraPos);

@@ -90,7 +90,8 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geo
 	}
 
 }
-
+Shader::Shader()
+{}
 void Shader::use()
 {
 	glUseProgram(ID);
