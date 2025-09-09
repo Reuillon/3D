@@ -22,6 +22,7 @@ class Viewmodel
 		
 
 	public:
+		int ammo = 7;
 		float spread;
 		float length;
 		float thickness;

@@ -34,20 +34,27 @@ void initPBR(const char* hdrPath);
 void initSSAO();
 
 //RENDER FUNCTIONS
-void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
-void mapRender(Shader& shader, Model& m);
+void renderCube();
 void renderQuad();
 void renderSphere();
-void renderCube();
-void drawWater(Shader& shader, Model& m);
 void drawSand(Shader& shader, Model& m);
+void drawWater(Shader& shader, Model& m);
+void mapRender(Shader& shader, Model& m);
+void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
+
+//GRID MESH 
+std::vector<float> grid;
 
 //DEBUG UTILITY FUNCTIONS
-std::vector<float> grid;
 unsigned int loadTexture(char const* path);
-void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
+
 void initializeGrid(float size);
+void debugControls(GLFWwindow* window);
+
 void drawGrid();
+void drawCollider(MeshCollider& collider);
+void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
+
 
 // RESOLUTION
 const unsigned int SCR_WIDTH = 2560;
@@ -89,12 +96,11 @@ unsigned int prefilterMap;
 
 // lighting info
 // -------------
-unsigned int matricesUBO;
-glm::vec3 lightDir = glm::normalize(glm::vec3(20.0f, 50.0f, 20.0f));
 unsigned int lightFBO;
+unsigned int matricesUBO;
 unsigned int lightDepthMaps;
 constexpr unsigned int depthMapResolution = 4096;
-
+glm::vec3 lightDir = glm::normalize(glm::vec3(20.0f, 50.0f, 20.0f));
 
 //DELTATIME VALUES
 double deltaTime = 0.0f;
@@ -113,6 +119,8 @@ float xQ = 0, yQ = 0, zQ = 0;
 
 Shader defaultShader;
 
+int shooting = -1;
+
 // Creates an identity matrix
 float colliderIdentity[] =
 {
@@ -126,17 +134,6 @@ float colliderIdentity[] =
     -1.0,-1.0,-1.0
 };
 
-float randomMesh[] =
-{
-   0.470909, 0.800076, 1.462232,
-   -0.887551, 1.478662, 0.160654,
-   -0.337577, -1.026023, 1.354001,
-   -1.696036, -0.347436, 0.052423,
-   1.696036, 0.347436, -0.052423,
-   0.337577, 1.026023, -1.354001,
-   0.887551, -1.478662, -0.160654,
-   -0.470909, -0.800076, -1.462232
-};
 float cylinderIdentity[] =
 {
    0.646264, -0.000001, -0.646781,
@@ -190,61 +187,48 @@ float rayIdentity[] =
 
 int isCollide = -1;
 
-void drawCollider(MeshCollider collider)
-{
-    glm::vec3 collideColor = glm::vec3(1.0, 0.0, 0.0);
-    glm::vec3 notCollideColor = glm::vec3(0.0, 1.0, 0.0);
-    if (isCollide < 0.0)
-    {
-        collider.color = notCollideColor;
-    }
-    else
-    {
-        collider.color = collideColor;
-    }
 
-    //DRAWS COLLIDER MESHES(USED FOR DEBUGGING)
-    for (int i = 0; i < collider.vertices.size(); i++)
-    {
-        for (int j = i + 1; j < collider.vertices.size(); j++)
-        {
-            drawLine(collider.vertices[i], collider.vertices[j], glm::vec4(collider.color, 1.0));
-        }
-    }
-}
 
 //GLOBAL INPUT OBJECT
 Input& input = Input::getInstance();
 
 //INITIALZES WINDOW AND RENDER PIPELINE
-static GLFWwindow* init()
+static GLFWwindow* windowInit()
 {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_REFRESH_RATE, 500);
-    glfwSwapInterval(1);
+    
     #ifdef __APPLE__
          glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
+    
+    //SETS WINDOW SETTINGS
+    glfwInit();
+    glfwSwapInterval(1);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_REFRESH_RATE, 1000);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RENDERER", glfwGetPrimaryMonitor(), NULL);
+    
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         exit(-1);
     }
+
+    //SET LISTENERS FOR DETECTING INPUT
     glfwMakeContextCurrent(window); 
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetMouseButtonCallback(window, &Input::mouse_button_callback);
+    //glfwSetMouseButtonCallback(window, &Input::mouse_button_callback);
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
+    
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -252,14 +236,17 @@ static GLFWwindow* init()
         std::cout << "Failed to initialize GLAD" << std::endl;
         exit(-1);
     }
-    initShadowMap();
+    
+    //INITIALIZERS FOR VARIOUS GRAPHICAL EFFECTS
     initSSAO();
+    initShadowMap();
     initFramebuffer();
+    initializeGrid(4);
+    initPBR("TEXTURES/hdri/meadow_2k.hdr");
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
     //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    initPBR("TEXTURES/hdri/meadow_2k.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
@@ -267,43 +254,27 @@ static GLFWwindow* init()
     //initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
   
-    initializeGrid(4);
     return window;
 }
 
 
 int main()
-{
-    
-    //MeshCollider cube(randomMesh, sizeof(randomMesh) / sizeof(*randomMesh));
-    //MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
-    MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
-    MeshCollider cube2(rayIdentity , sizeof(rayIdentity) / sizeof(*rayIdentity));
-    MeshCollider movingcube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
-    
-   
- 
+{   
     // glfw window creation
     // --------------------
-    GLFWwindow* window = init();
-   
-
-    glEnable(GL_DEPTH_TEST);
+    GLFWwindow* window = windowInit();  
+    
+    //
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
- 
-    // ░▒▓███████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓███████▓▒░ ░▒▓███████▓▒░ 
-    //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
-    //░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
-    // ░▒▓██████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓███████▓▒░ ░▒▓██████▓▒░  
-    //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
-    //       ░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
-    //░▒▓███████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░
-
+    ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    
     //UI
     Shader crosshair("SHADERS/depth.vs", "SHADERS/UI.fs");
 
@@ -340,31 +311,30 @@ int main()
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
     Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
 
-    //░▒▓██████████████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░       ░▒▓███████▓▒░ 
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░        
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░        
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓█▓▒░       ░▒▓██████▓▒░  
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░             ░▒▓█▓▒░ 
-    //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓████████▓▒░▒▓███████▓▒░ 
+    /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     
     //VIWEMODELS
-    //Viewmodel v(7, "Models/GUN/BS2.fbx");
     Viewmodel v(12, "Models/GUN/PEESTOL.fbx");
+    //Viewmodel v(7, "Models/GUN/BS2.fbx");
     //Viewmodel v(11, "Models/GUN/Bolt.fbx");
     //Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
     //Viewmodel v(7, "Models/DUST2/source/AKKA.fbx");
 
     //MAPS
+    Model map("Models/NEWDUST/DUST.fbx");
     //Model map("Models/highway/source/hw.obj");
     //Model map("Models/NTOWN/NTOWN.obj");
-    Model map("Models/NEWDUST/DUST.fbx");
     //Model map("Models/Aztec/aztec.fbx");
     //Model map("Models/RUST/RUST.obj");
 
     //STATIC OBJECTS
-    //Model shib("Models/shiba/1.fbx");
     Model gun("Models/DUST2/source/BS1.fbx");
+    Model water("Models/GUN/water.fbx");
+    Model sand("Models/GUN/water.fbx");
+    Model base("Models/GUN/base.fbx");
+    //Model shib("Models/shiba/1.fbx");
     //stbi_set_flip_vertically_on_load(false);\
     //Model gun("Models/DUST2/source/KNIFE.fbx");
     //Model gun("Models/GUN/DEGGLETMP.fbx");
@@ -373,19 +343,23 @@ int main()
     //Model gun("Models/DUST2/source/REVOLVER.obj");
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
-    Model water("Models/GUN/water.fbx");
-    Model sand("Models/GUN/water.fbx");
-    Model base("Models/GUN/base.fbx");
+
+    //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    MeshCollider cube2(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
+    MeshCollider cube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
+    MeshCollider movingcube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
+    //MeshCollider cube(randomMesh, sizeof(randomMesh) / sizeof(*randomMesh));
+    //MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
-    unsigned int darkTexture = loadTexture("TEXTURES/dark.png");
-    unsigned int whiteTexture = loadTexture("TEXTURES/wood.jpg");
 
-    // lighting info
-    // -------------
+    c.fov = 70;
+    c.update(deltaTime);
 
-    glm::vec3 lightColor = glm::vec3(1.0, 1.0, 1.0);
-
+    //INITIALIZE SHADER UNIFORM DATA
+    
     /*
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
@@ -411,8 +385,13 @@ int main()
     shaderSSAOBlur.use();
     shaderSSAOBlur.setInt("ssaoInput", 0);
     */
-    
 
+    //CUBEMAP SHADER
+    glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
+    backgroundShader.use();
+    backgroundShader.setMat4("projection", c.projection);
+
+    //PBR SHADER
     shaderPBRT.use();
     shaderPBRT.setInt("albedoMap", 0);
     shaderPBRT.setInt("normalMap", 1);
@@ -424,53 +403,17 @@ int main()
     shaderPBRT.setInt("brdfLUT", 7);
 
 
-
-    //TEMP
-    // lights
-    // ------
-    glm::vec3 lightPositions[] =
-    {
-        glm::vec3(-10.0f,  10.0f, 00.0f),
-        glm::vec3(10.0f,  10.0f, 00.0f),
-        glm::vec3(-10.0f, -10.0f, 10.0f),
-        glm::vec3(10.0f, -10.0f, 10.0f)
-
-    };
-    glm::vec3 lightColors[] =
-    {
-        glm::vec3(200.0f, 200.0f, 200.0f),
-        glm::vec3(200.0f, 200.0f, 200.0f),
-        glm::vec3(200.0f, 200.0f, 200.0f),
-        glm::vec3(200.0f, 200.0f, 200.0f)
-    };
-
-    c.fov = 70;
-    c.update(deltaTime);
-    // initialize static shader uniforms before rendering
-    // --------------------------------------------------
-    glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
-
-    shaderPBRT.setMat4("projection", c.projection);
-    backgroundShader.use();
-    backgroundShader.setMat4("projection", c.projection);
-   
-    
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
   
-    // ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓██████████████▓▒░░▒▓████████▓▒░▒▓█▓▒░      ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░  
-    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
-    //░▒▓█▓▒░       ▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
-    //░▒▓█▓▒▒▓███▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░ ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░  
-    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
-    //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
-    // ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░  
-  
+
+    ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-
         c.fov = 70;
         c.update(deltaTime);
         glClearColor(1.0f, 0.87f, 0.64f, 1.0f);
@@ -492,22 +435,11 @@ int main()
 
         c.update(deltaTime);
         drawGrid();
-      
      
         glm::mat4 model;
-
-        //SHADOW PREPASS
-        //glClearColor(0.831f / 2, 0.807f / 2, 0.823f / 2, 1.0f);
-        
-        
-
-     
-     
-        /* */
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
-       
-       
+
         const auto lightMatrices = getLightSpaceMatrices();
         glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
         for (size_t i = 0; i < lightMatrices.size(); ++i)
@@ -675,150 +607,105 @@ int main()
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
         */
-    
-        //PBR TESTING
+
+        //PBR UNIFORMS
         shaderPBRT.use();   
         shaderPBRT.setMat4("projection", c.projection);
         shaderPBRT.setMat4("view", c.view);
         shaderPBRT.setVec3("camPos", c.cameraPos);
         shaderPBRT.setVec3("lightDir", lightDir);
 
-        glm::vec3 lightPositions[] =
-        {
-            glm::vec3(-10.0f,  10.0f, 00.0f),
-            glm::vec3(10.0f,  10.0f, 00.0f),
-            glm::vec3(-10.0f, -10.0f, 10.0f),
-            glm::vec3(10.0f, -10.0f, 10.0f)
-
-        };
-        glm::vec3 lightColors[] =
-        {
-            glm::vec3(200.0f, 200.0f, 200.0f),
-            glm::vec3(200.0f, 200.0f, 200.0f),
-            glm::vec3(200.0f, 200.0f, 200.0f),
-            glm::vec3(200.0f, 200.0f, 200.0f)
-        };
-        /*
-        // render light source (simply re-render sphere at light positions)
-        // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
-        // keeps the codeprint small.
-        for (unsigned int i = 0; i < 4; ++i)
-        {
-            glm::vec3 newPos = lightPositions[i] + glm::vec3(0.0, 0.0, 0.0);
-            newPos = lightPositions[i];
-            shaderPBRT.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
-            shaderPBRT.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, newPos);
-            model = glm::scale(model, glm::vec3(0.5f));
-            shaderPBRT.setMat4("model", model);
-            shaderPBRT.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-            renderSphere();
-        }
-        */
-       
-
-        /*
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, normal);
-        */
-
-       
-        
-        //staticRender(shaderPBRT, macHand, 0, 0, -40, 17.5);
-     
-        glDisable(GL_CULL_FACE);
-        
-        backgroundShader.use();
-        backgroundShader.setMat4("view", c.view);
-        glActiveTexture(GL_TEXTURE0);
-       
-        
-        //BLURS MAP
-        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
-
-        //LOW RES CUBEMAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
-        
-        //HIGH RES CUBEMAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-
-        renderCube();
-        
+        //SETS BACKGROUND FOR IBL
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE7);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+
+        //DRAWS CUBEMAP FOR IBL
+        glDisable(GL_CULL_FACE);
+        backgroundShader.use();
+        backgroundShader.setMat4("view", c.view);
+        glActiveTexture(GL_TEXTURE0);
+        //DRAWS BLURRED MAP
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+        //DRAWS LOW RES CUBEMAP
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+        //DRAWS HIGH RES CUBEMAP
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+        renderCube();
         
-       
+        
+        //DRAWS XYZ LINES
         /*
         //DEFAULT ORIENTATIONS (X,Y,Z)
         drawLine(glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
         drawLine(glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
         drawLine(glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
-        drawLine(glm::vec3(0.0f), -glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        drawLine(glm::vec3(0.0f), -glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        drawLine(glm::vec3(0.0f), -glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         */
 
-        cube.colliderSet(glm::vec3(xQ * 10, yQ * 10, zQ * 10), glm::vec3(0.0, 0.0, glfwGetTime()));
-        
+        //cube.colliderSet(glm::vec3(xQ * 10, yQ * 10, zQ * 10), glm::vec3(0.0, 0.0, 0.0));
         movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
-        
 
+        //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
         cube2.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
         cube2.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
 
-        std::cout << GJK(cube, cube2) << " " << GJK(cube, movingcube) << " " << GJK(movingcube, cube2) << "\n";
+        //std::cout << GJK(cube, cube2) << " " << GJK(cube, movingcube) << " " << GJK(movingcube, cube2) << "\n";
+
+        cube.color = glm::vec3(0.0, 1.0, 0.0);
+        cube2.color = glm::vec3(0.0, 1.0, 0.0);
+        movingcube.color = glm::vec3(0.0, 1.0, 0.0);
+
+        /*
+        if (GJK(movingcube, cube2))
+        {
+            movingcube.color = glm::vec3(1.0, 0.0, 0.0);
+            cube2.color = glm::vec3(1.0, 0.0, 0.0);
+        }
+        if (GJK(cube, movingcube))
+        {
+            cube.color = glm::vec3(1.0, 0.0, 0.0);
+            movingcube.color = glm::vec3(1.0, 0.0, 0.0);
+            
+        }
+        */
+        float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+        float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    
+        if (GJK(cube, cube2) )
+        {
+            cube.color = glm::vec3(1.0, 0.0, 0.0);
+            cube2.color = glm::vec3(1.0, 0.0, 0.0);
+            if (v.ammo > 0 && shooting == 1)
+            {
+                cube.colliderSet(glm::vec3(r1, r2, zQ * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
         
         drawCollider(cube);
-        drawCollider(movingcube);
+        //drawCollider(movingcube);
         drawCollider(cube2);
-        
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        
-        
-        
-        /*
-        lineShader.use();
-        lineShader.setVec4("outColor", glm::vec4(1.0f));
-        lineShader.setMat4("projection", c.projection);
-        lineShader.setMat4("view", c.view);
-        lineShader.setMat4("model", glm::mat4(1.0f))
-        renderCube();
-        */
-        
-        
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable(GL_CULL_FACE);
         
-        
         //mapRender(shaderPBRT, map);
-        
-     
-
-        //staticRender(shaderPBRT, base, 0.0, 0.0, 0.0, 0.0);
-        //drawSand(sandShader, sand);
-        //drawWater(waterShader, water);
+        /*
+        staticRender(shaderPBRT, base, 0.0, 0.0, 0.0, 0.0);
+        drawSand(sandShader, sand);
+        drawWater(waterShader, water);
+        */
         
         glDisable(GL_CULL_FACE);
-        
-        //staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, -15, -65, 17.5);
-        
         
         //RENDERS VIEWMODEL
         v.render(c, viewShader, window);
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
-        /**/
-       
         
-        
-
+        //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY)
         crosshair.use();
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
@@ -827,7 +714,6 @@ int main()
         crosshair.setMat4("projection", c.projection);
         crosshair.setMat4("view", c.view);
         renderQuad();
-
 
         crosshair.use();
         model = glm::mat4(1.0f);
@@ -855,9 +741,6 @@ int main()
         crosshair.setMat4("projection", c.projection);
         crosshair.setMat4("view", c.view);
         renderQuad();
-        /*  */
-
-
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -865,65 +748,25 @@ int main()
  
         glfwPollEvents();
 
+        debugControls(window); 
         //PRINT FRAMERATE
-        //std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
-        //std::cout << xoffsetS << "\n";
-        //std::cout << xC << "   " << yC << "   " << zC << "   " << "\n";
-        //std::cout << xQ << "   " << yQ << "   " << "\n";
-        /// VIEWMODEL POSITIONING
-        /// 
-        /// 
-        /// 
-        if (glfwGetKey(window, GLFW_KEY_UP))
-        {
-            //y += 0.001f;
-            yC += 10 * deltaTime;
-            yQ += 0.2 * deltaTime;
-        }
-        if (glfwGetKey(window, GLFW_KEY_DOWN))
-        {
-            //y -= 0.001f;
-            yC -= 10 * deltaTime;
-            yQ -= 0.2 * deltaTime;
-        }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT))
-        {
-            // x += 0.001f;
-            xC += 10 * deltaTime;
-            xQ += 0.2 * deltaTime;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT))
-        {
-            // x -= 0.001f;
-            xC -= 10 * deltaTime;
-            xQ -= 0.2 * deltaTime;
-        }
-        if (glfwGetKey(window, GLFW_KEY_E))
-        {
-            // z += 0.001f;
-            zC += 10 * deltaTime;
-            zQ += 0.2 * deltaTime;
-        }
-        if (glfwGetKey(window, GLFW_KEY_F))
-        {
-            // z -= 0.001f;
-            zC -= 10 * deltaTime;
-            zQ -= 0.2 * deltaTime;
-        }
-       
-      
-        
+        std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
     }
 
-  
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // 
-
+    //glfw: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
     return 0;
 }
 
+
+//INITIALIZERS //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+static float ourLerp(float a, float b, float f)
+{
+    return a + f * (b - a);
+}
 
 //CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
@@ -1013,11 +856,7 @@ void initShadowMap()
 
 }
 
-static float ourLerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}
-
+//CREATES THE FRAME BUFFER FOR SSAO
 static void initSSAO()
 {
     std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
@@ -1128,6 +967,7 @@ static void initFramebuffer()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+//INITIALIZES CUBEMAPS FOR PBR + IBL
 static void initPBR(const char* hdrPath)
 {
     unsigned int captureFBO;
@@ -1342,6 +1182,9 @@ static void initPBR(const char* hdrPath)
     backgroundShader.setInt("environmentMap", 0);
 }
 
+//INPUT////    LISTENERS/    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -1455,15 +1298,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-
 //MOUSE SINGLE INPUT
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-
+        shooting = 1;
     }
-
+    else
+    {
+        shooting = -1;
+    }
 }
 
 unsigned int loadTexture(char const* path)
@@ -1522,6 +1367,10 @@ std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 
     return frustumCorners;
 }
+
+//SHADOW///    MAPPING///    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
 static std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
 {
@@ -1605,8 +1454,10 @@ std::vector<glm::mat4> getLightSpaceMatrices()
     return ret;
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
-// -----------------------------------------
+//DRAWING//    FUNCTIONS/    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    
+
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
 void renderQuad()
@@ -1733,8 +1584,7 @@ void renderSphere()
     glBindVertexArray(sphereVAO);
     glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
 }
-// renderCube() renders a 1x1 3D cube in NDC.
-// -------------------------------------------------
+
 unsigned int cubeVAO = 0;
 unsigned int cubeVBO = 0;
 void renderCube()
@@ -1864,8 +1714,6 @@ void mapRender(Shader& shader, Model& m)
     m.draw(shader);
 
 }
-
-
 void drawWater(Shader& shader, Model& m)
 {
     shader.use();
@@ -1902,6 +1750,9 @@ void drawSand(Shader& shader, Model& m)
     m.draw(shader);
 }
 
+//DEBUG TOOLS  //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 glm::mat4 gridPos(1.0f);
 unsigned int lineVAO = 0;
 unsigned int lineVBO;
@@ -1923,6 +1774,46 @@ void initializeGrid(float size)
         }
     }
 }
+void debugControls(GLFWwindow* window)
+{
+    //CONTROLS VARIOUS BEHAVIOURS
+    if (glfwGetKey(window, GLFW_KEY_UP))
+    {
+        //y += 0.001f;
+        yC += 10 * deltaTime;
+        yQ += 0.2 * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN))
+    {
+        //y -= 0.001f;
+        yC -= 10 * deltaTime;
+        yQ -= 0.2 * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT))
+    {
+        // x += 0.001f;
+        xC += 10 * deltaTime;
+        xQ += 0.2 * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT))
+    {
+        // x -= 0.001f;
+        xC -= 10 * deltaTime;
+        xQ -= 0.2 * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E))
+    {
+        // z += 0.001f;
+        zC += 10 * deltaTime;
+        zQ += 0.2 * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_F))
+    {
+        // z -= 0.001f;
+        zC -= 10 * deltaTime;
+        zQ -= 0.2 * deltaTime;
+    }
+}
 void drawGrid()
 {
 
@@ -1931,7 +1822,7 @@ void drawGrid()
     defaultShader.setMat4("projection", c.projection);
     defaultShader.setMat4("view", c.view);
     defaultShader.setMat4("model", gridPos);
-    gridPos = glm::translate(glm::mat4(1.0f), glm::vec3(((int) c.cameraPos.x / 4) * 4, 0.0, ((int)c.cameraPos.z / 4) * 4));
+    gridPos = glm::translate(glm::mat4(1.0f), glm::vec3(((int) c.cameraPos.x / 4) * 4, -5.0, ((int)c.cameraPos.z / 4) * 4));
         
     if (lineVAO == 0)
     {
@@ -1949,6 +1840,46 @@ void drawGrid()
 
     glLineWidth(2);
     glDrawArrays(GL_LINES, 0, grid.size() / 3);
+    glBindVertexArray(0);
+}
+void drawCollider(MeshCollider& collider)
+{
+    std::vector<float> colliderMesh;
+    //DRAWS COLLIDER MESHES(USED FOR DEBUGGING)
+    for (int i = 0; i < collider.vertices.size(); i++)
+    {
+        for (int j = i + 1; j < collider.vertices.size(); j++)
+        {
+            colliderMesh.push_back(collider.vertices[i].x);
+            colliderMesh.push_back(collider.vertices[i].y);
+            colliderMesh.push_back(collider.vertices[i].z);
+            colliderMesh.push_back(collider.vertices[j].x);
+            colliderMesh.push_back(collider.vertices[j].y);
+            colliderMesh.push_back(collider.vertices[j].z);
+        }
+    }
+    defaultShader.use();
+    defaultShader.setVec4("outColor", glm::vec4(collider.color,1.0));
+    defaultShader.setMat4("projection", c.projection);
+    defaultShader.setMat4("view", c.view);
+    defaultShader.setMat4("model", glm::mat4(1.0f));
+
+    if (lineVAO == 0)
+    {
+        glGenVertexArrays(1, &lineVAO);
+        glGenBuffers(1, &lineVBO);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    glBufferData(GL_ARRAY_BUFFER, colliderMesh.size() * sizeof(unsigned int), &colliderMesh[0], GL_STATIC_DRAW);
+    glBindVertexArray(lineVAO);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(lineVAO);
+
+    glLineWidth(2);
+    glDrawArrays(GL_LINES, 0, colliderMesh.size() / 3);
     glBindVertexArray(0);
 }
 void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color)

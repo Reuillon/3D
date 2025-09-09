@@ -19,7 +19,7 @@ Viewmodel::Viewmodel(short int animLength, std::string path)
 	animate.UpdateAnimation(deltaTime);
 }
 
-int ammo = 7;
+
 float PI = 3.1415926535;
 float recoil = 0.0;
 float recoilX = 0.0;
