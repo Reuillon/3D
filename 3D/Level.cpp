@@ -30,6 +30,7 @@ Model Level::iniModel(std::string mName,bool isStatic)
     normal = glm::mat3(glm::transpose(glm::inverse(model)));
     shaders.at(0).setMat3("inverse", normal);
     models.push_back(map);
+    return map;
 }
 void Level::iniLight()
 {}

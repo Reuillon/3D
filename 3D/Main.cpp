@@ -1,7 +1,7 @@
 ﻿//STANDARD LIBRARY
 #include <iostream>
 #include <random>
-
+#include <array>
 
 //MY CLASSES
 #include "stb_image.h"
@@ -10,14 +10,14 @@
 #include "Viewmodel.h"
 #include "Animator.h"
 #include "Model.h"
-#include "Input.h"
+#include "Collision.h"
 
+//THESE NEED TO BE WORKED ON
+#include "Input.h"
 #include "Level.h"
 
 //OPENGL LIBRARIES
 #include <GLFW/glfw3.h>
-
-
 
 //GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -26,9 +26,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(GLFWwindow* window);
-
-std::vector<glm::mat4> getLightSpaceMatrices();
-std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
 
 //INITIALIZE OBJECTS
 void initShadowMap();
@@ -43,28 +40,27 @@ void renderQuad();
 void renderSphere();
 void renderCube();
 void drawWater(Shader& shader, Model& m);
+void drawSand(Shader& shader, Model& m);
 
 //DEBUG UTILITY FUNCTIONS
 std::vector<float> grid;
-void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
-static void drawLine();
-void initializeGrid(float size);
 unsigned int loadTexture(char const* path);
+void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
+void initializeGrid(float size);
 void drawGrid();
 
 // RESOLUTION
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
 
-// framebuffer size
+//CAMERA DATA
+float cameraNearPlane = 1.0f;
+float cameraFarPlane = 1000.0f;
+camera c(SCR_WIDTH, SCR_HEIGHT, 52);
+
+//FRAMEBUFFER SIZE
 int fb_width;
 int fb_height;
-
-
-float cameraNearPlane = 1.0f;
-float cameraFarPlane = 10000.0f;
-
-
 
 //FRAMEBUFFER PROPERTIES
 unsigned int gBuffer;
@@ -74,14 +70,16 @@ unsigned int gPosition, gNormal, gAlbedo, gShadow;
 unsigned int shadowFBO;
 unsigned int shadowMap;
 
+//CASCADED SHADOW MAP 
+std::vector<float> shadowCascadeLevels{ cameraFarPlane / 50.0f, cameraFarPlane / 25.0f, cameraFarPlane / 10.0f, cameraFarPlane / 2.0f };
+std::vector<glm::mat4> getLightSpaceMatrices();
+std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
+
 //SSAO
 unsigned int ssaoFBO, ssaoBlurFBO;
 unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
 unsigned int noiseTexture;
-
-
 std::vector<glm::vec3> ssaoKernel;
-std::vector<float> shadowCascadeLevels{ cameraFarPlane / 50.0f, cameraFarPlane / 25.0f, cameraFarPlane / 10.0f, cameraFarPlane / 2.0f };
 
 //PBR FRAMEBUFFER PROPERTIES
 unsigned int irradianceMap;
@@ -98,11 +96,129 @@ unsigned int lightDepthMaps;
 constexpr unsigned int depthMapResolution = 4096;
 
 
-camera c(SCR_WIDTH, SCR_HEIGHT, 52);
+//DELTATIME VALUES
+double deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
+//FRAME TIMER
+double currtime;
+
+//MOUSE MOVEMENT VARIABLES
+static double xoffsetS = 0.0f;
+static double yoffsetS = 0.0f;
+double sensitivity = 0.05f;
+
+float xC = -45.9203f, yC = 35.2217f, zC = -53.3815f;
+float xQ = 0, yQ = 0, zQ = 0;
+
+Shader defaultShader;
+
+// Creates an identity matrix
+float colliderIdentity[] =
+{
+    1.0,1.0,1.0,
+    1.0,1.0,-1.0,
+    1.0,-1.0,1.0,
+    1.0,-1.0,-1.0,
+    -1.0,1.0,1.0,
+    -1.0,1.0,-1.0,
+    -1.0,-1.0,1.0,
+    -1.0,-1.0,-1.0
+};
+
+float randomMesh[] =
+{
+   0.470909, 0.800076, 1.462232,
+   -0.887551, 1.478662, 0.160654,
+   -0.337577, -1.026023, 1.354001,
+   -1.696036, -0.347436, 0.052423,
+   1.696036, 0.347436, -0.052423,
+   0.337577, 1.026023, -1.354001,
+   0.887551, -1.478662, -0.160654,
+   -0.470909, -0.800076, -1.462232
+};
+float cylinderIdentity[] =
+{
+   0.646264, -0.000001, -0.646781,
+   0.894721, -0.000001, -0.000001,
+   0.646264, -0.000001, 0.646779,
+   -0.001598, -0.000001, -0.894742,
+   -0.647296, -0.000001, -0.646780,
+   -0.001598, -0.000001, 0.894741,
+   -0.894762, -0.000001, -0.000001,
+   -0.647296, -0.000001, 0.646779,
+   -0.480277, -1.480080, 0.479378,
+   -0.624203, -0.914345, 0.623636,
+   -0.480194, 1.480092, 0.479118,
+   -0.624193, 0.914341, 0.623601,
+   -0.480277, -1.480080, -0.479370,
+   -0.624203, -0.914345, -0.623635,
+   -0.480186, 1.480092, -0.479634,
+   -0.624190, 0.914344, -0.623671,
+   0.478484, -1.480080, 0.479391,
+   0.623072, -0.914339, 0.623639,
+   0.478576, 1.480092, 0.479128,
+   0.623085, 0.914336, 0.623604,
+   0.478484, -1.480080, -0.479383,
+   0.623072, -0.914339, -0.623639,
+   0.478569, 1.480092, -0.479645,
+   0.623083, 0.914339, -0.623674,
+   -0.001610, -0.914342, -0.862734,
+   -0.001685, -1.480080, -0.663685,
+   -0.001598, 0.914343, -0.862768,
+   -0.001597, 1.480092, -0.663945,
+   -0.001610, -0.914342, 0.862734,
+   -0.001685, -1.480080, 0.663693,
+   -0.001598, 0.914338, 0.862700,
+   -0.001597, 1.480092, 0.663436,
+   -0.862820, -0.914346, 0.000000,
+   -0.664206, -1.480080, 0.000004,
+   -0.862809, 0.914344, -0.000036,
+   -0.664121, 1.480092, -0.000262,
+   0.862648, -0.914338, -0.000000,
+   0.663172, -1.480080, 0.000004,
+   0.862660, 0.914337, -0.000036,
+   0.663260, 1.480092, -0.000262,
+   0.000467, -1.655706, -0.000201,
+   0.000906, 1.656405, 0.000008
+};
+float rayIdentity[] =
+{
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 1.0
+};
+
+int isCollide = -1;
+
+void drawCollider(MeshCollider collider)
+{
+    glm::vec3 collideColor = glm::vec3(1.0, 0.0, 0.0);
+    glm::vec3 notCollideColor = glm::vec3(0.0, 1.0, 0.0);
+    if (isCollide < 0.0)
+    {
+        collider.color = notCollideColor;
+    }
+    else
+    {
+        collider.color = collideColor;
+    }
+
+    //DRAWS COLLIDER MESHES(USED FOR DEBUGGING)
+    for (int i = 0; i < collider.vertices.size(); i++)
+    {
+        for (int j = i + 1; j < collider.vertices.size(); j++)
+        {
+            drawLine(collider.vertices[i], collider.vertices[j], glm::vec4(collider.color, 1.0));
+        }
+    }
+}
+
+//GLOBAL INPUT OBJECT
+Input& input = Input::getInstance();
+
+//INITIALZES WINDOW AND RENDER PIPELINE
 static GLFWwindow* init()
 {
-
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -110,9 +226,9 @@ static GLFWwindow* init()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_REFRESH_RATE, 500);
     glfwSwapInterval(1);
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    #ifdef __APPLE__
+         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RENDERER", glfwGetPrimaryMonitor(), NULL);
     if (window == NULL)
     {
@@ -120,8 +236,7 @@ static GLFWwindow* init()
         glfwTerminate();
         exit(-1);
     }
-    glfwMakeContextCurrent(window);
-  
+    glfwMakeContextCurrent(window); 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -137,57 +252,46 @@ static GLFWwindow* init()
         std::cout << "Failed to initialize GLAD" << std::endl;
         exit(-1);
     }
-
     initShadowMap();
     initSSAO();
     initFramebuffer();
-    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    //initPBR("TEXTURES/hdri/meadow_2k.hdr");
+    initPBR("TEXTURES/hdri/meadow_2k.hdr");
+    //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
+    //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
+    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/color.hdr");
+    //initPBR("TEXTURES/hdri/newport_loft.hdr");
+  
     initializeGrid(4);
     return window;
 }
 
-//DELTATIME VALUES
-double deltaTime = 0.0f;
-float lastFrame = 0.0f;
 
-//FRAME TIMER
-double currtime;
-
-//VIEWMODEL POSITIONING AND BEHAVIOUR
-static double xoffsetS = 0.0f;
-static double yoffsetS = 0.0f;
-double sensitivity = 0.05f;
-
-float xC = -45.9203, yC = 35.2217, zC = -53.3815;
-float xQ = 0, yQ = 0, zQ = 0;
-
-float near_plane = cameraNearPlane, far_plane = cameraFarPlane;
-Shader defaultShader;
-
-
-Input& input = Input::getInstance();
-int x = 0;
 int main()
 {
+    
+    //MeshCollider cube(randomMesh, sizeof(randomMesh) / sizeof(*randomMesh));
+    //MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
+    MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
+    MeshCollider cube2(rayIdentity , sizeof(rayIdentity) / sizeof(*rayIdentity));
+    MeshCollider movingcube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
+    
    
-
  
     // glfw window creation
     // --------------------
     GLFWwindow* window = init();
-    //GLOBAL INPUT OBJECT
    
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
@@ -234,6 +338,7 @@ int main()
 
     //WATER SHADER 
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
+    Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
 
     //░▒▓██████████████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░       ░▒▓███████▓▒░ 
     //░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░        
@@ -253,7 +358,7 @@ int main()
     //MAPS
     //Model map("Models/highway/source/hw.obj");
     //Model map("Models/NTOWN/NTOWN.obj");
-    //Model map("Models/NEWDUST/DUST.fbx");
+    Model map("Models/NEWDUST/DUST.fbx");
     //Model map("Models/Aztec/aztec.fbx");
     //Model map("Models/RUST/RUST.obj");
 
@@ -269,18 +374,12 @@ int main()
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
     Model water("Models/GUN/water.fbx");
+    Model sand("Models/GUN/water.fbx");
     Model base("Models/GUN/base.fbx");
-
-
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
     unsigned int darkTexture = loadTexture("TEXTURES/dark.png");
     unsigned int whiteTexture = loadTexture("TEXTURES/wood.jpg");
-
-  
-
-    
-
 
     // lighting info
     // -------------
@@ -345,16 +444,6 @@ int main()
         glm::vec3(200.0f, 200.0f, 200.0f)
     };
 
-
-
-
-
-
-
-
-
-    
-
     c.fov = 70;
     c.update(deltaTime);
     // initialize static shader uniforms before rendering
@@ -364,12 +453,13 @@ int main()
     shaderPBRT.setMat4("projection", c.projection);
     backgroundShader.use();
     backgroundShader.setMat4("projection", c.projection);
+   
+    
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
-
-
+  
     // ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓██████████████▓▒░░▒▓████████▓▒░▒▓█▓▒░      ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░  
     //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
     //░▒▓█▓▒░       ▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░ 
@@ -377,9 +467,7 @@ int main()
     //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
     //░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░     ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░        
     // ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░▒▓████████▓▒░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓█▓▒░  
-    int isWire = -1;
-    int counter = 0;
-    
+  
     while (!glfwWindowShouldClose(window))
     {
 
@@ -403,7 +491,7 @@ int main()
         //UPDATE CAMERA POSITIONS
 
         c.update(deltaTime);
-        //drawGrid();
+        drawGrid();
       
      
         glm::mat4 model;
@@ -587,12 +675,9 @@ int main()
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         renderQuad();
         */
-     
-
-
     
         //PBR TESTING
-        shaderPBRT.use();
+        shaderPBRT.use();   
         shaderPBRT.setMat4("projection", c.projection);
         shaderPBRT.setMat4("view", c.view);
         shaderPBRT.setVec3("camPos", c.cameraPos);
@@ -651,13 +736,13 @@ int main()
        
         
         //BLURS MAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
 
         //LOW RES CUBEMAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
         
         //HIGH RES CUBEMAP
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 
         renderCube();
         
@@ -674,8 +759,25 @@ int main()
         drawLine(glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
         drawLine(glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
         drawLine(glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
+        drawLine(glm::vec3(0.0f), -glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
+        drawLine(glm::vec3(0.0f), -glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
+        drawLine(glm::vec3(0.0f), -glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         */
-  
+
+        cube.colliderSet(glm::vec3(xQ * 10, yQ * 10, zQ * 10), glm::vec3(0.0, 0.0, glfwGetTime()));
+        
+        movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
+        
+
+        cube2.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
+        cube2.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
+
+        std::cout << GJK(cube, cube2) << " " << GJK(cube, movingcube) << " " << GJK(movingcube, cube2) << "\n";
+        
+        drawCollider(cube);
+        drawCollider(movingcube);
+        drawCollider(cube2);
+        
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
         
@@ -699,11 +801,12 @@ int main()
         
      
 
-        staticRender(shaderPBRT, base, 0.0, 0.0, 0.0, 0.0);
-       
-        drawWater(waterShader, water);
+        //staticRender(shaderPBRT, base, 0.0, 0.0, 0.0, 0.0);
+        //drawSand(sandShader, sand);
+        //drawWater(waterShader, water);
+        
         glDisable(GL_CULL_FACE);
-
+        
         //staticRender(shaderPBRT, gun, glfwGetTime() / 1.5f, -15, -65, 17.5);
         
         
@@ -711,7 +814,7 @@ int main()
         v.render(c, viewShader, window);
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
- 
+        /**/
        
         
         
@@ -726,7 +829,7 @@ int main()
         renderQuad();
 
 
-        
+        crosshair.use();
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
         model = glm::translate(model, glm::vec3(-v.spread, 0.0, 0.0f));
@@ -735,7 +838,7 @@ int main()
         crosshair.setMat4("view", c.view);
         renderQuad();
 
-     
+        crosshair.use();
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
         model = glm::translate(model, glm::vec3(0.0, v.spread * 1.1, 0.0f));
@@ -744,7 +847,7 @@ int main()
         crosshair.setMat4("view", c.view);
         renderQuad();
 
-
+        crosshair.use();
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
         model = glm::translate(model, glm::vec3(0.0, -v.spread * 1.1, 0.0f));
@@ -763,7 +866,7 @@ int main()
         glfwPollEvents();
 
         //PRINT FRAMERATE
-        std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
+        //std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
         //std::cout << xoffsetS << "\n";
         //std::cout << xC << "   " << yC << "   " << zC << "   " << "\n";
         //std::cout << xQ << "   " << yQ << "   " << "\n";
@@ -1303,8 +1406,8 @@ void processInput(GLFWwindow* window)
     {
         c.crouch();
     }
-
-
+    
+  
 }
 
 //MOUSE MOVEMENT
@@ -1372,7 +1475,7 @@ unsigned int loadTexture(char const* path)
     unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data)
     {
-        GLenum format;
+        GLenum format = GL_RGB;
         if (nrComponents == 1)
             format = GL_RED;
         else if (nrComponents == 3)
@@ -1763,6 +1866,43 @@ void mapRender(Shader& shader, Model& m)
 }
 
 
+void drawWater(Shader& shader, Model& m)
+{
+    shader.use();
+
+    shader.setMat4("projection", c.projection);
+    shader.setMat4("view", c.view);
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.3));
+    shader.setMat4("model", model);
+  
+    shader.setFloat("motion", glfwGetTime());
+
+    shader.setVec3("viewPos", c.cameraPos);
+    shader.setInt("cubeMap", 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    m.draw(shader);
+}
+void drawSand(Shader& shader, Model& m)
+{
+    shader.use();
+
+    shader.setMat4("projection", c.projection);
+    shader.setMat4("view", c.view);
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0, 0.0, -0.3));
+    shader.setMat4("model", model);
+    shader.setVec3("viewPos", c.cameraPos);
+    shader.setInt("cubeMap", 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    m.draw(shader);
+}
+
+glm::mat4 gridPos(1.0f);
 unsigned int lineVAO = 0;
 unsigned int lineVBO;
 void initializeGrid(float size)
@@ -1783,24 +1923,33 @@ void initializeGrid(float size)
         }
     }
 }
-void drawWater(Shader& shader, Model& m)
+void drawGrid()
 {
-    shader.use();
 
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.0));
-    shader.setMat4("model", model);
-  
-    shader.setFloat("motion", glfwGetTime());
-    shader.setVec4("outColor", glm::vec4(0.0, 0.4375,1.0,1.0));
-    shader.setVec3("viewPos", c.cameraPos);
-    shader.setInt("cubeMap", 1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    m.draw(shader);
+    defaultShader.use();
+    defaultShader.setVec4("outColor", glm::vec4(0.75f));
+    defaultShader.setMat4("projection", c.projection);
+    defaultShader.setMat4("view", c.view);
+    defaultShader.setMat4("model", gridPos);
+    gridPos = glm::translate(glm::mat4(1.0f), glm::vec3(((int) c.cameraPos.x / 4) * 4, 0.0, ((int)c.cameraPos.z / 4) * 4));
+        
+    if (lineVAO == 0)
+    {
+        glGenVertexArrays(1, &lineVAO);
+        glGenBuffers(1, &lineVBO);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    glBufferData(GL_ARRAY_BUFFER, grid.size() * sizeof(unsigned int), &grid[0], GL_STATIC_DRAW);
+    glBindVertexArray(lineVAO);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(lineVAO);
+
+    glLineWidth(2);
+    glDrawArrays(GL_LINES, 0, grid.size() / 3);
+    glBindVertexArray(0);
 }
 void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color)
 {
@@ -1831,35 +1980,5 @@ void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color)
     
     glLineWidth(3.0);
     glDrawArrays(GL_LINES, 0, 2);
-    glBindVertexArray(0);
-}
-
-glm::mat4 gridPos(1.0f);
-void drawGrid()
-{
-
-    defaultShader.use();
-    defaultShader.setVec4("outColor", glm::vec4(0.75f));
-    defaultShader.setMat4("projection", c.projection);
-    defaultShader.setMat4("view", c.view);
-    defaultShader.setMat4("model", gridPos);
-    gridPos = glm::translate(glm::mat4(1.0f), glm::vec3(((int) c.cameraPos.x / 4) * 4, 0.0, ((int)c.cameraPos.z / 4) * 4));
-        
-    if (lineVAO == 0)
-    {
-        glGenVertexArrays(1, &lineVAO);
-        glGenBuffers(1, &lineVBO);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, grid.size() * sizeof(unsigned int), &grid[0], GL_STATIC_DRAW);
-    glBindVertexArray(lineVAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(lineVAO);
-
-    glLineWidth(2);
-    glDrawArrays(GL_LINES, 0, grid.size() / 3);
     glBindVertexArray(0);
 }
