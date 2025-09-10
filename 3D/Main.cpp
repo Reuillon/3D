@@ -5,12 +5,14 @@
 
 //MY CLASSES
 #include "stb_image.h"
-#include "Shader.h"
-#include "Camera.h"
+#include "Collision.h"
 #include "Viewmodel.h"
 #include "Animator.h"
+#include "Shader.h"
+#include "Camera.h"
 #include "Model.h"
-#include "Collision.h"
+#include "MeshDraw.h"
+#include "debug.h"
 
 //THESE NEED TO BE WORKED ON
 #include "Input.h"
@@ -32,28 +34,6 @@ void initShadowMap();
 void initFramebuffer();
 void initPBR(const char* hdrPath);
 void initSSAO();
-
-//RENDER FUNCTIONS
-void renderCube();
-void renderQuad();
-void renderSphere();
-void drawSand(Shader& shader, Model& m);
-void drawWater(Shader& shader, Model& m);
-void mapRender(Shader& shader, Model& m);
-void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV);
-
-//GRID MESH 
-std::vector<float> grid;
-
-//DEBUG UTILITY FUNCTIONS
-unsigned int loadTexture(char const* path);
-
-void initializeGrid(float size);
-void debugControls(GLFWwindow* window);
-
-void drawGrid();
-void drawCollider(MeshCollider& collider);
-void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
 
 
 // RESOLUTION
@@ -109,20 +89,16 @@ float lastFrame = 0.0f;
 //FRAME TIMER
 double currtime;
 
-//MOUSE MOVEMENT VARIABLES
-static double xoffsetS = 0.0f;
-static double yoffsetS = 0.0f;
-double sensitivity = 0.05f;
-
-float xC = -45.9203f, yC = 35.2217f, zC = -53.3815f;
-float xQ = 0, yQ = 0, zQ = 0;
-
-Shader defaultShader;
-
 int shooting = -1;
 
 // Creates an identity matrix
-float colliderIdentity[] =
+float rayIdentity[6] =
+{
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 1.0
+};
+
+float cubeIdentity[24] =
 {
     1.0,1.0,1.0,
     1.0,1.0,-1.0,
@@ -134,7 +110,53 @@ float colliderIdentity[] =
     -1.0,-1.0,-1.0
 };
 
-float cylinderIdentity[] =
+float sphereIdentity[126] =
+{
+    0.000000, -1.000000, 0.000000,
+    0.723607, -0.447220, 0.525725,
+    -0.276388, -0.447220, 0.850649,
+    -0.894426, -0.447216, 0.000000,
+    -0.276388, -0.447220, -0.850649,
+    0.723607, -0.447220, -0.525725,
+    0.276388, 0.447220, 0.850649,
+    -0.723607, 0.447220, 0.525725,
+    -0.723607, 0.447220, -0.525725,
+    0.276388, 0.447220, -0.850649,
+    0.894426, 0.447216, 0.000000,
+    0.000000, 1.000000, 0.000000,
+    -0.162456, -0.850654, 0.499995,
+    0.425323, -0.850654, 0.309011,
+    0.262869, -0.525738, 0.809012,
+    0.850648, -0.525736, 0.000000,
+    0.425323, -0.850654, -0.309011,
+    -0.525730, -0.850652, 0.000000,
+    -0.688189, -0.525736, 0.499997,
+    -0.162456, -0.850654, -0.499995,
+    -0.688189, -0.525736, -0.499997,
+    0.262869, -0.525738, -0.809012,
+    0.951058, 0.000000, 0.309013,
+    0.951058, 0.000000, -0.309013,
+    0.000000, 0.000000, 1.000000,
+    0.587786, 0.000000, 0.809017,
+    -0.951058, 0.000000, 0.309013,
+    -0.587786, 0.000000, 0.809017,
+    -0.587786, 0.000000, -0.809017,
+    -0.951058, 0.000000, -0.309013,
+    0.587786, 0.000000, -0.809017,
+    0.000000, 0.000000, -1.000000,
+    0.688189, 0.525736, 0.499997,
+    -0.262869, 0.525738, 0.809012,
+    -0.850648, 0.525736, 0.000000,
+    -0.262869, 0.525738, -0.809012,
+    0.688189, 0.525736, -0.499997,
+    0.162456, 0.850654, 0.499995,
+    0.525730, 0.850652, 0.000000,
+    -0.425323, 0.850654, 0.309011,
+    -0.425323, 0.850654, -0.309011,
+    0.162456, 0.850654, -0.499995
+};
+
+float cylinderIdentity[126] =
 {
    0.646264, -0.000001, -0.646781,
    0.894721, -0.000001, -0.000001,
@@ -179,18 +201,12 @@ float cylinderIdentity[] =
    0.000467, -1.655706, -0.000201,
    0.000906, 1.656405, 0.000008
 };
-float rayIdentity[] =
-{
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 1.0
-};
 
 int isCollide = -1;
 
-
-
 //GLOBAL INPUT OBJECT
 Input& input = Input::getInstance();
+Debug debug;
 
 //INITIALZES WINDOW AND RENDER PIPELINE
 static GLFWwindow* windowInit()
@@ -241,22 +257,21 @@ static GLFWwindow* windowInit()
     initSSAO();
     initShadowMap();
     initFramebuffer();
-    initializeGrid(4);
-    initPBR("TEXTURES/hdri/meadow_2k.hdr");
-    //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    debug.initializeGrid(4);
+    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    //initPBR("TEXTURES/hdri/color.hdr");
+    //initPBR("TEXTURES/hdri/meadow_2k.hdr");
+    //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
-    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
-    //initPBR("TEXTURES/hdri/newport_loft.hdr");
+    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
   
     return window;
 }
-
 
 int main()
 {   
@@ -264,12 +279,11 @@ int main()
     // --------------------
     GLFWwindow* window = windowInit();  
     
-    //
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_LEQUAL);
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -304,8 +318,9 @@ int main()
     Shader backgroundShader("SHADERS/background.vs", "SHADERS/background.fs");
 
     //DEBUG SHADERS
-    Shader lineShader("SHADERS/Default.vs", "SHADERS/Default.fs");
-    defaultShader = lineShader;
+    Shader defaultShader("SHADERS/Default.vs", "SHADERS/Default.fs");
+    debug.defaultShader = defaultShader;
+
 
     //WATER SHADER 
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
@@ -348,9 +363,15 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     MeshCollider cube2(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
-    MeshCollider cube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
-    MeshCollider movingcube(colliderIdentity, sizeof(colliderIdentity) / sizeof(*colliderIdentity));
-    //MeshCollider cube(randomMesh, sizeof(randomMesh) / sizeof(*randomMesh));
+    MeshCollider cube(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    
+    MeshCollider sphere1(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider sphere2(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider sphere3(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider sphere4(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider sphere5(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    
+    MeshCollider movingcube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
     //MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
@@ -402,13 +423,27 @@ int main()
     shaderPBRT.setInt("prefilterMap", 6);
     shaderPBRT.setInt("brdfLUT", 7);
 
+    float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    sphere1.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    sphere2.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    sphere3.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    sphere4.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+    sphere5.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
 
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
-  
-
+    
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -420,9 +455,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
      
         lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
-        glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
+        //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
-        currtime = glfwGetTime();
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -434,7 +468,7 @@ int main()
         //UPDATE CAMERA POSITIONS
 
         c.update(deltaTime);
-        drawGrid();
+        debug.drawGrid(c);
      
         glm::mat4 model;
         glEnable(GL_CULL_FACE);
@@ -635,17 +669,8 @@ int main()
         //DRAWS HIGH RES CUBEMAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
-        
-        
-        //DRAWS XYZ LINES
-        /*
-        //DEFAULT ORIENTATIONS (X,Y,Z)
-        drawLine(glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        drawLine(glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        drawLine(glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
-        */
 
-        //cube.colliderSet(glm::vec3(xQ * 10, yQ * 10, zQ * 10), glm::vec3(0.0, 0.0, 0.0));
+        //cube.colliderSet(glm::vec3(xVal * 10, yVal * 10, zVal * 10), glm::vec3(0.0, 0.0, 0.0));
         movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
 
         //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
@@ -654,9 +679,14 @@ int main()
 
         //std::cout << GJK(cube, cube2) << " " << GJK(cube, movingcube) << " " << GJK(movingcube, cube2) << "\n";
 
-        cube.color = glm::vec3(0.0, 1.0, 0.0);
-        cube2.color = glm::vec3(0.0, 1.0, 0.0);
-        movingcube.color = glm::vec3(0.0, 1.0, 0.0);
+        cube.color = glm::vec3(1.0, 1.0, 1.0);
+        cube2.color = glm::vec3(1.0, 1.0, 1.0);
+        movingcube.color = glm::vec3(1.0, 1.0, 1.0);
+        sphere1.color = glm::vec3(1.0, 1.0, 1.0);
+        sphere2.color = glm::vec3(1.0, 1.0, 1.0);
+        sphere3.color = glm::vec3(1.0, 1.0, 1.0);
+        sphere4.color = glm::vec3(1.0, 1.0, 1.0);
+        sphere5.color = glm::vec3(1.0, 1.0, 1.0);
 
         /*
         if (GJK(movingcube, cube2))
@@ -671,32 +701,88 @@ int main()
             
         }
         */
-        float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-        float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    
+       
+        /*
         if (GJK(cube, cube2) )
         {
-            cube.color = glm::vec3(1.0, 0.0, 0.0);
-            cube2.color = glm::vec3(1.0, 0.0, 0.0);
+            cube.color = glm::vec3(1.0, 0.0, 0.0);     
+       
             if (v.ammo > 0 && shooting == 1)
             {
-                cube.colliderSet(glm::vec3(r1, r2, zQ * 10), glm::vec3(0.0, 0.0, 0.0));
+                float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+                float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
+                cube.colliderSet(glm::vec3(r1, r2, zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        
-        drawCollider(cube);
+        */
+
+        if (GJK(sphere1, cube2))
+        {
+            sphere1.color = glm::vec3(1.0, 0.0, 0.0);
+
+            if (v.ammo > 0 && shooting == 1)
+            {
+                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                sphere1.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
+        if (GJK(sphere2, cube2))
+        {
+            sphere2.color = glm::vec3(1.0, 0.0, 0.0);
+            if (v.ammo > 0 && shooting == 1)
+            {
+                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                sphere2.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
+        if (GJK(sphere3, cube2))
+        {
+            sphere3.color = glm::vec3(1.0, 0.0, 0.0);
+            if (v.ammo > 0 && shooting == 1)
+            {
+                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                sphere3.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
+        if (GJK(sphere4, cube2))
+        {
+            sphere4.color = glm::vec3(1.0, 0.0, 0.0);
+            if (v.ammo > 0 && shooting == 1)
+            {
+                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                sphere4.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
+        if (GJK(sphere5, cube2))
+        {
+            sphere5.color = glm::vec3(1.0, 0.0, 0.0);
+            if (v.ammo > 0 && shooting == 1)
+            {
+                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                sphere5.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+            }
+        }
+        //drawCollider(cube);
         //drawCollider(movingcube);
-        drawCollider(cube2);
+        //drawCollider(cube2);
+        debug.drawCollider(sphere1, c);
+        debug.drawCollider(sphere2, c);
+        debug.drawCollider(sphere3, c);
+        debug.drawCollider(sphere4, c);
+        debug.drawCollider(sphere5, c);
         
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable(GL_CULL_FACE);
         
-        //mapRender(shaderPBRT, map);
-        /*
-        staticRender(shaderPBRT, base, 0.0, 0.0, 0.0, 0.0);
-        drawSand(sandShader, sand);
-        drawWater(waterShader, water);
-        */
+        //staticRender(c, shaderPBRT, base);
+        //drawSand(c, sandShader, sand, envCubemap);
+        //drawWater(c, waterShader, water, envCubemap);
+       
+        //mapRender(c,shaderPBRT, map, glm::vec3(debug.xVal * 5.0, debug.yVal * 5.0, debug.zVal * 5.0));
         
         glDisable(GL_CULL_FACE);
         
@@ -742,15 +828,17 @@ int main()
         crosshair.setMat4("view", c.view);
         renderQuad();
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
- 
-        glfwPollEvents();
+        //DRAWS XYZ LINES
+        //DEFAULT ORIENTATIONS (X,Y,Z)
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
 
-        debugControls(window); 
+        debug.debugControls(window, deltaTime); 
+        glfwSwapBuffers(window);
+        glfwPollEvents();
         //PRINT FRAMERATE
-        std::cout << (int)(1000 / ((glfwGetTime() - currtime) * 1000)) << " FPS\n";
+        std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
     }
 
 
@@ -763,12 +851,12 @@ int main()
 //INITIALIZERS //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+
+//CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 static float ourLerp(float a, float b, float f)
 {
     return a + f * (b - a);
 }
-
-//CREATES THE FRAME BUFFER FOR THE SHADOWMAP
 void initShadowMap()
 {
     unsigned int quadVAOs, quadVBOs;
@@ -1185,8 +1273,6 @@ static void initPBR(const char* hdrPath)
 //INPUT////    LISTENERS/    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // make sure the viewport matches the new window dimensions; note that width and 
@@ -1195,8 +1281,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 //CONTINOUS INPUT
-float modi = 1;
-float swayT = 0;
 void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
@@ -1204,10 +1288,6 @@ void processInput(GLFWwindow* window)
         glfwSetWindowShouldClose(window, true);
     }
     const float speed = 10.0f;
-
-
-    swayT += 1 * deltaTime;
-
     if (glfwGetKey(window, GLFW_KEY_W))
     {
         c.forward();
@@ -1226,8 +1306,6 @@ void processInput(GLFWwindow* window)
     {
         c.right();
     }
-
-
     if (glfwGetKey(window, GLFW_KEY_Q))
     {
         c.crouch();
@@ -1244,13 +1322,10 @@ void processInput(GLFWwindow* window)
     {
         c.speed = 1 * speed;
     }
-
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_4))
     {
         c.crouch();
     }
-    
-  
 }
 
 //MOUSE MOVEMENT
@@ -1258,26 +1333,24 @@ double lastX = SCR_WIDTH / 2.0f;
 double lastY = SCR_HEIGHT / 2.0f;
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
-    /**/
+    static double xoffsetS = 0.0f;
+    static double yoffsetS = 0.0f;
+    double sensitivity = 0.05f;
     double xpos = (xposIn);
     double ypos = (yposIn);
     xoffsetS = xpos - lastX;
-    yoffsetS = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    yoffsetS = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
-
     xoffsetS *= sensitivity;
     yoffsetS *= sensitivity;
-
-
-
     c.camRot(xoffsetS, yoffsetS);
 }
 
 //SCROLL INPUT
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    c.fovMod((float)yoffset);
+    
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -1285,13 +1358,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_P && action == GLFW_PRESS)
     {
         // v.setState(0);
-
     }
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         //  v.setState(1);
     }
-
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
         // v.setState(2);
@@ -1311,42 +1382,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-unsigned int loadTexture(char const* path)
-{
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-
-    int width, height, nrComponents;
-    unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
-    if (data)
-    {
-        GLenum format = GL_RGB;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        stbi_image_free(data);
-    }
-    else
-    {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
-    }
-
-    return textureID;
-}
+//SHADOW///    MAPPING///    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 {
@@ -1367,10 +1405,6 @@ std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview)
 
     return frustumCorners;
 }
-
-//SHADOW///    MAPPING///    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
 static std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& proj, const glm::mat4& view)
 {
@@ -1454,462 +1488,5 @@ std::vector<glm::mat4> getLightSpaceMatrices()
     return ret;
 }
 
-//DRAWING//    FUNCTIONS/    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    
-
-unsigned int quadVAO = 0;
-unsigned int quadVBO;
-void renderQuad()
-{
-    if (quadVAO == 0)
-    {
-        float quadVertices[] = {
-            // positions        // texture Coords
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-        };
-        // setup plane VAO
-        glGenVertexArrays(1, &quadVAO);
-        glGenBuffers(1, &quadVBO);
-        glBindVertexArray(quadVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    }
-    glBindVertexArray(quadVAO);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);
-}
-
-// renders (and builds at first invocation) a sphere
-// -------------------------------------------------
-unsigned int sphereVAO = 0;
-unsigned int indexCount;
-unsigned int vbo, ebo;
-void renderSphere()
-{
-    if (sphereVAO == 0)
-    {
-        glGenVertexArrays(1, &sphereVAO);
 
 
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
-
-        std::vector<glm::vec3> positions;
-        std::vector<glm::vec2> uv;
-        std::vector<glm::vec3> normals;
-        std::vector<unsigned int> indices;
-
-        const unsigned int X_SEGMENTS = 64;
-        const unsigned int Y_SEGMENTS = 64;
-        const float PI = 3.14159265359f;
-        for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
-        {
-            for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
-            {
-                float xSegment = (float)x / (float)X_SEGMENTS;
-                float ySegment = (float)y / (float)Y_SEGMENTS;
-                float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-                float yPos = std::cos(ySegment * PI);
-                float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-
-                positions.push_back(glm::vec3(xPos, yPos, zPos));
-                uv.push_back(glm::vec2(xSegment, ySegment));
-                normals.push_back(glm::vec3(xPos, yPos, zPos));
-            }
-        }
-
-        bool oddRow = false;
-        for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
-        {
-            if (!oddRow) // even rows: y == 0, y == 2; and so on
-            {
-                for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
-                {
-                    indices.push_back(y * (X_SEGMENTS + 1) + x);
-                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-                }
-            }
-            else
-            {
-                for (int x = X_SEGMENTS; x >= 0; --x)
-                {
-                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-                    indices.push_back(y * (X_SEGMENTS + 1) + x);
-                }
-            }
-            oddRow = !oddRow;
-        }
-        indexCount = static_cast<unsigned int>(indices.size());
-
-        std::vector<float> data;
-        for (unsigned int i = 0; i < positions.size(); ++i)
-        {
-            data.push_back(positions[i].x);
-            data.push_back(positions[i].y);
-            data.push_back(positions[i].z);
-            if (normals.size() > 0)
-            {
-                data.push_back(normals[i].x);
-                data.push_back(normals[i].y);
-                data.push_back(normals[i].z);
-            }
-            if (uv.size() > 0)
-            {
-                data.push_back(uv[i].x);
-                data.push_back(uv[i].y);
-            }
-        }
-        glBindVertexArray(sphereVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
-        unsigned int stride = 8 * sizeof(float);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
-    }
-
-    glBindVertexArray(sphereVAO);
-    glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
-}
-
-unsigned int cubeVAO = 0;
-unsigned int cubeVBO = 0;
-void renderCube()
-{
-    // initialize (if necessary)
-    if (cubeVAO == 0)
-    {
-        float vertices[] = {
-            // back face
-            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
-             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-            -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
-            // front face
-            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-             1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
-             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-            -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
-            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-            // left face
-            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-            -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
-            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-            -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-            // right face
-             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
-             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
-             // bottom face
-             -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-              1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
-              1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-              1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-             -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-             -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-             // top face
-             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-              1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-              1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
-              1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-             -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-             -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
-        };
-        glGenVertexArrays(1, &cubeVAO);
-        glGenBuffers(1, &cubeVBO);
-        // fill buffer
-        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        // link vertex attributes
-        glBindVertexArray(cubeVAO);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
-    // render Cube
-    glBindVertexArray(cubeVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
-}
-
-//renders a model without animation
-void staticRender(Shader& shader, Model& m, float xR, float xV, float yV, float zV)
-{
-    shader.use();
-
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    // set light uniforms
-
-
-    //glActiveTexture(GL_TEXTURE1);
-   // glBindTexture(GL_TEXTURE_2D, depthMap);
-    glm::mat4 model = glm::mat4(1.0f);
-
-    /*
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::rotate(model, (xR * 100.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-    //model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-    *//*
-    //model = glm::rotate(model, (180.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(xV, -17.5 + zV, 75 + yV));
-    model = glm::rotate(model, ((float)(-xR * 50.0f) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, ((float)(-xR * 75.0f) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (360.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));
-    
-    model = glm::scale(model, glm::vec3(1.7f, 1.7f, 1.7f));*/
-    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.0));
-    
-    shader.setMat4("model", model);
-    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-    m.draw(shader);
-
-}
-//renders a model without animation
-void mapRender(Shader& shader, Model& m)
-{
-    shader.use();
-
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-
-
-
-    model = glm::scale(model, glm::vec3(6.25f, 6.25f, 6.25f));
-    //model = glm::scale(model, glm::vec3(1.25f, 1.25f, 1.25f));
-    //model = glm::translate(model, glm::vec3(-65.0f, -2.5f, 10.0f));
-    shader.setMat4("model", model);
-    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-    m.draw(shader);
-
-}
-void drawWater(Shader& shader, Model& m)
-{
-    shader.use();
-
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.3));
-    shader.setMat4("model", model);
-  
-    shader.setFloat("motion", glfwGetTime());
-
-    shader.setVec3("viewPos", c.cameraPos);
-    shader.setInt("cubeMap", 1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    m.draw(shader);
-}
-void drawSand(Shader& shader, Model& m)
-{
-    shader.use();
-
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, -0.3));
-    shader.setMat4("model", model);
-    shader.setVec3("viewPos", c.cameraPos);
-    shader.setInt("cubeMap", 1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-    m.draw(shader);
-}
-
-//DEBUG TOOLS  //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-glm::mat4 gridPos(1.0f);
-unsigned int lineVAO = 0;
-unsigned int lineVBO;
-void initializeGrid(float size)
-{
-    int gridSize = 50;
-    for (int i = 0; i < gridSize; i++)
-    {
-        for (int j = 0; j < gridSize; j++)
-        {
-            if (i < gridSize - 1)
-            {
-                grid.insert(grid.end(), { (float)(0.0 + ((i - (gridSize / 2)) * size)),-2.0,(float)(0.0 + ((j - (gridSize / 2)) * size)), (float)(0.0 + ((i - (gridSize / 2)) * size)),-2.0, (float)(-size + ((j - (gridSize / 2)) * size)) });
-            }
-            if (j < gridSize -1)
-            {
-                grid.insert(grid.end(), { (float)(0.0 + ((i - (gridSize / 2)) * size)),-2.0,(float)(0.0 + ((j - (gridSize / 2)) * size)) , (float) ( - size + ((i - (gridSize / 2)) * size)),-2.0,(float)(0.0 + ((j - (gridSize / 2)) * size))});
-            }
-        }
-    }
-}
-void debugControls(GLFWwindow* window)
-{
-    //CONTROLS VARIOUS BEHAVIOURS
-    if (glfwGetKey(window, GLFW_KEY_UP))
-    {
-        //y += 0.001f;
-        yC += 10 * deltaTime;
-        yQ += 0.2 * deltaTime;
-    }
-    if (glfwGetKey(window, GLFW_KEY_DOWN))
-    {
-        //y -= 0.001f;
-        yC -= 10 * deltaTime;
-        yQ -= 0.2 * deltaTime;
-    }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT))
-    {
-        // x += 0.001f;
-        xC += 10 * deltaTime;
-        xQ += 0.2 * deltaTime;
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT))
-    {
-        // x -= 0.001f;
-        xC -= 10 * deltaTime;
-        xQ -= 0.2 * deltaTime;
-    }
-    if (glfwGetKey(window, GLFW_KEY_E))
-    {
-        // z += 0.001f;
-        zC += 10 * deltaTime;
-        zQ += 0.2 * deltaTime;
-    }
-    if (glfwGetKey(window, GLFW_KEY_F))
-    {
-        // z -= 0.001f;
-        zC -= 10 * deltaTime;
-        zQ -= 0.2 * deltaTime;
-    }
-}
-void drawGrid()
-{
-
-    defaultShader.use();
-    defaultShader.setVec4("outColor", glm::vec4(0.75f));
-    defaultShader.setMat4("projection", c.projection);
-    defaultShader.setMat4("view", c.view);
-    defaultShader.setMat4("model", gridPos);
-    gridPos = glm::translate(glm::mat4(1.0f), glm::vec3(((int) c.cameraPos.x / 4) * 4, -5.0, ((int)c.cameraPos.z / 4) * 4));
-        
-    if (lineVAO == 0)
-    {
-        glGenVertexArrays(1, &lineVAO);
-        glGenBuffers(1, &lineVBO);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, grid.size() * sizeof(unsigned int), &grid[0], GL_STATIC_DRAW);
-    glBindVertexArray(lineVAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(lineVAO);
-
-    glLineWidth(2);
-    glDrawArrays(GL_LINES, 0, grid.size() / 3);
-    glBindVertexArray(0);
-}
-void drawCollider(MeshCollider& collider)
-{
-    std::vector<float> colliderMesh;
-    //DRAWS COLLIDER MESHES(USED FOR DEBUGGING)
-    for (int i = 0; i < collider.vertices.size(); i++)
-    {
-        for (int j = i + 1; j < collider.vertices.size(); j++)
-        {
-            colliderMesh.push_back(collider.vertices[i].x);
-            colliderMesh.push_back(collider.vertices[i].y);
-            colliderMesh.push_back(collider.vertices[i].z);
-            colliderMesh.push_back(collider.vertices[j].x);
-            colliderMesh.push_back(collider.vertices[j].y);
-            colliderMesh.push_back(collider.vertices[j].z);
-        }
-    }
-    defaultShader.use();
-    defaultShader.setVec4("outColor", glm::vec4(collider.color,1.0));
-    defaultShader.setMat4("projection", c.projection);
-    defaultShader.setMat4("view", c.view);
-    defaultShader.setMat4("model", glm::mat4(1.0f));
-
-    if (lineVAO == 0)
-    {
-        glGenVertexArrays(1, &lineVAO);
-        glGenBuffers(1, &lineVBO);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, colliderMesh.size() * sizeof(unsigned int), &colliderMesh[0], GL_STATIC_DRAW);
-    glBindVertexArray(lineVAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(lineVAO);
-
-    glLineWidth(2);
-    glDrawArrays(GL_LINES, 0, colliderMesh.size() / 3);
-    glBindVertexArray(0);
-}
-void drawLine(glm::vec3 origin, glm::vec3 pos, glm::vec4 color)
-{
-    defaultShader.use();
-    defaultShader.setVec4("outColor", color);
-    defaultShader.setMat4("projection", c.projection);
-    defaultShader.setMat4("view", c.view);
-    defaultShader.setMat4("model", glm::mat4(1.0f));
-    float vertices[] = 
-    {
-    origin.x, origin.y, origin.z,
-    pos.x, pos.y, pos.z
-    };
-      
-    if (lineVAO == 0)
-    {
-        glGenVertexArrays(1, &lineVAO);
-        glGenBuffers(1, &lineVBO);
-    }
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindVertexArray(lineVAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(lineVAO);
-    
-    glLineWidth(3.0);
-    glDrawArrays(GL_LINES, 0, 2);
-    glBindVertexArray(0);
-}

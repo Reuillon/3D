@@ -25,7 +25,7 @@ void MeshCollider::colliderSet(glm::vec3 newPos, glm::vec3 rotation)
 }
 glm::vec3 MeshCollider::FindFurthestVertex(glm::vec3 direction)
 {
-    glm::vec3 maxPoint = glm::vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+    glm::vec3 maxPoint;
     float maxDistance = -FLT_MAX;
     for (glm::vec3 vertex : vertices)
     {
@@ -156,8 +156,6 @@ bool NextSimplex(Simplex& points, glm::vec3& direction)
     }
     return false;
 }
-
-
 
 //RUNS BASIC COLLSION TEST FOR GJK ALGORITHM
 bool GJK(MeshCollider& collider1, MeshCollider& collider2)

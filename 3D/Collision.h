@@ -11,6 +11,7 @@ struct MeshCollider
     private:
         std::vector<glm::vec3> identity;
     public:
+
         std::vector<glm::vec3> vertices;
         glm::vec3 pos = glm::vec3(0.0f);
         glm::vec3 rot = glm::vec3(0.0f);
