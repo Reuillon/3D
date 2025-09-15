@@ -369,7 +369,7 @@ int main()
     MeshCollider sphere4(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     MeshCollider sphere5(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     
-    MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
+    MeshCollider cube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
     MeshCollider movingcube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
@@ -420,7 +420,7 @@ int main()
     shaderPBRT.setInt("irradianceMap", 5);
     shaderPBRT.setInt("prefilterMap", 6);
     shaderPBRT.setInt("brdfLUT", 7);
-
+    
     float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     sphere1.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
@@ -437,7 +437,7 @@ int main()
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     sphere5.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
    
-    movingcube.colliderSet(glm::vec3(0.0f, -5.0f, 0.0), glm::vec3(0.0));
+    movingcube.colliderSet(glm::vec3(-4.0f, 0.0f, 0.0), glm::vec3(0.0));
 
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
@@ -669,7 +669,8 @@ int main()
         //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
 
-        cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 0.0, glfwGetTime() / 2));
+        cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 0.0, glfwGetTime() / 2), glm::vec3(10.0,1.0,5.0));
+        //cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 45.0 * 0.0174533, 45.0 * 0.0174533), glm::vec3(1.0));
 
         //movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
 
@@ -681,8 +682,8 @@ int main()
 
         //RESETS VALUE FOR COLLISION MESH FOR CONTINOUS COLLISION CHECKING
         ray.color = glm::vec3(1.0, 1.0, 1.0);
-        cube.color = glm::vec3(1.0, 1.0, 1.0);
-        movingcube.color = glm::vec3(1.0, 1.0, 1.0);
+        cube.color = glm::vec3(0.0, 1.0, 1.0);
+        movingcube.color = glm::vec3(1.0, 0.0, 1.0);
         sphere1.color = glm::vec3(1.0, 1.0, 1.0);
         sphere2.color = glm::vec3(1.0, 1.0, 1.0);
         sphere3.color = glm::vec3(1.0, 1.0, 1.0);
@@ -788,12 +789,13 @@ int main()
         debug.drawCollider(movingcube,c);
 
         
-
+        /*
         //DRAWS XYZ LINES
         //DEFAULT ORIENTATIONS (X,Y,Z)
         debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
         debug.drawLine(c, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
         debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
+        */
         glEnable(GL_CULL_FACE);
         
         //staticRender(c, shaderPBRT, base);
@@ -811,41 +813,41 @@ int main()
         
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY)
         {
-        crosshair.use();
-        model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
-        model = glm::translate(model, glm::vec3(v.spread, 0.0, 0.0f));
-        crosshair.setMat4("model", model);
-        crosshair.setMat4("projection", c.projection);
-        crosshair.setMat4("view", c.view);
-        renderQuad();
+            crosshair.use();
+            model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(v.spread, 0.0, 0.0f));
+            crosshair.setMat4("model", model);
+            crosshair.setMat4("projection", c.projection);
+            crosshair.setMat4("view", c.view);
+            renderQuad();
 
-        crosshair.use();
-        model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
-        model = glm::translate(model, glm::vec3(-v.spread, 0.0, 0.0f));
-        crosshair.setMat4("model", model);
-        crosshair.setMat4("projection", c.projection);
-        crosshair.setMat4("view", c.view);
-        renderQuad();
+            crosshair.use();
+            model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(-v.spread, 0.0, 0.0f));
+            crosshair.setMat4("model", model);
+            crosshair.setMat4("projection", c.projection);
+            crosshair.setMat4("view", c.view);
+            renderQuad();
 
-        crosshair.use();
-        model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
-        model = glm::translate(model, glm::vec3(0.0, v.spread * 1.1, 0.0f));
-        crosshair.setMat4("model", model);
-        crosshair.setMat4("projection", c.projection);
-        crosshair.setMat4("view", c.view);
-        renderQuad();
+            crosshair.use();
+            model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, v.spread * 1.1, 0.0f));
+            crosshair.setMat4("model", model);
+            crosshair.setMat4("projection", c.projection);
+            crosshair.setMat4("view", c.view);
+            renderQuad();
 
-        crosshair.use();
-        model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
-        model = glm::translate(model, glm::vec3(0.0, -v.spread * 1.1, 0.0f));
-        crosshair.setMat4("model", model);
-        crosshair.setMat4("projection", c.projection);
-        crosshair.setMat4("view", c.view);
-        renderQuad();
+            crosshair.use();
+            model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, -v.spread * 1.1, 0.0f));
+            crosshair.setMat4("model", model);
+            crosshair.setMat4("projection", c.projection);
+            crosshair.setMat4("view", c.view);
+            renderQuad();
         }
 
 

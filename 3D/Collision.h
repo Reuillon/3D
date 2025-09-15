@@ -23,13 +23,14 @@ struct MeshCollider
         std::vector<glm::vec3> vertices;
         glm::vec3 pos = glm::vec3(0.0f);
         glm::vec3 rot = glm::vec3(0.0f);
+        glm::vec3 scale = glm::vec3(1.0f);
         glm::vec3 color = glm::vec3(1.0f);
 
         //INITIALIZES MESH DATA AND MESHIDENTITY DATA
         MeshCollider(float model[], int arraySize);
 
         //CHANGES POSITION/ROTATION/SCALE OF MESH COLLIDER
-        void colliderSet(glm::vec3 newPos, glm::vec3 rotation);
+        void colliderSet(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale = glm::vec3(1.0f));
 
         //FINDS FURTHEST VERTEX FROM DIRECTION FOR GJK COLLISION DETECTION
         glm::vec3 FindFurthestVertex(glm::vec3 direction);

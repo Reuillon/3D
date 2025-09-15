@@ -9,23 +9,26 @@ MeshCollider::MeshCollider(float model[], int arraySize)
     }
 }
 
-void MeshCollider::colliderSet(glm::vec3 newPos, glm::vec3 rotation)
+//SET TRANSFORMS FOR COLLIDER
+void MeshCollider::colliderSet(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale)
 {
     for (int i = 0; i < vertices.size(); i++)
     {
         pos = newPos;
         rot = rotation;
-        vertices[i].x = (identity[i].x * (cos(rotation.y) * cos(rotation.z))) + (identity[i].y * ((sin(rotation.x) * sin(rotation.y) * cos(rotation.z)) - (cos(rotation.x) * sin(rotation.z)))) + (identity[i].z * ((cos(rotation.x) * sin(rotation.y) * cos(rotation.z)) + (sin(rotation.x) * sin(rotation.z))));
-        vertices[i].y = (identity[i].x * (cos(rotation.y) * sin(rotation.z))) + (identity[i].y * ((sin(rotation.x) * sin(rotation.y) * sin(rotation.z)) + (cos(rotation.x) * cos(rotation.z)))) + (identity[i].z * ((cos(rotation.x) * sin(rotation.y) * sin(rotation.z)) - (sin(rotation.x) * cos(rotation.z))));
-        vertices[i].z = (identity[i].x * (-sin(rotation.y))) + (identity[i].y * (sin(rotation.x) * cos(rotation.y))) + (identity[i].z * (cos(rotation.x) * cos(rotation.y)));
 
+        //SET ROTATION AND SCALE
+        vertices[i].x = ((identity[i].x * newScale.x) * (cos(rotation.y) * cos(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * cos(rotation.z)) - (cos(rotation.x) * sin(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * cos(rotation.z)) + (sin(rotation.x) * sin(rotation.z))));
+        vertices[i].y = ((identity[i].x * newScale.x) * (cos(rotation.y) * sin(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * sin(rotation.z)) + (cos(rotation.x) * cos(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * sin(rotation.z)) - (sin(rotation.x) * cos(rotation.z))));
+        vertices[i].z = ((identity[i].x * newScale.x) * (-sin(rotation.y))) + ((identity[i].y * newScale.y) * (sin(rotation.x) * cos(rotation.y))) + ((identity[i].z * newScale.z) * (cos(rotation.x) * cos(rotation.y)));
 
+        //SET POSITION
         vertices[i] = vertices[i] + newPos;
     }
 }
 glm::vec3 MeshCollider::FindFurthestVertex(glm::vec3 direction)
 {
-    glm::vec3 maxPoint;
+    glm::vec3 maxPoint = glm::vec3(-FLT_MAX);
     float maxDistance = -FLT_MAX;
     for (glm::vec3 vertex : vertices)
     {
@@ -166,6 +169,10 @@ bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
 {
     Simplex points;
     glm::vec3 direction = collider1.pos - collider2.pos;
+    if (direction == glm::vec3(0.0f))
+    {
+        direction = glm::vec3(0.01,0.01,0.01);
+    }
     glm::vec3 supportPoint = Support(collider1, collider2, direction);
     direction = -supportPoint;
 
@@ -251,7 +258,7 @@ resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
     };
     auto [normals, minFace] = GetFaceNormals(polytope, faces);
     
-    glm::vec3  minNormal ;
+    glm::vec3 minNormal;
     float minDistance = FLT_MAX;
 
 
@@ -262,12 +269,12 @@ resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
         glm::vec3 support = Support(colliderA, colliderB, minNormal);
         float sDistance = glm::dot(minNormal, support);
 
-        if (abs(sDistance - minDistance) > 0.001f) {
+        if (abs(sDistance - minDistance) > 0.2f) {
             minDistance = FLT_MAX;
             std::vector<std::pair<size_t, size_t>> uniqueEdges;
 
             for (size_t i = 0; i < normals.size(); i++) {
-                if (glm::dot(glm::vec3(normals[i]), support) > glm::dot(glm::vec3(normals[i]), polytope[faces[i * 3]]))
+                if (SameDirection(normals[i], support - polytope[faces[i * 3]]))
                 {
                     size_t f = i * 3;
 
@@ -313,7 +320,7 @@ resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
     }
     resolutionData epaData; 
     epaData.Normal = minNormal;
-    epaData.PenetrationDepth = minDistance + 0.001f;
+    epaData.PenetrationDepth = minDistance + 0.01f;
     epaData.hasCollision = true;
 
     return epaData;
