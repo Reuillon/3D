@@ -40,11 +40,15 @@ glm::vec3 MeshCollider::FindFurthestVertex(glm::vec3 direction)
     return maxPoint;
 }
 
+
+
 glm::vec3 Support(MeshCollider& collider1, MeshCollider& collider2, glm::vec3 direction)
 {
     return collider1.FindFurthestVertex(direction) - collider2.FindFurthestVertex(-direction);
 }
 
+
+//GJK COLLISION AND HELPER FUNCTIONS
 bool SameDirection(const glm::vec3& direction, const glm::vec3& ao)
 {
     return dot(direction, ao) > 0;
@@ -157,8 +161,8 @@ bool NextSimplex(Simplex& points, glm::vec3& direction)
     return false;
 }
 
-//RUNS BASIC COLLSION TEST FOR GJK ALGORITHM
-bool GJK(MeshCollider& collider1, MeshCollider& collider2)
+//RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
+bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
 {
     Simplex points;
     glm::vec3 direction = collider1.pos - collider2.pos;
@@ -168,14 +172,149 @@ bool GJK(MeshCollider& collider1, MeshCollider& collider2)
     while (true)
     {
         supportPoint = Support(collider1, collider2, direction);
-        if (dot(supportPoint, direction) < 0)
+        if (dot(supportPoint, direction) <= 0)
         {
             return false;
         }
         points.push_front(supportPoint);
         if (NextSimplex(points, direction))
         {
+            if (resolve == true)
+            {
+                resolutionData r = EPA(points, collider1, collider2);
+                collider1.colliderSet(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
+
+            }
             return true;
         }
     }
+}
+
+//EPA COLLISION AND HELPER FUNCTIONS
+
+void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges,const std::vector<size_t>& faces,size_t a,size_t b)
+{
+    auto reverse = std::find(                       //      0--<--3
+        edges.begin(),                              //     / \ B /   A: 2-0
+        edges.end(),                                //    / A \ /    B: 0-2
+        std::make_pair(faces[b], faces[a]) //   1-->--2
+    );
+
+    if (reverse != edges.end()) 
+    {
+        edges.erase(reverse);
+    }
+
+    else {
+        edges.emplace_back(faces[a], faces[b]);
+    }
+}
+
+std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::vec3>& polytope,const std::vector<size_t>& faces)
+{
+    std::vector<glm::vec4> normals;
+    size_t minTriangle = 0;
+    float  minDistance = FLT_MAX;
+
+    for (size_t i = 0; i < faces.size(); i += 3) {
+        glm::vec3 a = polytope[faces[i]];
+        glm::vec3 b = polytope[faces[i + 1]];
+        glm::vec3 c = polytope[faces[i + 2]];
+
+        glm::vec3 normal = glm::normalize(glm::cross(b - a, c - a));
+        float distance = glm::dot(normal, a);
+
+        if (distance < 0) {
+            normal *= -1;
+            distance *= -1;
+        }
+
+        normals.emplace_back(normal, distance);
+
+        if (distance < minDistance) {
+            minTriangle = i / 3;
+            minDistance = distance;
+        }
+    }
+
+    return { normals, minTriangle };
+}
+
+resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB)
+{
+    std::vector<glm::vec3> polytope(simplex.begin(), simplex.end());
+    std::vector<size_t> faces = {
+        0, 1, 2,
+        0, 3, 1,
+        0, 2, 3,
+        1, 3, 2
+    };
+    auto [normals, minFace] = GetFaceNormals(polytope, faces);
+    
+    glm::vec3  minNormal ;
+    float minDistance = FLT_MAX;
+
+
+    while (minDistance == FLT_MAX) {
+        minNormal = glm::vec3(normals[minFace].x, normals[minFace].y, normals[minFace].z);
+        minDistance = normals[minFace].w;
+
+        glm::vec3 support = Support(colliderA, colliderB, minNormal);
+        float sDistance = glm::dot(minNormal, support);
+
+        if (abs(sDistance - minDistance) > 0.001f) {
+            minDistance = FLT_MAX;
+            std::vector<std::pair<size_t, size_t>> uniqueEdges;
+
+            for (size_t i = 0; i < normals.size(); i++) {
+                if (glm::dot(glm::vec3(normals[i]), support) > glm::dot(glm::vec3(normals[i]), polytope[faces[i * 3]]))
+                {
+                    size_t f = i * 3;
+
+                    AddIfUniqueEdge(uniqueEdges, faces, f, f + 1);
+                    AddIfUniqueEdge(uniqueEdges, faces, f + 1, f + 2);
+                    AddIfUniqueEdge(uniqueEdges, faces, f + 2, f);
+
+                    faces[f + 2] = faces.back(); faces.pop_back();
+                    faces[f + 1] = faces.back(); faces.pop_back();
+                    faces[f] = faces.back(); faces.pop_back();
+
+                    normals[i] = normals.back(); // pop-erase
+                    normals.pop_back();
+
+                    i--;
+                }
+            }
+            std::vector<size_t> newFaces;
+            for (auto [edgeIndex1, edgeIndex2] : uniqueEdges) {
+                newFaces.push_back(edgeIndex1);
+                newFaces.push_back(edgeIndex2);
+                newFaces.push_back(polytope.size());
+            }
+
+            polytope.push_back(support);
+
+            auto [newNormals, newMinFace] = GetFaceNormals(polytope, newFaces);
+            float oldMinDistance = FLT_MAX;
+            for (size_t i = 0; i < normals.size(); i++) {
+                if (normals[i].w < oldMinDistance) {
+                    oldMinDistance = normals[i].w;
+                    minFace = i;
+                }
+            }
+
+            if (newNormals[newMinFace].w < oldMinDistance) {
+                minFace = newMinFace + normals.size();
+            }
+
+            faces.insert(faces.end(), newFaces.begin(), newFaces.end());
+            normals.insert(normals.end(), newNormals.begin(), newNormals.end());
+        }
+    }
+    resolutionData epaData; 
+    epaData.Normal = minNormal;
+    epaData.PenetrationDepth = minDistance + 0.001f;
+    epaData.hasCollision = true;
+
+    return epaData;
 }

@@ -321,7 +321,6 @@ int main()
     Shader defaultShader("SHADERS/Default.vs", "SHADERS/Default.fs");
     debug.defaultShader = defaultShader;
 
-
     //WATER SHADER 
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
     Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
@@ -362,8 +361,7 @@ int main()
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    MeshCollider cube2(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
-    MeshCollider cube(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
     
     MeshCollider sphere1(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     MeshCollider sphere2(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
@@ -371,8 +369,8 @@ int main()
     MeshCollider sphere4(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     MeshCollider sphere5(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     
+    MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
     MeshCollider movingcube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
-    //MeshCollider cube(cylinderIdentity, sizeof(cylinderIdentity) / sizeof(*cylinderIdentity));
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
 
@@ -438,12 +436,13 @@ int main()
     r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     sphere5.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+   
+    movingcube.colliderSet(glm::vec3(0.0f, -5.0f, 0.0), glm::vec3(0.0));
 
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
-    
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -670,17 +669,19 @@ int main()
         //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
 
-        //cube.colliderSet(glm::vec3(xVal * 10, yVal * 10, zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-        movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
+        cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 0.0, glfwGetTime() / 2));
+
+        //movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
 
         //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
-        cube2.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
-        cube2.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
+        ray.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
+        ray.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
 
-        //std::cout << GJK(cube, cube2) << " " << GJK(cube, movingcube) << " " << GJK(movingcube, cube2) << "\n";
+        //std::cout << GJK(cube, ray, false) << " " << GJK(cube, movingcube, false) << " " << GJK(movingcube, ray, false) << "\n";
 
+        //RESETS VALUE FOR COLLISION MESH FOR CONTINOUS COLLISION CHECKING
+        ray.color = glm::vec3(1.0, 1.0, 1.0);
         cube.color = glm::vec3(1.0, 1.0, 1.0);
-        cube2.color = glm::vec3(1.0, 1.0, 1.0);
         movingcube.color = glm::vec3(1.0, 1.0, 1.0);
         sphere1.color = glm::vec3(1.0, 1.0, 1.0);
         sphere2.color = glm::vec3(1.0, 1.0, 1.0);
@@ -688,13 +689,18 @@ int main()
         sphere4.color = glm::vec3(1.0, 1.0, 1.0);
         sphere5.color = glm::vec3(1.0, 1.0, 1.0);
 
+        GJK(movingcube, cube, true);
+
+    
+        //EPA(s,movingcube, cube);
+
         /*
-        if (GJK(movingcube, cube2))
+        if (GJK(movingcube, ray, false))
         {
             movingcube.color = glm::vec3(1.0, 0.0, 0.0);
-            cube2.color = glm::vec3(1.0, 0.0, 0.0);
+            ray.color = glm::vec3(1.0, 0.0, 0.0);
         }
-        if (GJK(cube, movingcube))
+        if (GJK(cube, movingcube, false))
         {
             cube.color = glm::vec3(1.0, 0.0, 0.0);
             movingcube.color = glm::vec3(1.0, 0.0, 0.0);
@@ -703,7 +709,7 @@ int main()
         */
        
         /*
-        if (GJK(cube, cube2) )
+        if (GJK(cube, ray, false) )
         {
             cube.color = glm::vec3(1.0, 0.0, 0.0);     
        
@@ -715,29 +721,31 @@ int main()
             }
         }
         */
+        //SHOOTABLE SPHERESSPHERES
+        /*
 
-        if (GJK(sphere1, cube2))
+        if (GJK(sphere1, ray, false))
         {
             sphere1.color = glm::vec3(1.0, 0.0, 0.0);
 
             if (v.ammo > 0 && shooting == 1)
             {
-                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
+                float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
                 sphere1.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        if (GJK(sphere2, cube2))
+        if (GJK(sphere2, ray, false))
         {
             sphere2.color = glm::vec3(1.0, 0.0, 0.0);
             if (v.ammo > 0 && shooting == 1)
             {
-                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
+                float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
+                float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
                 sphere2.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        if (GJK(sphere3, cube2))
+        if (GJK(sphere3, ray, false))
         {
             sphere3.color = glm::vec3(1.0, 0.0, 0.0);
             if (v.ammo > 0 && shooting == 1)
@@ -747,7 +755,7 @@ int main()
                 sphere3.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        if (GJK(sphere4, cube2))
+        if (GJK(sphere4, ray, false))
         {
             sphere4.color = glm::vec3(1.0, 0.0, 0.0);
             if (v.ammo > 0 && shooting == 1)
@@ -757,7 +765,7 @@ int main()
                 sphere4.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        if (GJK(sphere5, cube2))
+        if (GJK(sphere5, ray, false))
         {
             sphere5.color = glm::vec3(1.0, 0.0, 0.0);
             if (v.ammo > 0 && shooting == 1)
@@ -767,15 +775,25 @@ int main()
                 sphere5.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
-        //drawCollider(cube);
-        //drawCollider(movingcube);
-        //drawCollider(cube2);
+
+
         debug.drawCollider(sphere1, c);
         debug.drawCollider(sphere2, c);
         debug.drawCollider(sphere3, c);
         debug.drawCollider(sphere4, c);
         debug.drawCollider(sphere5, c);
+        */
+
+        debug.drawCollider(cube,c);
+        debug.drawCollider(movingcube,c);
+
         
+
+        //DRAWS XYZ LINES
+        //DEFAULT ORIENTATIONS (X,Y,Z)
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
+        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         glEnable(GL_CULL_FACE);
         
         //staticRender(c, shaderPBRT, base);
@@ -792,6 +810,7 @@ int main()
         model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
         
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY)
+        {
         crosshair.use();
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
@@ -827,12 +846,8 @@ int main()
         crosshair.setMat4("projection", c.projection);
         crosshair.setMat4("view", c.view);
         renderQuad();
+        }
 
-        //DRAWS XYZ LINES
-        //DEFAULT ORIENTATIONS (X,Y,Z)
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
 
         debug.debugControls(window, deltaTime); 
         glfwSwapBuffers(window);
@@ -847,16 +862,11 @@ int main()
     return 0;
 }
 
-
 //INITIALIZERS //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
 //CREATES THE FRAME BUFFER FOR THE SHADOWMAP
-static float ourLerp(float a, float b, float f)
-{
-    return a + f * (b - a);
-}
 void initShadowMap()
 {
     unsigned int quadVAOs, quadVBOs;
@@ -988,7 +998,7 @@ static void initSSAO()
         float scale = float(i) / 64.0f;
 
         // scale samples s.t. they're more aligned to center of kernel
-        scale = ourLerp(0.1f, 1.0f, scale * scale);
+        scale = 0.1f + (scale * scale) * (1.0f - 0.1f);
         sample *= scale;
         ssaoKernel.push_back(sample);
     }
@@ -1487,6 +1497,4 @@ std::vector<glm::mat4> getLightSpaceMatrices()
     }
     return ret;
 }
-
-
 

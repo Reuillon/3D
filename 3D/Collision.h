@@ -5,6 +5,14 @@
 #include <iostream>
 #include <array>
 #include <vector>
+#include <utility>
+
+struct resolutionData 
+{
+    glm::vec3 Normal;
+    float PenetrationDepth;
+    bool hasCollision;
+};
 
 struct MeshCollider
 {
@@ -26,6 +34,7 @@ struct MeshCollider
         //FINDS FURTHEST VERTEX FROM DIRECTION FOR GJK COLLISION DETECTION
         glm::vec3 FindFurthestVertex(glm::vec3 direction);
 };
+
 
 //CREATES SIMPLEX FOR GJK ALGORITHM
 struct Simplex
@@ -52,13 +61,13 @@ struct Simplex
         }
         glm::vec3& operator[](int i) { return m_points[i]; }
         size_t size() const { return m_size; }
-           
         auto begin() const { return m_points.begin(); }
         auto end() const { return m_points.end() - (4 - m_size); }
 };
 
 glm::vec3 Support(MeshCollider& collider1, MeshCollider& collider2, glm::vec3 direction);
 
+//GJK COLLISION AND HELPER FUNCTIONS
 bool SameDirection(const glm::vec3& direction, const glm::vec3& ao);
 
 bool Line(Simplex& points, glm::vec3& direction);
@@ -69,9 +78,13 @@ bool Tetrahedron(Simplex& points, glm::vec3& direction);
 
 bool NextSimplex(Simplex& points, glm::vec3& direction);
 
+//RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
+bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
 
+//EPA COLLISION AND HELPER FUNCTIONS
+void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& faces, size_t a, size_t b);
 
-//RUNS BASIC COLLSION TEST FOR GJK ALGORITHM
-bool GJK(MeshCollider& collider1, MeshCollider& collider2);
+std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::vec3>& polytope, const std::vector<size_t>& faces);
 
+resolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
 
