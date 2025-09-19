@@ -7,7 +7,9 @@
 #include <vector>
 #include <utility>
 
-struct resolutionData 
+
+
+struct ResolutionData 
 {
     glm::vec3 Normal;
     float PenetrationDepth;
@@ -30,7 +32,8 @@ struct MeshCollider
         MeshCollider(float model[], int arraySize);
 
         //CHANGES POSITION/ROTATION/SCALE OF MESH COLLIDER
-        void colliderSet(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale = glm::vec3(1.0f));
+        void setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale = glm::vec3(1.0f));
+        void moveCollider(glm::vec3 newPos);
 
         //FINDS FURTHEST VERTEX FROM DIRECTION FOR GJK COLLISION DETECTION
         glm::vec3 FindFurthestVertex(glm::vec3 direction);
@@ -80,12 +83,12 @@ bool Tetrahedron(Simplex& points, glm::vec3& direction);
 bool NextSimplex(Simplex& points, glm::vec3& direction);
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
 
 //EPA COLLISION AND HELPER FUNCTIONS
 void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& faces, size_t a, size_t b);
 
 std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::vec3>& polytope, const std::vector<size_t>& faces);
 
-resolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
+ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
 

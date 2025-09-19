@@ -12,7 +12,7 @@
 #include "Camera.h"
 #include "Model.h"
 #include "MeshDraw.h"
-#include "debug.h"
+#include "Debug.h"
 
 //THESE NEED TO BE WORKED ON
 #include "Input.h"
@@ -357,6 +357,8 @@ int main()
     //Model gun("Models/DUST2/source/REVOLVER.obj");
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
+    Model mySphere("Models/GUN/sphere.fbx");
+    Model myPaddle("Models/GUN/paddle.fbx");
 
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -370,7 +372,8 @@ int main()
     MeshCollider sphere5(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
     
     MeshCollider cube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
-    MeshCollider movingcube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
+    MeshCollider movingcube(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
+    MeshCollider cameraCollider (cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
 
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
 
@@ -423,22 +426,24 @@ int main()
     
     float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere1.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    sphere1.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
     r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere2.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    sphere2.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
     r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere3.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    sphere3.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
     r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere4.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    sphere4.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
     r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere5.colliderSet(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-   
-    movingcube.colliderSet(glm::vec3(-4.0f, 0.0f, 0.0), glm::vec3(0.0));
+    sphere5.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+    
+    movingcube.setTransform(glm::vec3(0.0f, 1.0f, 0.0), glm::vec3(0.0));
 
+    glm::vec3 gravity = glm::vec3(0.0,0.0,0.0);
+    c.cameraPos = glm::vec3(2,2,0);
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
@@ -467,7 +472,7 @@ int main()
         //UPDATE CAMERA POSITIONS
 
         c.update(deltaTime);
-        debug.drawGrid(c);
+        //debug.drawGrid(c);
      
         glm::mat4 model;
         glEnable(GL_CULL_FACE);
@@ -668,11 +673,13 @@ int main()
         //DRAWS HIGH RES CUBEMAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
+        cube.setTransform(glm::vec3(debug.xVal * 40, (-1 + (debug.yVal * 40)), debug.zVal * 40), glm::vec3(0.0, 0.0, glfwGetTime() / 2), glm::vec3(10.0,1.0,5.0));
+        //cube.setTransform(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 45.0 * 0.0174533, 45.0 * 0.0174533), glm::vec3(1.0));
+        movingcube.moveCollider(gravity * glm::vec3(deltaTime));
+        //cube.setTransform(glm::vec3(debug.xVal * 40, (-1 + (debug.yVal * 40)), debug.zVal * 40), glm::vec3(0.0), glm::vec3(10.0, 1.0, 5.0));
+        cameraCollider.setTransform(c.cameraPos, glm::vec3(0.0), glm::vec3(1.0));
 
-        cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 0.0, glfwGetTime() / 2), glm::vec3(10.0,1.0,5.0));
-        //cube.colliderSet(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 45.0 * 0.0174533, 45.0 * 0.0174533), glm::vec3(1.0));
-
-        //movingcube.colliderSet(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
+        //movingcube.setTransform(glm::vec3(sin(glfwGetTime() * 2.0251) * 5.0, sin(glfwGetTime() * 3.1548) * 5.0, 0.0), glm::vec3(0.0));
 
         //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
         ray.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
@@ -689,42 +696,35 @@ int main()
         sphere3.color = glm::vec3(1.0, 1.0, 1.0);
         sphere4.color = glm::vec3(1.0, 1.0, 1.0);
         sphere5.color = glm::vec3(1.0, 1.0, 1.0);
-
-        GJK(movingcube, cube, true);
-
-    
-        //EPA(s,movingcube, cube);
-
-        /*
-        if (GJK(movingcube, ray, false))
+        if (movingcube.pos.y < -200)
         {
-            movingcube.color = glm::vec3(1.0, 0.0, 0.0);
-            ray.color = glm::vec3(1.0, 0.0, 0.0);
+            movingcube.setTransform(glm::vec3(0.0f, 5.0f, 0.0), glm::vec3(0.0));
+            gravity = glm::vec3(0.0);
         }
-        if (GJK(cube, movingcube, false))
+
+        ResolutionData r = GJK(movingcube, cube, true);
+        if (r.hasCollision)
         {
-            cube.color = glm::vec3(1.0, 0.0, 0.0);
-            movingcube.color = glm::vec3(1.0, 0.0, 0.0);
-            
+            gravity = glm::vec3(gravity.y * r.Normal.x, gravity.y, gravity.y * r.Normal.z);
+            gravity.y = -gravity.y * 0.8f;
+         
+         
         }
-        */
-       
-        /*
-        if (GJK(cube, ray, false) )
+        else
         {
-            cube.color = glm::vec3(1.0, 0.0, 0.0);     
-       
-            if (v.ammo > 0 && shooting == 1)
+            gravity.y -= (0.1);
+            if (gravity.y < -300)
             {
-                float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-                float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-                cube.colliderSet(glm::vec3(r1, r2, zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                gravity.y = -300;
             }
         }
-        */
+        GJK(movingcube, cameraCollider, true);
+      
+        mapRender(c, shaderPBRT,mySphere,movingcube.rot,movingcube.pos);
+        mapRender(c, shaderPBRT,myPaddle, cube.rot,cube.pos);
+    
         //SHOOTABLE SPHERESSPHERES
         /*
-
         if (GJK(sphere1, ray, false))
         {
             sphere1.color = glm::vec3(1.0, 0.0, 0.0);
@@ -733,7 +733,7 @@ int main()
             {
                 float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
                 float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                sphere1.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                sphere1.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
         if (GJK(sphere2, ray, false))
@@ -743,7 +743,7 @@ int main()
             {
                 float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
                 float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                sphere2.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                sphere2.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
         if (GJK(sphere3, ray, false))
@@ -753,7 +753,7 @@ int main()
             {
                 float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
                 float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere3.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                sphere3.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
         if (GJK(sphere4, ray, false))
@@ -763,7 +763,7 @@ int main()
             {
                 float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
                 float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere4.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                sphere4.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
         if (GJK(sphere5, ray, false))
@@ -773,7 +773,7 @@ int main()
             {
                 float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
                 float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere5.colliderSet(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
+                sphere5.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
             }
         }
 
@@ -784,9 +784,10 @@ int main()
         debug.drawCollider(sphere4, c);
         debug.drawCollider(sphere5, c);
         */
-
+        /*
         debug.drawCollider(cube,c);
         debug.drawCollider(movingcube,c);
+        */
 
         
         /*
@@ -811,7 +812,8 @@ int main()
         model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
         
-        //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY)
+        //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
+        //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
         {
             crosshair.use();
             model = glm::mat4(1.0f);
@@ -850,7 +852,11 @@ int main()
             renderQuad();
         }
 
-
+        if (glfwGetKey(window, GLFW_KEY_P))
+        {
+            movingcube.setTransform(glm::vec3(0.0f, 4.0f, 0.0), glm::vec3(0.0));
+            gravity = glm::vec3(0);
+        }
         debug.debugControls(window, deltaTime); 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -161,3 +161,12 @@ void Debug::drawLine(camera c, glm::vec3 origin, glm::vec3 pos, glm::vec4 color)
     glDrawArrays(GL_LINES, 0, 2);
     glBindVertexArray(0);
 }
+
+void Debug::printVector(glm::vec3 vec)
+{
+    std::cout << vec.x << " " << vec.y << " " << vec.z << "\n";
+}
+void Debug::printVector(glm::vec2 vec)
+{
+    std::cout << vec.x << " " << vec.y << "\n";
+}

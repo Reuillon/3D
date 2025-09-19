@@ -33,6 +33,8 @@ class Debug
 		void drawGrid(camera c);
 		void drawCollider(MeshCollider& collider, camera c);
 		void drawLine(camera c, glm::vec3 origin, glm::vec3 pos, glm::vec4 color = glm::vec4(1.0f));
+		void printVector(glm::vec3 vec);
+		void printVector(glm::vec2 vec);
 };
 
 #endif

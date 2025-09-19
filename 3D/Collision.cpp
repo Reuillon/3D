@@ -10,13 +10,14 @@ MeshCollider::MeshCollider(float model[], int arraySize)
 }
 
 //SET TRANSFORMS FOR COLLIDER
-void MeshCollider::colliderSet(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale)
+void MeshCollider::setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale)
 {
+
     for (int i = 0; i < vertices.size(); i++)
     {
         pos = newPos;
         rot = rotation;
-
+        scale = newScale;
         //SET ROTATION AND SCALE
         vertices[i].x = ((identity[i].x * newScale.x) * (cos(rotation.y) * cos(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * cos(rotation.z)) - (cos(rotation.x) * sin(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * cos(rotation.z)) + (sin(rotation.x) * sin(rotation.z))));
         vertices[i].y = ((identity[i].x * newScale.x) * (cos(rotation.y) * sin(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * sin(rotation.z)) + (cos(rotation.x) * cos(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * sin(rotation.z)) - (sin(rotation.x) * cos(rotation.z))));
@@ -26,6 +27,16 @@ void MeshCollider::colliderSet(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 n
         vertices[i] = vertices[i] + newPos;
     }
 }
+
+void MeshCollider::moveCollider(glm::vec3 velocity)
+{
+    pos += velocity;
+    for (int i = 0; i < vertices.size(); i++)
+    {
+        vertices[i] = identity[i] + pos;
+    }
+}
+
 glm::vec3 MeshCollider::FindFurthestVertex(glm::vec3 direction)
 {
     glm::vec3 maxPoint = glm::vec3(-FLT_MAX);
@@ -165,7 +176,7 @@ bool NextSimplex(Simplex& points, glm::vec3& direction)
 }
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
 {
     Simplex points;
     glm::vec3 direction = collider1.pos - collider2.pos;
@@ -175,24 +186,29 @@ bool GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
     }
     glm::vec3 supportPoint = Support(collider1, collider2, direction);
     direction = -supportPoint;
-
+    ResolutionData r;
+    r.Normal = glm::vec3(0);
+    r.PenetrationDepth = -1;
+    r.hasCollision = false;
     while (true)
     {
         supportPoint = Support(collider1, collider2, direction);
         if (dot(supportPoint, direction) <= 0)
         {
-            return false;
+            return r;
         }
         points.push_front(supportPoint);
         if (NextSimplex(points, direction))
         {
+            r.hasCollision = true;
             if (resolve == true)
             {
-                resolutionData r = EPA(points, collider1, collider2);
-                collider1.colliderSet(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
+                r = EPA(points, collider1, collider2);
+                
+                collider1.setTransform(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
 
             }
-            return true;
+            return r;
         }
     }
 }
@@ -247,7 +263,7 @@ std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::
     return { normals, minTriangle };
 }
 
-resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB)
+ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB)
 {
     std::vector<glm::vec3> polytope(simplex.begin(), simplex.end());
     std::vector<size_t> faces = {
@@ -318,7 +334,7 @@ resolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
             normals.insert(normals.end(), newNormals.begin(), newNormals.end());
         }
     }
-    resolutionData epaData; 
+    ResolutionData epaData; 
     epaData.Normal = minNormal;
     epaData.PenetrationDepth = minDistance + 0.01f;
     epaData.hasCollision = true;

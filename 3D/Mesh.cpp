@@ -64,8 +64,6 @@ void Mesh::draw(Shader &shader)
         shader.setFloat("hasTexture", 1.0f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, albedo.id);
-        //glActiveTexture(GL_TEXTURE1);
-        //glBindTexture(GL_TEXTURE_2D, 0);
     }
     else
     {
