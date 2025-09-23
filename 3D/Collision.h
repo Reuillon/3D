@@ -6,6 +6,8 @@
 #include <array>
 #include <vector>
 #include <utility>
+#include <fstream>
+#include <string>
 
 
 
@@ -20,6 +22,7 @@ struct MeshCollider
 {
     private:
         std::vector<glm::vec3> identity;
+        
     public:
 
         std::vector<glm::vec3> vertices;
@@ -30,6 +33,9 @@ struct MeshCollider
 
         //INITIALIZES MESH DATA AND MESHIDENTITY DATA
         MeshCollider(float model[], int arraySize);
+        MeshCollider();
+        void init(float model[], int arraySize);
+        void init(std::vector<glm::vec3> model, int arraySize);
 
         //CHANGES POSITION/ROTATION/SCALE OF MESH COLLIDER
         void setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale = glm::vec3(1.0f));
@@ -82,6 +88,7 @@ bool Tetrahedron(Simplex& points, glm::vec3& direction);
 
 bool NextSimplex(Simplex& points, glm::vec3& direction);
 
+
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
 ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
 
@@ -92,3 +99,6 @@ std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::
 
 ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
 
+std::vector<MeshCollider> initCollisionMap(std::string filePath);
+
+float getElapsedTime(float time);

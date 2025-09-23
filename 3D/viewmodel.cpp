@@ -35,10 +35,10 @@ glm::vec3 lastPos;
 
 
 glm::vec3 lightDirTEST = glm::normalize(glm::vec3(30.0f, -5.0, 30.0f));
-//glm::vec3 lightDirTEST = glm::normalize(glm::vec3(30.0f, -80, 30.0f));
+
 void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 {
-	if (lastPos != c.cameraPos)
+	if (lastPos.x != c.cameraPos.x || lastPos.z != c.cameraPos.z)
 	{
 		
 		swayX += deltaTime * 1 * 8;
@@ -222,7 +222,7 @@ void Viewmodel::animController(GLFWwindow* window)
 				}
 				else
 				{
-					thisAnim = 5;
+					thisAnim = 7;
 				}
 			}
 			animBuffer = false;
@@ -270,13 +270,13 @@ void Viewmodel::animController(GLFWwindow* window)
 			{
 				animate.loopAnim(false);
 				animate.PlayAnimation(&animation[7]);
-				thisAnim = 7;
+				thisAnim = 4;
 			}
 			else
 			{
 				animate.loopAnim(false);
 				animate.PlayAnimation(&animation[8]);
-				thisAnim = 8;
+				thisAnim = 4;
 			}
 			
 		}
@@ -340,7 +340,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	case 1:
 	{
 		animate.loopAnim(true);
-		animate.PlayAnimation(&animation[1]);
+		animate.PlayAnimation(&animation[0]);
 		break;
 	}
 	case 2:
@@ -393,7 +393,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	default:
 	{
 		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[1]);
+		animate.PlayAnimation(&animation[0]);
 		break;
 	}
 	}

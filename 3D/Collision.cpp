@@ -8,6 +8,26 @@ MeshCollider::MeshCollider(float model[], int arraySize)
         vertices.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
     }
 }
+MeshCollider::MeshCollider(){}
+
+void MeshCollider::init(float model[], int arraySize)
+{
+    for (int i = 0; i < arraySize; i += 3)
+    {
+        identity.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
+        vertices.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
+    }
+}
+void MeshCollider::init(std::vector<glm::vec3> model, int arraySize)
+{
+    identity.clear();
+    vertices.clear();
+    for (int i = 0; i < arraySize; i ++)
+    {
+        identity.push_back(model[i]);
+        vertices.push_back(model[i]);
+    }
+}
 
 //SET TRANSFORMS FOR COLLIDER
 void MeshCollider::setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale)
@@ -340,4 +360,63 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
     epaData.hasCollision = true;
 
     return epaData;
+}
+
+std::vector<MeshCollider> initCollisionMap(std::string filePath)
+{
+
+    std::vector<MeshCollider> collisionMap;
+    std::vector<MeshCollider> clearVector;
+    MeshCollider currentMeshData;
+    std::fstream colliderData(filePath);
+    std::string text;
+    
+    if (colliderData.is_open())
+    {
+        //SKIP JUNK AT START OF OBJ
+        for (int i = 0; i < 3; i++)
+        {
+            getline(colliderData, text);
+        }
+
+        std::vector<glm::vec3> vertices;
+        while (getline(colliderData, text))
+        {
+            //ADDS MESH OBJECT TO COLLISION MAP
+            if (text[0] == 's')
+            {
+                currentMeshData.init(vertices, vertices.size());
+                collisionMap.push_back(currentMeshData);
+                vertices.clear();
+            }
+            //ALLOCATES VERTICES TO EACH MESHCOLLIDER IN A COLLISION MAP
+            if (text[0] == 'v' && text[1] == ' ')
+            {
+                float vertice[3];
+                std::string s = "";
+                int vertIndex = 0;
+                for (int i = 2; i < text.size(); i++)
+                {
+                    if (text[i] != ' ')
+                    {
+                        s = s + text[i];
+                    }
+                    else
+                    {
+                        vertice[vertIndex] = std::stof(s);
+                        vertIndex += 1;
+                        s = "";
+                    }
+                    if (i == (text.size() - 1))
+                    {
+                        vertice[vertIndex] = std::stof(s);
+                        vertIndex = 0;
+                        vertices.push_back(glm::vec3(vertice[0], vertice[1], vertice[2]));
+                    }
+                }
+
+            }
+        }
+    }
+    return collisionMap;
 }
