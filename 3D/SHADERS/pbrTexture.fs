@@ -1,5 +1,6 @@
 #version 330 core
 out vec4 FragColor;
+
 in vec2 TexCoords;
 in vec3 WorldPos;
 in vec3 Normal;
@@ -19,6 +20,7 @@ uniform float hasMetallic;
 uniform vec3 baseColor;
 uniform float rough;
 uniform float metal;
+uniform float spec;
 
 
 // IBL
@@ -104,8 +106,8 @@ void main()
 {		
 
 
-     // input lighting data
-   // vec3 N = getNormalFromMap();
+    //input lighting data
+    // vec3 N = getNormalFromMap();
     vec3 N = normalize(Normal);
 
     //VIEW DIRECTION
@@ -144,6 +146,7 @@ void main()
     {
         metallic = texture(metallicMap, TexCoords).r;
     }
+
     if (roughness > 0.5)
     {
         //V =normalize(camPos);
@@ -219,7 +222,7 @@ void main()
     
     
 
-    specular = prefilteredColor * (F * brdf.x + brdf.y);
+    specular = prefilteredColor * (F * brdf.x + brdf.y) * spec;
 
     vec3 ambient = (kD * diffuse + specular) ;
     //ambient = ambient / (ambient+ vec3(1.0));
