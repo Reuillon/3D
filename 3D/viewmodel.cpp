@@ -262,6 +262,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	{
 		if (thisTimer == 0)
 		{
+			ammo = 7;
 			ammo -= 1;
 			spread = 5;
 			reset = 1;

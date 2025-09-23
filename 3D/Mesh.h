@@ -46,7 +46,7 @@ struct Material
     glm::vec3 Specular;
     float roughness;
     float metallic;
-    float Shininess;
+    float specular;
 };
 
 class Mesh

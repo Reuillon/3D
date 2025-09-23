@@ -260,12 +260,12 @@ static GLFWwindow* windowInit()
     debug.initializeGrid(4);
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
+    initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/meadow_2k.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
-    initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
@@ -332,24 +332,23 @@ int main()
     
     //VIWEMODELS
     //Viewmodel v(12, "Models/GUN/PEESTOL.fbx");
-    Viewmodel v(8, "Models/GUN/Bolton.fbx");
+    Viewmodel v(8, "Models/GUN/BOLTON.fbx");
     //Viewmodel v(11, "Models/GUN/BS2.fbx");
     //Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
-    //Viewmodel v(7, "Models/DUST2/source/AKKA.fbx");
+    
 
     //MAPS
     //Model map("Models/NEWDUST/DUST.fbx");
     Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
-    //Model map("Models/highway/source/hw.obj");
-    //Model map("Models/NTOWN/NTOWN.obj");
     //Model map("Models/Aztec/aztec.fbx");
+    //Model map("Models/NTOWN/NTOWN.obj");
     //Model map("Models/RUST/RUST.obj");
 
     //STATIC OBJECTS
-    Model gun("Models/DUST2/source/BS1.fbx");
-    Model water("Models/GUN/water.fbx");
-    Model sand("Models/GUN/water.fbx");
-    Model base("Models/GUN/base.fbx");
+    //Model gun("Models/DUST2/source/BS1.fbx");
+    //Model water("Models/GUN/water.fbx");
+    //Model sand("Models/GUN/water.fbx");
+    //Model base("Models/GUN/base.fbx");
     //Model shib("Models/shiba/1.fbx");
     //stbi_set_flip_vertically_on_load(false);\
     //Model gun("Models/DUST2/source/KNIFE.fbx");
@@ -359,8 +358,8 @@ int main()
     //Model gun("Models/DUST2/source/REVOLVER.obj");
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
-    Model mySphere("Models/GUN/sphere.fbx");
-    Model myPaddle("Models/GUN/paddle.fbx");
+    //Model mySphere("Models/GUN/sphere.fbx");
+    //Model myPaddle("Models/GUN/paddle.fbx");
 
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -807,7 +806,7 @@ int main()
         //mapRender(c, shaderPBRT,myPaddle, AnotherPlatform.rot, AnotherPlatform.pos);
         glDisable(GL_CULL_FACE);
         mapRender(c, shaderPBRT, map, glm::vec3(0), glm::vec3(0));
-        //SHOOTABLE SPHERESSPHERES
+        //SHOOTABLE SPHERES
         /*
         if (GJK(sphere1, ray, false))
         {
@@ -956,7 +955,7 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
         //PRINT FRAMERATE
-        std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
+        //std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
     }
 
 

@@ -210,9 +210,16 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     //SET ROUGHNESS AND METALLIC VALUES FROM MODEL DATA (USED FOR WHEN NO ROUGHNESS OR METALLIC MAPS ARE PRESENT)
     m.roughness = -1.0f;
     m.metallic = -1.0f;
+    m.specular = -1.0;
     material->Get(AI_MATKEY_ROUGHNESS_FACTOR, m.roughness);
     material->Get(AI_MATKEY_REFLECTIVITY, m.metallic);
+    material->Get(AI_MATKEY_SHININESS_STRENGTH, m.specular);
+    m.specular *= 2;
     
+
+
+
+
     /* */
     //GET ROUGHNESS VALUE
     //std::cout << "\n\n\n" << m.Diffuse.r << ", " << m.Diffuse.g << ", " << m.Diffuse.b << " | \n\n\n";
