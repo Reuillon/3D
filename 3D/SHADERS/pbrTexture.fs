@@ -125,12 +125,12 @@ void main()
     }
     else
     {
-        albedo = pow(texture(albedoMap, TexCoords).rgb, vec3(2.2));
+        albedo = pow(texture(albedoMap, TexCoords).rgb - 0.01, vec3(2.2));
     }
     if(hasRoughness < 0.5)
     {
         
-        roughness = pow(rough, 2.2) ;
+        roughness = rough ;
         
     }
     else
@@ -139,12 +139,12 @@ void main()
     }
     if(hasMetallic < 0.5)
     {
-        metallic = pow(metal, 2.2);
+        metallic = metal;
 
     }
     else
     {
-        metallic = texture(metallicMap, TexCoords).r;
+        metallic =texture(metallicMap , TexCoords).r;
     }
 
     if (roughness > 0.5)
@@ -216,7 +216,7 @@ void main()
     vec3 diffuse      = irradiance * albedo;
     
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-    const float MAX_REFLECTION_LOD = 16.0;
+    const float MAX_REFLECTION_LOD = 2.5;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
     
