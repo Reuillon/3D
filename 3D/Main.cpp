@@ -260,20 +260,36 @@ static GLFWwindow* windowInit()
     debug.initializeGrid(4);
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/meadow_2k.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
-    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/charolettenbrunn_park_4k.hdr");
+    //initPBR("TEXTURES/hdri/autumn_field_4k.hdr");
+    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/ballawley_park_4k.hdr");
+    //initPBR("TEXTURES/hdri/preller_drive_4k.hdr");
+    //initPBR("TEXTURES/hdri/tief_etz_4k.hdr");
+    //initPBR("TEXTURES/hdri/little_paris_eiffel_tower_4k.hdr");
+    //initPBR("TEXTURES/hdri/tiergarten_4k.hdr");
   
+
+    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
+    //initPBR("TEXTURES/hdri/color.hdr");
+    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
+    initPBR("TEXTURES/hdri/soliltude_4k.hdr");
+    
     return window;
 }
 glm::vec3 gravity = glm::vec3(0.0, 0.0, 0.0);
 bool isJump;
+bool isGrounded = false;
+glm::vec3 lastSpeed = glm::vec3(0);
+glm::vec2 normalizedSpeed = glm::vec2(0);
+glm::vec2 momentum = glm::vec2(0);
+int toggleDebug = -1;
 int main()
 {   
     // glfw window creation
@@ -346,7 +362,7 @@ int main()
 
     //STATIC OBJECTS
     //Model gun("Models/DUST2/source/BS1.fbx");
-    //Model water("Models/GUN/water.fbx");
+    Model water("Models/GUN/water.fbx");
     //Model sand("Models/GUN/water.fbx");
     //Model base("Models/GUN/base.fbx");
     //Model shib("Models/shiba/1.fbx");
@@ -359,16 +375,13 @@ int main()
     //Model gun("Models/GUN/PEESTOL.obj");
     //Model gun("Models/GUN/BS2.obj");
     //Model mySphere("Models/GUN/sphere.fbx");
-    //Model myPaddle("Models/GUN/paddle.fbx");
+    Model myPaddle("Models/GUN/paddle.fbx");
 
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     
     std::vector<MeshCollider> testMap = initCollisionMap("Models/GUN/TESTLEVEL/COLLISIONMAP.obj");
-    
-
-    
 
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
     
@@ -457,33 +470,38 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
+        
         c.fov = 70;
         if (c.cameraCollider.pos.y < -100)
         {
-            c.cameraCollider.setTransform(glm::vec3(0.0f, 5.0f, 0.0), glm::vec3(0.0));
+            c.cameraCollider.setTransform(glm::vec3(100.0f, 105.0f, 100.0), glm::vec3(0.0));
             gravity = glm::vec3(0.0);
         }
 
         ResolutionData r;
         /**/
-        bool isFalling;
+        bool isFalling = false;
+        isGrounded = false;
+        
         for (int i = 0; i < testMap.size(); i++)
         {
 
-            r = GJK(c.floorCollider, testMap[i], false);
+            r = GJK(c.floorCollider, testMap[i], deltaTime,false);
             if (r.hasCollision && !isJump)
             {
                 gravity = glm::vec3(0.0);
             }
-            else if (r.hasCollision && isJump)
-            {
-                gravity.y = 10;
-            }
-            r = GJK(c.cameraCollider, testMap[i], true);
             if (r.hasCollision)
             {
-                //gravity = glm::vec3(gravity.y * r.Normal.x, gravity.y, gravity.y * r.Normal.z);
-                //gravity.y = 0.0;
+                isGrounded = true;
+                if (isJump)
+                {
+                    gravity.y = 11;
+                }
+            }
+            r = GJK(c.cameraCollider, testMap[i], deltaTime, true);
+            if (r.hasCollision)
+            {
                 isFalling = false;
             }
             else
@@ -492,19 +510,22 @@ int main()
             }
 
         }
-        c.cameraCollider.moveCollider(glm::vec3(0.0, gravity.y * deltaTime, 0.0));
         if (isFalling)
         {
+            c.cameraCollider.moveCollider(glm::vec3(0.0, gravity.y * deltaTime, 0.0));
+
             gravity.y -= (20 * deltaTime);
             if (gravity.y < -300)
             {
                 gravity.y = -300;
             }
         }
+
+
         c.update(deltaTime);
         glClearColor(1.0f, 0.87f, 0.64f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-     
+
         lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
         //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -515,12 +536,12 @@ int main()
         // input
         // -----
         processInput(window);
-       
+
         //UPDATE CAMERA POSITIONS
 
         c.update(deltaTime);
         //debug.drawGrid(c);
-     
+
         glm::mat4 model;
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
@@ -535,8 +556,8 @@ int main()
 
         // set light uniforms
         model = glm::mat4(1.0f);
-        
-        /*   
+
+        /*
         depthShader.setMat4("model", model);
         depthShader.setMat4("projection", c.projection);
         depthShader.setMat4("view", c.view);
@@ -694,7 +715,7 @@ int main()
         */
 
         //PBR UNIFORMS
-        shaderPBRT.use();   
+        shaderPBRT.use();
         shaderPBRT.setMat4("projection", c.projection);
         shaderPBRT.setMat4("view", c.view);
         shaderPBRT.setVec3("camPos", c.cameraPos);
@@ -714,14 +735,13 @@ int main()
         backgroundShader.setMat4("view", c.view);
         glActiveTexture(GL_TEXTURE0);
         //DRAWS BLURRED MAP
-        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
         //DRAWS LOW RES CUBEMAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         //DRAWS HIGH RES CUBEMAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
-        
-        
+
         //cube.setTransform(glm::vec3(debug.xVal * 40, (-1 + (debug.yVal * 40)), debug.zVal * 40), glm::vec3(0.0, 0.0, glfwGetTime() / 2), glm::vec3(10.0,1.0,5.0));
         //cube.setTransform(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 45.0 * 0.0174533, 45.0 * 0.0174533), glm::vec3(1.0));
         //movingcube.moveCollider(gravity * glm::vec3(deltaTime));
@@ -747,65 +767,9 @@ int main()
         
         
         
-        /*
-        //ResolutionData r = GJK(movingcube, cube, true);
-        r = GJK(c.floorCollider, cube, false);
-        if (r.hasCollision && !isJump)
-        {
-            gravity = glm::vec3(0.0);
-        }
-        else if (r.hasCollision && isJump)
-        {
-            gravity.y = 10;
-        }
-        
-        r = GJK(c.floorCollider, AnotherPlatform, false);
-        if (r.hasCollision && !isJump)
-        {
-            gravity = glm::vec3(0.0);
-        }
-        else if (r.hasCollision && isJump)
-        {
-            gravity.y = 10;
-        }
-   
-        c.cameraCollider.moveCollider(glm::vec3(0.0,gravity.y * deltaTime,0.0));
-        r = GJK(c.cameraCollider, cube, true);
-        if (r.hasCollision)
-        {
-            //gravity = glm::vec3(gravity.y * r.Normal.x, gravity.y, gravity.y * r.Normal.z);
-            //gravity.y = 0.0;        
-        }
-        else
-        {
-            gravity.y -= (10 * deltaTime);
-            if (gravity.y < -300)
-            {
-                gravity.y = -300;
-            }
-        }
-        r = GJK(c.cameraCollider, AnotherPlatform, true);
-        if (r.hasCollision)
-        {
-            //gravity = glm::vec3(gravity.y * r.Normal.x, gravity.y, gravity.y * r.Normal.z);
-            //gravity.y = 0.0;        
-        }
-        else
-        {
-            gravity.y -= (10 * deltaTime);
-            if (gravity.y < -300)
-            {
-                gravity.y = -300;
-            }
-        }
-        */
-        //GJK(movingcube, c.cameraCollider, true);
 
-        //mapRender(c, shaderPBRT,mySphere,movingcube.rot,movingcube.pos);
-        //mapRender(c, shaderPBRT,myPaddle, cube.rot,cube.pos);
-        //mapRender(c, shaderPBRT,myPaddle, AnotherPlatform.rot, AnotherPlatform.pos);
+
         glDisable(GL_CULL_FACE);
-        mapRender(c, shaderPBRT, map, glm::vec3(0), glm::vec3(0));
         //SHOOTABLE SPHERES
         /*
         if (GJK(sphere1, ray, false))
@@ -861,24 +825,29 @@ int main()
         }
 
 
-        debug.drawCollider(sphere1, c);
+        debug.ollider(sphere1, c);
         debug.drawCollider(sphere2, c);
         debug.drawCollider(sphere3, c);
         debug.drawCollider(sphere4, c);
         debug.drawCollider(sphere5, c);
         */
-        /*
-        debug.drawCollider(cube,c);
-        debug.drawCollider(movingcube,c);
-        */
 
-        debug.drawCollider(c.floorCollider,c);
 
-        for (int i = 0; i < testMap.size(); i++)
+
+        //      debug.drawCollider(c.floorCollider,c);
+        
+
+        if (toggleDebug == 1)
         {
-            //debug.drawCollider(testMap[i], c);
+            for (int i = 0; i < testMap.size(); i++)
+            {
+               debug.drawCollider(testMap[i], c);
+            }
         }
-
+        else
+        {
+            mapRender(c, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
+        }
         
         /*
         //DRAWS XYZ LINES
@@ -891,7 +860,7 @@ int main()
         
         //staticRender(c, shaderPBRT, base);
         //drawSand(c, sandShader, sand, envCubemap);
-        //drawWater(c, waterShader, water, envCubemap);
+        drawWater(c, waterShader, water, envCubemap);
         
         //DRAW DUST 2
         
@@ -908,6 +877,7 @@ int main()
         
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
+        /*
         {
             crosshair.use();
             model = glm::mat4(1.0f);
@@ -945,17 +915,42 @@ int main()
             crosshair.setMat4("view", c.view);
             renderQuad();
         }
+        */
 
         if (glfwGetKey(window, GLFW_KEY_P))
         {
             gravity = glm::vec3(0);
-            c.cameraCollider.pos = glm::vec3(0, 5, 0);
+            c.cameraCollider.pos = glm::vec3(100, 105, 100);
         }
         debug.debugControls(window, deltaTime); 
         glfwSwapBuffers(window);
         glfwPollEvents();
         //PRINT FRAMERATE
-        //std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
+        std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
+        float accumulate;
+        if (isGrounded)
+        {
+            if (normalizedSpeed != glm::vec2(0))
+            {
+                momentum = normalizedSpeed / 1.5f;
+            }
+            momentum /= (1 + (deltaTime * 25));
+            c.cameraCollider.moveCollider(glm::vec3((momentum.x) * deltaTime * (c.speed), 0.0, (momentum.y) * deltaTime * c.speed));
+            lastSpeed = glm::vec3(0);
+            normalizedSpeed = glm::vec2(0);
+        }
+        if (!isGrounded)
+        {
+            if (lastSpeed.x != 0 && lastSpeed.z != 0)
+            { 
+                normalizedSpeed = glm::normalize(glm::vec2(lastSpeed.x, lastSpeed.z));
+            }
+
+            c.cameraCollider.moveCollider(glm::vec3((normalizedSpeed.x) * deltaTime * (c.speed), 0.0, (normalizedSpeed.y) * deltaTime * c.speed));
+        }
+
+        
+
     }
 
 
@@ -1199,7 +1194,7 @@ static void initPBR(const char* hdrPath)
     {
         glGenTextures(1, &hdrTexture);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data); // note how we specify the texture's data value to be float
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data); // note how we specify the texture's data value to be float
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1219,7 +1214,7 @@ static void initPBR(const char* hdrPath)
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 512, 512, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, 512, 512, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1270,7 +1265,7 @@ static void initPBR(const char* hdrPath)
     glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, 32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1309,7 +1304,7 @@ static void initPBR(const char* hdrPath)
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1358,7 +1353,7 @@ static void initPBR(const char* hdrPath)
 
     // pre-allocate enough memory for the LUT texture.
     glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
     // be sure to set wrapping mode to GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1402,21 +1397,35 @@ void processInput(GLFWwindow* window)
     const float speed = 10.0f;
     if (glfwGetKey(window, GLFW_KEY_W))
     {
-        c.forward();
-
+        lastSpeed += (c.forw);
+        if (isGrounded)
+        {
+            c.forward();
+        }
     }
     if (glfwGetKey(window, GLFW_KEY_A))
     {
-        c.left();
-
+        lastSpeed -= (glm::cross(c.forw, c.cameraUp));
+        if (isGrounded)
+        {
+            c.left();
+        }
     }
     if (glfwGetKey(window, GLFW_KEY_S))
     {
-        c.back();
+        lastSpeed -= (c.forw);
+        if (isGrounded)
+        {
+            c.back();
+        }
     }
     if (glfwGetKey(window, GLFW_KEY_D))
     {
-        c.right();
+        lastSpeed += (glm::cross(c.forw, c.cameraUp));
+        if (isGrounded)
+        {
+            c.right();
+        }
     }
     if (glfwGetKey(window, GLFW_KEY_Q))
     {
@@ -1436,12 +1445,24 @@ void processInput(GLFWwindow* window)
     }
     else
     {
-        c.speed = 1 * speed;
+        c.speed = 1.35 * speed;
     }
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_4))
     {
        // c.crouch();
     }
+    /**/
+    if (glfwGetKey(window, GLFW_KEY_SPACE))
+    {
+        isJump = true;
+
+
+    }
+    else
+    {
+        isJump = false;
+    }
+    
 }
 
 //MOUSE MOVEMENT
@@ -1475,6 +1496,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     {
         // v.setState(0);
     }
+    /*
     if ((key == GLFW_KEY_SPACE && action == GLFW_PRESS))
     {
         if (!latch)
@@ -1493,20 +1515,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
        latch = false;
        isJump = false;
     }
-
+    */
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
+        toggleDebug *= -1;
         //  v.setState(1);
     }
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
         // v.setState(2);
     }
+
 }
 
 //MOUSE SINGLE INPUT
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
+
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
         shooting = 1;

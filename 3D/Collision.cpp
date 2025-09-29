@@ -196,9 +196,10 @@ bool NextSimplex(Simplex& points, glm::vec3& direction)
 }
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float deltaTime, bool resolve)
 {
     Simplex points;
+    float elapsedTime = deltaTime;
     glm::vec3 direction = collider1.pos - collider2.pos;
     if (direction == glm::vec3(0.0f))
     {
@@ -212,6 +213,12 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolv
     r.hasCollision = false;
     while (true)
     {
+        elapsedTime += deltaTime;
+        if (elapsedTime > 1.0)
+        {
+            r.hasCollision = false;
+            return r;
+        }
         supportPoint = Support(collider1, collider2, direction);
         if (dot(supportPoint, direction) <= 0)
         {
@@ -223,7 +230,7 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolv
             r.hasCollision = true;
             if (resolve == true)
             {
-                r = EPA(points, collider1, collider2);
+                r = EPA(points, collider1, collider2, deltaTime);
                 
                 collider1.setTransform(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
 
@@ -283,8 +290,9 @@ std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::
     return { normals, minTriangle };
 }
 
-ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB)
+ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB, float deltaTime)
 {
+    float elapsedTime = deltaTime;
     std::vector<glm::vec3> polytope(simplex.begin(), simplex.end());
     std::vector<size_t> faces = {
         0, 1, 2,
@@ -298,7 +306,10 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
     float minDistance = FLT_MAX;
 
 
-    while (minDistance == FLT_MAX) {
+    ResolutionData epaData; 
+    while (minDistance == FLT_MAX) 
+    {
+        
         minNormal = glm::vec3(normals[minFace].x, normals[minFace].y, normals[minFace].z);
         minDistance = normals[minFace].w;
 
@@ -353,8 +364,13 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
             faces.insert(faces.end(), newFaces.begin(), newFaces.end());
             normals.insert(normals.end(), newNormals.begin(), newNormals.end());
         }
+        elapsedTime += deltaTime;
+        if (elapsedTime > 0.1)
+        {
+            epaData.hasCollision = false;
+            return epaData;
+        }
     }
-    ResolutionData epaData; 
     epaData.Normal = minNormal;
     epaData.PenetrationDepth = minDistance + 0.01f;
     epaData.hasCollision = true;
@@ -411,7 +427,7 @@ std::vector<MeshCollider> initCollisionMap(std::string filePath)
                     {
                         vertice[vertIndex] = std::stof(s);
                         vertIndex = 0;
-                        vertices.push_back(glm::vec3(vertice[0], vertice[1], vertice[2]));
+                        vertices.push_back(glm::vec3(vertice[0] + 100, vertice[1] + 100, vertice[2] + 100));
                     }
                 }
 

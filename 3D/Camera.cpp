@@ -8,6 +8,8 @@ camera::camera(const unsigned int width, const unsigned int height, const unsign
 	scrHeight = height;
 	fov = cFov;
 	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.001f, 2000.0f);
+	cameraCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
+	floorCollider.init(floor, sizeof(floor) / sizeof(*floor));
 }
 void camera::forward()
 {
@@ -50,11 +52,12 @@ void camera::update(float deltaTime)
 		normalized = glm::normalize(glm::vec2(nextPosition.x, nextPosition.z));
 	}
 	//CONSIDER SEPERATE VECTOR FOR VERTICALITY
-	cameraPos.x += normalized.x * speed * deltaTime;
-	cameraPos.z += normalized.y * speed * deltaTime;
-	cameraPos.y += nextPosition.y * deltaTime * 7.5f;
-		
-
+	//cameraPos.x += normalized.x * speed * deltaTime;
+	//cameraPos.z += normalized.y * speed * deltaTime;
+	//cameraPos.y += nextPosition.y * deltaTime * 7.5f;
+	cameraCollider.moveCollider(glm::vec3(normalized.x * speed * deltaTime, nextPosition.y * deltaTime * 7.5f, normalized.y * speed * deltaTime));
+	cameraPos = glm::vec3(cameraCollider.pos.x, cameraCollider.pos.y + 1.5, cameraCollider.pos.z);
+	floorCollider.setTransform(cameraCollider.pos, glm::vec3(0.0));
 	nextPosition = glm::vec3(0.0f);
 	if (pitch > 89.0f)
 	{
@@ -90,6 +93,7 @@ void camera::update(float deltaTime)
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.1f, 10000.0f);
 	
+	//SET CAMERA COLLIDER TRANSFORM
 }
 void camera::fovMod(float val)
 {

@@ -90,15 +90,14 @@ bool NextSimplex(Simplex& points, glm::vec3& direction);
 
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float deltaTime, bool resolve);
 
 //EPA COLLISION AND HELPER FUNCTIONS
 void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& faces, size_t a, size_t b);
 
 std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::vec3>& polytope, const std::vector<size_t>& faces);
 
-ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
+ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB, float deltaTime);
 
 std::vector<MeshCollider> initCollisionMap(std::string filePath);
 
-float getElapsedTime(float time);

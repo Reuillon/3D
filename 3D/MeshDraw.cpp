@@ -182,7 +182,7 @@ void drawWater(camera& c, Shader& shader, Model& m, unsigned int envTexture)
     shader.setMat4("view", c.view);
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.3));
+    model = glm::translate(model, glm::vec3(90.0, -100.0, 97.0));
     shader.setMat4("model", model);
     shader.setFloat("motion", glfwGetTime());
     shader.setVec3("viewPos", c.cameraPos);
