@@ -234,7 +234,8 @@ class camera
 		MeshCollider cameraCollider;
 		MeshCollider floorCollider;
 		camera(const unsigned int width, const unsigned int height, const unsigned int cFov);
-		
+		camera();
+
 		glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 3.0f);
 		glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
@@ -257,5 +258,6 @@ class camera
 		void update(float deltaTime);
 		void camRot(float xOffset, float yOffset);
 		void fovMod(float val);
+		void init(const unsigned int width, const unsigned int height, const unsigned int cFov);
 };
 #endif

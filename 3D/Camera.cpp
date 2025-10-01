@@ -11,6 +11,18 @@ camera::camera(const unsigned int width, const unsigned int height, const unsign
 	cameraCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
 	floorCollider.init(floor, sizeof(floor) / sizeof(*floor));
 }
+camera::camera()
+{
+}
+void camera::init(const unsigned int width, const unsigned int height, const unsigned int cFov)
+{
+	scrWidth = width;
+	scrHeight = height;
+	fov = cFov;
+	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.001f, 2000.0f);
+	cameraCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
+	floorCollider.init(floor, sizeof(floor) / sizeof(*floor));
+}
 void camera::forward()
 {
 	forw.y = 0.0;

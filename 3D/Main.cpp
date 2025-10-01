@@ -12,6 +12,7 @@
 #include "Camera.h"
 #include "Model.h"
 #include "MeshDraw.h"
+#include "Player.h"
 #include "Debug.h"
 
 //THESE NEED TO BE WORKED ON
@@ -278,8 +279,8 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
-    initPBR("TEXTURES/hdri/soliltude_4k.hdr");
+    initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
+    //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
     
     return window;
 }
@@ -290,6 +291,9 @@ glm::vec3 lastSpeed = glm::vec3(0);
 glm::vec2 normalizedSpeed = glm::vec2(0);
 glm::vec2 momentum = glm::vec2(0);
 int toggleDebug = -1;
+
+
+
 int main()
 {   
     // glfw window creation
@@ -352,7 +356,7 @@ int main()
     //Viewmodel v(11, "Models/GUN/BS2.fbx");
     //Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
     
-
+    Player p(SCR_WIDTH, SCR_HEIGHT, window);
     //MAPS
     //Model map("Models/NEWDUST/DUST.fbx");
     Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
@@ -396,8 +400,7 @@ int main()
     
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
 
-    c.fov = 70;
-    c.update(deltaTime);
+    
 
     //INITIALIZE SHADER UNIFORM DATA
     
@@ -428,9 +431,9 @@ int main()
     */
 
     //CUBEMAP SHADER
-    glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
+    glm::mat4 projection = glm::perspective(glm::radians(p.playerCamera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
     backgroundShader.use();
-    backgroundShader.setMat4("projection", c.projection);
+    backgroundShader.setMat4("projection", p.playerCamera.projection);
 
     //PBR SHADER
     shaderPBRT.use();
@@ -459,7 +462,7 @@ int main()
     r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
     sphere5.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
     
-    
+
     c.cameraPos = glm::vec3(0,0,0);
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
@@ -471,61 +474,49 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         
-        c.fov = 70;
-        if (c.cameraCollider.pos.y < -100)
-        {
-            c.cameraCollider.setTransform(glm::vec3(100.0f, 105.0f, 100.0), glm::vec3(0.0));
-            gravity = glm::vec3(0.0);
-        }
+
+        
 
         ResolutionData r;
         /**/
-        bool isFalling = false;
-        isGrounded = false;
+        p.isFalling = false;
+        p.isGrounded = false;
         
         for (int i = 0; i < testMap.size(); i++)
         {
 
-            r = GJK(c.floorCollider, testMap[i], deltaTime,false);
-            if (r.hasCollision && !isJump)
+            r = GJK(p.playerCamera.floorCollider, testMap[i], deltaTime,false);
+            if (r.hasCollision && !p.isJump)
             {
-                gravity = glm::vec3(0.0);
+                p.gravity = glm::vec3(0.0);
             }
             if (r.hasCollision)
             {
-                isGrounded = true;
-                if (isJump)
+                p.isGrounded = true;
+                if (p.isJump)
                 {
-                    gravity.y = 11;
+                    p.gravity.y = 11;
                 }
             }
-            r = GJK(c.cameraCollider, testMap[i], deltaTime, true);
+            r = GJK(p.playerCamera.cameraCollider, testMap[i], deltaTime, true);
             if (r.hasCollision)
             {
-                isFalling = false;
+                p.isFalling = false;
             }
             else
             {
-                isFalling = true;
+                p.isFalling = true;
             }
 
         }
-        if (isFalling)
-        {
-            c.cameraCollider.moveCollider(glm::vec3(0.0, gravity.y * deltaTime, 0.0));
-
-            gravity.y -= (20 * deltaTime);
-            if (gravity.y < -300)
-            {
-                gravity.y = -300;
-            }
-        }
+    
 
 
-        c.update(deltaTime);
+        //c.update(deltaTime);
         glClearColor(1.0f, 0.87f, 0.64f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        p.update(deltaTime, viewShader);
         lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
         //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -539,7 +530,7 @@ int main()
 
         //UPDATE CAMERA POSITIONS
 
-        c.update(deltaTime);
+        //c.update(deltaTime);
         //debug.drawGrid(c);
 
         glm::mat4 model;
@@ -716,9 +707,9 @@ int main()
 
         //PBR UNIFORMS
         shaderPBRT.use();
-        shaderPBRT.setMat4("projection", c.projection);
-        shaderPBRT.setMat4("view", c.view);
-        shaderPBRT.setVec3("camPos", c.cameraPos);
+        shaderPBRT.setMat4("projection", p.playerCamera.projection);
+        shaderPBRT.setMat4("view", p.playerCamera.view);
+        shaderPBRT.setVec3("camPos", p.playerCamera.cameraPos);
         shaderPBRT.setVec3("lightDir", lightDir);
 
         //SETS BACKGROUND FOR IBL
@@ -732,7 +723,7 @@ int main()
         //DRAWS CUBEMAP FOR IBL
         glDisable(GL_CULL_FACE);
         backgroundShader.use();
-        backgroundShader.setMat4("view", c.view);
+        backgroundShader.setMat4("view", p.playerCamera.view);
         glActiveTexture(GL_TEXTURE0);
         //DRAWS BLURRED MAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
@@ -749,8 +740,8 @@ int main()
         AnotherPlatform.setTransform(glm::vec3(5,1,3), glm::vec3(0.0), glm::vec3(10.0, 1.0, 5.0));
 
         //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
-        ray.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
-        ray.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
+        //ray.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
+        //ray.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
 
 
 
@@ -841,12 +832,12 @@ int main()
         {
             for (int i = 0; i < testMap.size(); i++)
             {
-               debug.drawCollider(testMap[i], c);
+               debug.drawCollider(testMap[i], p.playerCamera);
             }
         }
         else
         {
-            mapRender(c, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
+            mapRender(p.playerCamera, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
         }
         
         /*
@@ -860,7 +851,7 @@ int main()
         
         //staticRender(c, shaderPBRT, base);
         //drawSand(c, sandShader, sand, envCubemap);
-        drawWater(c, waterShader, water, envCubemap);
+        drawWater(p.playerCamera, waterShader, water, envCubemap);
         
         //DRAW DUST 2
         
@@ -871,14 +862,14 @@ int main()
         glDisable(GL_CULL_FACE);
         
         //RENDERS VIEWMODEL
-        v.render(c, viewShader, window);
-        model = glm::mat4(1.0f);
-        model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
-        
+        //v.render(p.playerCamera, viewShader, window);
+       
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
         /*
         {
+            model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f)); 
             crosshair.use();
             model = glm::mat4(1.0f);
             model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
@@ -917,37 +908,14 @@ int main()
         }
         */
 
-        if (glfwGetKey(window, GLFW_KEY_P))
-        {
-            gravity = glm::vec3(0);
-            c.cameraCollider.pos = glm::vec3(100, 105, 100);
-        }
+       
         debug.debugControls(window, deltaTime); 
         glfwSwapBuffers(window);
         glfwPollEvents();
         //PRINT FRAMERATE
         std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
-        float accumulate;
-        if (isGrounded)
-        {
-            if (normalizedSpeed != glm::vec2(0))
-            {
-                momentum = normalizedSpeed / 1.5f;
-            }
-            momentum /= (1 + (deltaTime * 25));
-            c.cameraCollider.moveCollider(glm::vec3((momentum.x) * deltaTime * (c.speed), 0.0, (momentum.y) * deltaTime * c.speed));
-            lastSpeed = glm::vec3(0);
-            normalizedSpeed = glm::vec2(0);
-        }
-        if (!isGrounded)
-        {
-            if (lastSpeed.x != 0 && lastSpeed.z != 0)
-            { 
-                normalizedSpeed = glm::normalize(glm::vec2(lastSpeed.x, lastSpeed.z));
-            }
 
-            c.cameraCollider.moveCollider(glm::vec3((normalizedSpeed.x) * deltaTime * (c.speed), 0.0, (normalizedSpeed.y) * deltaTime * c.speed));
-        }
+ 
 
         
 
