@@ -6,7 +6,6 @@
 //ENGINE CLASSES
 #include "stb_image.h"
 #include "Collision.h"
-#include "Viewmodel.h"
 #include "Animator.h"
 #include "Shader.h"
 #include "Camera.h"
@@ -24,18 +23,15 @@
 
 //GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(GLFWwindow* window);
 
-//INITIALIZE OBJECTS
+//INITIALIZER FUNCTIONS
 void initShadowMap();
 void initFramebuffer();
 void initPBR(const char* hdrPath);
 void initSSAO();
-
 
 // RESOLUTION
 const unsigned int SCR_WIDTH = 2560;
@@ -238,8 +234,6 @@ static GLFWwindow* windowInit()
     //SET LISTENERS FOR DETECTING INPUT
     glfwMakeContextCurrent(window); 
     glfwSetKeyCallback(window, key_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -346,21 +340,18 @@ int main()
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
     Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
 
+    /////ACTORS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    Player p(SCR_WIDTH, SCR_HEIGHT, window);
+    
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     
-    //VIWEMODELS
-    //Viewmodel v(12, "Models/GUN/PEESTOL.fbx");
-    Viewmodel v(8, "Models/GUN/BOLTON.fbx");
-    //Viewmodel v(11, "Models/GUN/BS2.fbx");
-    //Viewmodel v(11, "Models/GUN/DEGGLETMP.fbx");
-    
-    Player p(SCR_WIDTH, SCR_HEIGHT, window);
     //MAPS
     //Model map("Models/NEWDUST/DUST.fbx");
     Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
-    //Model map("Models/Aztec/aztec.fbx");
     //Model map("Models/NTOWN/NTOWN.obj");
     //Model map("Models/RUST/RUST.obj");
 
@@ -384,23 +375,10 @@ int main()
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    
     std::vector<MeshCollider> testMap = initCollisionMap("Models/GUN/TESTLEVEL/COLLISIONMAP.obj");
-
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
-    
-    MeshCollider sphere1(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
-    MeshCollider sphere2(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
-    MeshCollider sphere3(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
-    MeshCollider sphere4(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
-    MeshCollider sphere5(sphereIdentity, sizeof(sphereIdentity) / sizeof(*sphereIdentity));
-    
-    MeshCollider cube(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
-    MeshCollider AnotherPlatform(cubeIdentity, sizeof(cubeIdentity) / sizeof(*cubeIdentity));
-    
-    unsigned int woodTexture = loadTexture("TEXTURES/white.png");
 
-    
+    unsigned int woodTexture = loadTexture("TEXTURES/white.png");
 
     //INITIALIZE SHADER UNIFORM DATA
     
@@ -446,24 +424,6 @@ int main()
     shaderPBRT.setInt("prefilterMap", 6);
     shaderPBRT.setInt("brdfLUT", 7);
     
-    float r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    float r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere1.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere2.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere3.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere4.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-    r1 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    r2 = -5.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (5.0 - -5.0)));
-    sphere5.setTransform(glm::vec3(r1, r2, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-    
-
-    c.cameraPos = glm::vec3(0,0,0);
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
@@ -473,12 +433,8 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-        
-
-        
-
+        //COLLISION CHECKS
         ResolutionData r;
-        /**/
         p.isFalling = false;
         p.isGrounded = false;
         
@@ -510,13 +466,8 @@ int main()
 
         }
     
-
-
-        //c.update(deltaTime);
-        glClearColor(1.0f, 0.87f, 0.64f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         p.update(deltaTime, viewShader);
+        debug.drawGrid(p.playerCamera);
         lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
         //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -524,14 +475,7 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // input
-        // -----
-        processInput(window);
-
-        //UPDATE CAMERA POSITIONS
-
-        //c.update(deltaTime);
-        //debug.drawGrid(c);
+        
 
         glm::mat4 model;
         glEnable(GL_CULL_FACE);
@@ -549,6 +493,7 @@ int main()
         model = glm::mat4(1.0f);
 
         /*
+        model = glm::mat4(1.0f);
         depthShader.setMat4("model", model);
         depthShader.setMat4("projection", c.projection);
         depthShader.setMat4("view", c.view);
@@ -732,102 +677,16 @@ int main()
         //DRAWS HIGH RES CUBEMAP
         glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
         renderCube();
-
-        //cube.setTransform(glm::vec3(debug.xVal * 40, (-1 + (debug.yVal * 40)), debug.zVal * 40), glm::vec3(0.0, 0.0, glfwGetTime() / 2), glm::vec3(10.0,1.0,5.0));
-        //cube.setTransform(glm::vec3(debug.xVal * 10, debug.yVal * 10, debug.zVal * 10), glm::vec3(0.0, 45.0 * 0.0174533, 45.0 * 0.0174533), glm::vec3(1.0));
-        //movingcube.moveCollider(gravity * glm::vec3(deltaTime));
-        cube.setTransform(glm::vec3(debug.xVal * 40, (-1 + (debug.yVal * 40)), debug.zVal * 40), glm::vec3(0.0), glm::vec3(10.0, 1.0, 5.0));
-        AnotherPlatform.setTransform(glm::vec3(5,1,3), glm::vec3(0.0), glm::vec3(10.0, 1.0, 5.0));
-
-        //CREATES RAYCAST FROM CAMERA ORIGIN TO WHEREVER IT IS LOOKING
-        //ray.vertices[0] = glm::vec3(c.cameraPos.x, c.cameraPos.y, c.cameraPos.z);
-        //ray.vertices[1] = glm::vec3(c.cameraPos.x + (c.front.x * 1000.0f), c.cameraPos.y + (c.front.y * 1000.0f),c.cameraPos.z + (c.front.z * 1000.0f));
-
-
-
-        //RESETS VALUE FOR COLLISION MESH FOR CONTINOUS COLLISION CHECKING
-        ray.color = glm::vec3(1.0, 1.0, 1.0);
-        cube.color = glm::vec3(0.0, 1.0, 1.0);
-        AnotherPlatform.color = glm::vec3(0.0, 1.0, 1.0);
-        sphere1.color = glm::vec3(1.0, 1.0, 1.0);
-        sphere2.color = glm::vec3(1.0, 1.0, 1.0);
-        sphere3.color = glm::vec3(1.0, 1.0, 1.0);
-        sphere4.color = glm::vec3(1.0, 1.0, 1.0);
-        sphere5.color = glm::vec3(1.0, 1.0, 1.0);
-
         
-        
-        
-
-
-        glDisable(GL_CULL_FACE);
-        //SHOOTABLE SPHERES
         /*
-        if (GJK(sphere1, ray, false))
-        {
-            sphere1.color = glm::vec3(1.0, 0.0, 0.0);
-
-            if (v.ammo > 0 && shooting == 1)
-            {
-                float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                sphere1.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-            }
-        }
-        if (GJK(sphere2, ray, false))
-        {
-            sphere2.color = glm::vec3(1.0, 0.0, 0.0);
-            if (v.ammo > 0 && shooting == 1)
-            {
-                float r1 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                float r2 = -7.5 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (7.5 - -7.5)));
-                sphere2.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-            }
-        }
-        if (GJK(sphere3, ray, false))
-        {
-            sphere3.color = glm::vec3(1.0, 0.0, 0.0);
-            if (v.ammo > 0 && shooting == 1)
-            {
-                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere3.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-            }
-        }
-        if (GJK(sphere4, ray, false))
-        {
-            sphere4.color = glm::vec3(1.0, 0.0, 0.0);
-            if (v.ammo > 0 && shooting == 1)
-            {
-                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere4.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-            }
-        }
-        if (GJK(sphere5, ray, false))
-        {
-            sphere5.color = glm::vec3(1.0, 0.0, 0.0);
-            if (v.ammo > 0 && shooting == 1)
-            {
-                float r1 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                float r2 = -10.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (10.0 - -10.0)));
-                sphere5.setTransform(glm::vec3(r1, r2 + 7.5, debug.zVal * 10), glm::vec3(0.0, 0.0, 0.0));
-            }
-        }
-
-
-        debug.ollider(sphere1, c);
-        debug.drawCollider(sphere2, c);
-        debug.drawCollider(sphere3, c);
-        debug.drawCollider(sphere4, c);
-        debug.drawCollider(sphere5, c);
+        //DRAWS XYZ LINES
+        //DEFAULT ORIENTATIONS (X,Y,Z)
+        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
+        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
+        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         */
-
-
-
-        //      debug.drawCollider(c.floorCollider,c);
         
-
+        //debug.drawCollider(p.playerCamera.floorCollider,p.playerCamera);
         if (toggleDebug == 1)
         {
             for (int i = 0; i < testMap.size(); i++)
@@ -837,33 +696,15 @@ int main()
         }
         else
         {
+            glDisable(GL_CULL_FACE);
             mapRender(p.playerCamera, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
         }
-        
-        /*
-        //DRAWS XYZ LINES
-        //DEFAULT ORIENTATIONS (X,Y,Z)
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        debug.drawLine(c, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
-        */
         glEnable(GL_CULL_FACE);
-        
-        //staticRender(c, shaderPBRT, base);
-        //drawSand(c, sandShader, sand, envCubemap);
+        //staticRender(p.playerCamera, shaderPBRT, base);
+        //drawSand(p.playerCamera, sandShader, sand, envCubemap);
         drawWater(p.playerCamera, waterShader, water, envCubemap);
         
-        //DRAW DUST 2
-        
-        //mapRender(c,shaderPBRT, map, glm::vec3(debug.xVal * 5.0, debug.yVal * 5.0, debug.zVal * 5.0));
-        
-
-        
         glDisable(GL_CULL_FACE);
-        
-        //RENDERS VIEWMODEL
-        //v.render(p.playerCamera, viewShader, window);
-       
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
         /*
@@ -872,52 +713,50 @@ int main()
             model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f)); 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(v.spread, 0.0, 0.0f));
+            model = glm::scale(model, glm::vec3(0.005f * p.primary->length, 0.0025f * p.primary->thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(p.primary->spread, 0.0, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", c.projection);
-            crosshair.setMat4("view", c.view);
+            crosshair.setMat4("projection", p.playerCamera.projection);
+            crosshair.setMat4("view", p.playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * v.length, 0.0025f * v.thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(-v.spread, 0.0, 0.0f));
+            model = glm::scale(model, glm::vec3(0.005f * p.primary->length, 0.0025f * p.primary->thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(-p.primary->spread, 0.0, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", c.projection);
-            crosshair.setMat4("view", c.view);
+            crosshair.setMat4("projection", p.playerCamera.projection);
+            crosshair.setMat4("view", p.playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, v.spread * 1.1, 0.0f));
+            model = glm::scale(model, glm::vec3(0.00125f * p.primary->thickness, 0.008f * p.primary->length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, p.primary->spread * 1.1, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", c.projection);
-            crosshair.setMat4("view", c.view);
+            crosshair.setMat4("projection", p.playerCamera.projection);
+            crosshair.setMat4("view", p.playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * v.thickness, 0.008f * v.length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, -v.spread * 1.1, 0.0f));
+            model = glm::scale(model, glm::vec3(0.00125f * p.primary->thickness, 0.008f * p.primary->length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, -p.primary->spread * 1.1, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", c.projection);
-            crosshair.setMat4("view", c.view);
+            crosshair.setMat4("projection", p.playerCamera.projection);
+            crosshair.setMat4("view", p.playerCamera.view);
             renderQuad();
         }
         */
 
-       
-        debug.debugControls(window, deltaTime); 
+        // input
+        // -----
+        processInput(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
+        debug.debugControls(window, deltaTime); 
         //PRINT FRAMERATE
         std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
-
- 
-
-        
 
     }
 
@@ -1362,128 +1201,14 @@ void processInput(GLFWwindow* window)
     {
         glfwSetWindowShouldClose(window, true);
     }
-    const float speed = 10.0f;
-    if (glfwGetKey(window, GLFW_KEY_W))
-    {
-        lastSpeed += (c.forw);
-        if (isGrounded)
-        {
-            c.forward();
-        }
-    }
-    if (glfwGetKey(window, GLFW_KEY_A))
-    {
-        lastSpeed -= (glm::cross(c.forw, c.cameraUp));
-        if (isGrounded)
-        {
-            c.left();
-        }
-    }
-    if (glfwGetKey(window, GLFW_KEY_S))
-    {
-        lastSpeed -= (c.forw);
-        if (isGrounded)
-        {
-            c.back();
-        }
-    }
-    if (glfwGetKey(window, GLFW_KEY_D))
-    {
-        lastSpeed += (glm::cross(c.forw, c.cameraUp));
-        if (isGrounded)
-        {
-            c.right();
-        }
-    }
-    if (glfwGetKey(window, GLFW_KEY_Q))
-    {
-        //c.crouch();
-    }
-    if (glfwGetKey(window, GLFW_KEY_SPACE))
-    {
-        //c.jump();
-    }
-    else
-    {
-        
-    }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
-    {
-        c.speed = 1.35 * speed;
-    }
-    else
-    {
-        c.speed = 1.35 * speed;
-    }
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_4))
-    {
-       // c.crouch();
-    }
-    /**/
-    if (glfwGetKey(window, GLFW_KEY_SPACE))
-    {
-        isJump = true;
-
-
-    }
-    else
-    {
-        isJump = false;
-    }
+    
     
 }
 
-//MOUSE MOVEMENT
-double lastX = SCR_WIDTH / 2.0f;
-double lastY = SCR_HEIGHT / 2.0f;
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    static double xoffsetS = 0.0f;
-    static double yoffsetS = 0.0f;
-    double sensitivity = 0.05f;
-    double xpos = (xposIn);
-    double ypos = (yposIn);
-    xoffsetS = xpos - lastX;
-    yoffsetS = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-    xoffsetS *= sensitivity;
-    yoffsetS *= sensitivity;
-    c.camRot(xoffsetS, yoffsetS);
-}
 
-//SCROLL INPUT
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    
-}
-bool latch = false;
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_P && action == GLFW_PRESS)
-    {
-        // v.setState(0);
-    }
-    /*
-    if ((key == GLFW_KEY_SPACE && action == GLFW_PRESS))
-    {
-        if (!latch)
-        {
-            isJump = true;
-            latch = true;
-        }
-        else
-        {
-            isJump = false;
-        }
 
-    }
-    else
-    {
-       latch = false;
-       isJump = false;
-    }
-    */
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         toggleDebug *= -1;

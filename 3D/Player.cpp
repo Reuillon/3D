@@ -3,6 +3,10 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
 	primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
+    //primary = new Viewmodel(12, "Models/GUN/PEESTOL.fbx");
+    //primary = new Viewmodel(11, "Models/GUN/BS2.fbx");
+    //primary = new Viewmodel(11, "Models/GUN/DEGGLETMP.fbx");
+
 	playerCamera.init(SCR_WIDTH, SCR_HEIGHT, 52);
 	pWindow = window;
 	playerCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
