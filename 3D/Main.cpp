@@ -24,8 +24,6 @@
 //GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-void processInput(GLFWwindow* window);
 
 //INITIALIZER FUNCTIONS
 void initShadowMap();
@@ -85,8 +83,6 @@ float lastFrame = 0.0f;
 
 //FRAME TIMER
 double currtime;
-
-int shooting = -1;
 
 // Creates an identity matrix
 float rayIdentity[6] =
@@ -236,7 +232,6 @@ static GLFWwindow* windowInit()
     glfwSetKeyCallback(window, key_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
     //glfwSetMouseButtonCallback(window, &Input::mouse_button_callback);
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
     
@@ -271,23 +266,15 @@ static GLFWwindow* windowInit()
   
 
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
+    initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
+    //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
     
     return window;
 }
-glm::vec3 gravity = glm::vec3(0.0, 0.0, 0.0);
-bool isJump;
-bool isGrounded = false;
-glm::vec3 lastSpeed = glm::vec3(0);
-glm::vec2 normalizedSpeed = glm::vec2(0);
-glm::vec2 momentum = glm::vec2(0);
+Player* p;
 int toggleDebug = -1;
-
-
-
 int main()
 {   
     // glfw window creation
@@ -343,7 +330,7 @@ int main()
     /////ACTORS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    Player p(SCR_WIDTH, SCR_HEIGHT, window);
+    p = new Player(SCR_WIDTH, SCR_HEIGHT, window);
     
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -382,7 +369,7 @@ int main()
 
     //INITIALIZE SHADER UNIFORM DATA
     
-    /*
+    /**/
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
     shadowPass.setInt("diffuseTexture", 0);
@@ -406,12 +393,12 @@ int main()
     shaderSSAO.setInt("texNoise", 2);
     shaderSSAOBlur.use();
     shaderSSAOBlur.setInt("ssaoInput", 0);
-    */
+    
 
     //CUBEMAP SHADER
-    glm::mat4 projection = glm::perspective(glm::radians(p.playerCamera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
+    glm::mat4 projection = glm::perspective(glm::radians(p->playerCamera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, cameraNearPlane, cameraFarPlane);
     backgroundShader.use();
-    backgroundShader.setMat4("projection", p.playerCamera.projection);
+    backgroundShader.setMat4("projection", p->playerCamera.projection);
 
     //PBR SHADER
     shaderPBRT.use();
@@ -433,41 +420,10 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-        //COLLISION CHECKS
-        ResolutionData r;
-        p.isFalling = false;
-        p.isGrounded = false;
         
-        for (int i = 0; i < testMap.size(); i++)
-        {
-
-            r = GJK(p.playerCamera.floorCollider, testMap[i], deltaTime,false);
-            if (r.hasCollision && !p.isJump)
-            {
-                p.gravity = glm::vec3(0.0);
-            }
-            if (r.hasCollision)
-            {
-                p.isGrounded = true;
-                if (p.isJump)
-                {
-                    p.gravity.y = 11;
-                }
-            }
-            r = GJK(p.playerCamera.cameraCollider, testMap[i], deltaTime, true);
-            if (r.hasCollision)
-            {
-                p.isFalling = false;
-            }
-            else
-            {
-                p.isFalling = true;
-            }
-
-        }
     
-        p.update(deltaTime, viewShader);
-        debug.drawGrid(p.playerCamera);
+        p->update(deltaTime, viewShader, testMap);
+        debug.drawGrid(p->playerCamera);
         lightDir = glm::normalize(glm::vec3(30.0f, 5.0, 30.0f));
         //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
@@ -495,8 +451,8 @@ int main()
         /*
         model = glm::mat4(1.0f);
         depthShader.setMat4("model", model);
-        depthShader.setMat4("projection", c.projection);
-        depthShader.setMat4("view", c.view);
+        depthShader.setMat4("projection", p->projection);
+        depthShader.setMat4("view", p->view);
         depthShader.use();
 
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
@@ -526,12 +482,12 @@ int main()
         glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.00784313725f, 0.431372549f, 0.678431373f, 1.0f);
-        const glm::mat4 projection = glm::perspective(glm::radians(c.fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
-        const glm::mat4 view = c.view;
-        shadowPass.setMat4("projection", c.projection);
+        const glm::mat4 projection = glm::perspective(glm::radians(p->fov), (float)fb_width / (float)fb_height, cameraNearPlane, cameraFarPlane);
+        const glm::mat4 view = p->view;
+        shadowPass.setMat4("projection", p->projection);
         shadowPass.setMat4("view", view);
         // set light uniforms
-        shadowPass.setVec3("viewPos", c.cameraPos);
+        shadowPass.setVec3("viewPos", p->cameraPos);
         shadowPass.setVec3("lightDir", lightDir);
         shadowPass.setFloat("farPlane", cameraFarPlane);
         shadowPass.setInt("cascadeCount", shadowCascadeLevels.size());
@@ -567,9 +523,9 @@ int main()
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderGeometryPass.use();
-        shaderGeometryPass.setMat4("projection", c.projection);
-        shaderGeometryPass.setMat4("view", c.view);
-        shaderGeometryPass.setVec3("viewPos", c.cameraPos);
+        shaderGeometryPass.setMat4("projection", p->projection);
+        shaderGeometryPass.setMat4("view", p->view);
+        shaderGeometryPass.setVec3("viewPos", p->cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, woodTexture);
         staticRender(shaderGeometryPass, map, 0, 0, 0, 0);
@@ -577,8 +533,8 @@ int main()
         glBindTexture(GL_TEXTURE_2D, woodTexture);
         glDisable(GL_CULL_FACE);
         shaderGeometryPass.use();
-        shaderGeometryPass.setMat4("projection", c.projection);
-        shaderGeometryPass.setMat4("view", c.view);
+        shaderGeometryPass.setMat4("projection", p->projection);
+        shaderGeometryPass.setMat4("view", p->view);
         shaderGeometryPass.setMat4("model", model);
         gun.draw(shaderGeometryPass);
         glEnable(GL_CULL_FACE);
@@ -593,7 +549,7 @@ int main()
         // Send kernel + rotation
         for (unsigned int i = 0; i < 64; ++i)
             shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
-        shaderSSAO.setMat4("projection", c.projection);
+        shaderSSAO.setMat4("projection", p->projection);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -626,10 +582,10 @@ int main()
         glClear(GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
         // send light relevant uniforms
-        shaderLightingPass.setMat4("view", c.view);
+        shaderLightingPass.setMat4("view", p->view);
 
         // set light uniforms
-        shaderLightingPass.setVec3("viewPos", c.cameraPos);
+        shaderLightingPass.setVec3("viewPos", p->cameraPos);
         shaderLightingPass.setVec3("lightDir", lightDir);
         shaderLightingPass.setFloat("farPlane", cameraFarPlane);
         shaderLightingPass.setInt("cascadeCount", shadowCascadeLevels.size());
@@ -652,9 +608,9 @@ int main()
 
         //PBR UNIFORMS
         shaderPBRT.use();
-        shaderPBRT.setMat4("projection", p.playerCamera.projection);
-        shaderPBRT.setMat4("view", p.playerCamera.view);
-        shaderPBRT.setVec3("camPos", p.playerCamera.cameraPos);
+        shaderPBRT.setMat4("projection", p->playerCamera.projection);
+        shaderPBRT.setMat4("view", p->playerCamera.view);
+        shaderPBRT.setVec3("camPos", p->playerCamera.cameraPos);
         shaderPBRT.setVec3("lightDir", lightDir);
 
         //SETS BACKGROUND FOR IBL
@@ -668,7 +624,7 @@ int main()
         //DRAWS CUBEMAP FOR IBL
         glDisable(GL_CULL_FACE);
         backgroundShader.use();
-        backgroundShader.setMat4("view", p.playerCamera.view);
+        backgroundShader.setMat4("view", p->playerCamera.view);
         glActiveTexture(GL_TEXTURE0);
         //DRAWS BLURRED MAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
@@ -681,28 +637,28 @@ int main()
         /*
         //DRAWS XYZ LINES
         //DEFAULT ORIENTATIONS (X,Y,Z)
-        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        debug.drawLine(p.playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
+        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
+        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
+        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         */
         
-        //debug.drawCollider(p.playerCamera.floorCollider,p.playerCamera);
+        //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
         if (toggleDebug == 1)
         {
             for (int i = 0; i < testMap.size(); i++)
             {
-               debug.drawCollider(testMap[i], p.playerCamera);
+               debug.drawCollider(testMap[i], p->playerCamera);
             }
         }
         else
         {
             glDisable(GL_CULL_FACE);
-            mapRender(p.playerCamera, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
+            mapRender(p->playerCamera, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
         }
         glEnable(GL_CULL_FACE);
-        //staticRender(p.playerCamera, shaderPBRT, base);
-        //drawSand(p.playerCamera, sandShader, sand, envCubemap);
-        drawWater(p.playerCamera, waterShader, water, envCubemap);
+        //staticRender(p->playerCamera, shaderPBRT, base);
+        //drawSand(p->playerCamera, sandShader, sand, envCubemap);
+        drawWater(p->playerCamera, waterShader, water, envCubemap);
         
         glDisable(GL_CULL_FACE);
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
@@ -713,50 +669,49 @@ int main()
             model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f)); 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * p.primary->length, 0.0025f * p.primary->thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(p.primary->spread, 0.0, 0.0f));
+            model = glm::scale(model, glm::vec3(0.005f * p->primary->length, 0.0025f * p->primary->thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(p->primary->spread, 0.0, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p.playerCamera.projection);
-            crosshair.setMat4("view", p.playerCamera.view);
+            crosshair.setMat4("projection", p->playerCamera.projection);
+            crosshair.setMat4("view", p->playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * p.primary->length, 0.0025f * p.primary->thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(-p.primary->spread, 0.0, 0.0f));
+            model = glm::scale(model, glm::vec3(0.005f * p->primary->length, 0.0025f * p->primary->thickness, 0.005f));
+            model = glm::translate(model, glm::vec3(-p->primary->spread, 0.0, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p.playerCamera.projection);
-            crosshair.setMat4("view", p.playerCamera.view);
+            crosshair.setMat4("projection", p->playerCamera.projection);
+            crosshair.setMat4("view", p->playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * p.primary->thickness, 0.008f * p.primary->length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, p.primary->spread * 1.1, 0.0f));
+            model = glm::scale(model, glm::vec3(0.00125f * p->primary->thickness, 0.008f * p->primary->length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, p->primary->spread * 1.1, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p.playerCamera.projection);
-            crosshair.setMat4("view", p.playerCamera.view);
+            crosshair.setMat4("projection", p->playerCamera.projection);
+            crosshair.setMat4("view", p->playerCamera.view);
             renderQuad();
 
             crosshair.use();
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * p.primary->thickness, 0.008f * p.primary->length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, -p.primary->spread * 1.1, 0.0f));
+            model = glm::scale(model, glm::vec3(0.00125f * p->primary->thickness, 0.008f * p->primary->length, 0.005f));
+            model = glm::translate(model, glm::vec3(0.0, -p->primary->spread * 1.1, 0.0f));
             crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p.playerCamera.projection);
-            crosshair.setMat4("view", p.playerCamera.view);
+            crosshair.setMat4("projection", p->playerCamera.projection);
+            crosshair.setMat4("view", p->playerCamera.view);
             renderQuad();
         }
         */
 
         // input
         // -----
-        processInput(window);
         glfwSwapBuffers(window);
         glfwPollEvents();
         debug.debugControls(window, deltaTime); 
         //PRINT FRAMERATE
-        std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
+        //std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
 
     }
 
@@ -1194,44 +1149,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-//CONTINOUS INPUT
-void processInput(GLFWwindow* window)
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
     {
         glfwSetWindowShouldClose(window, true);
     }
-    
-    
-}
-
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         toggleDebug *= -1;
-        //  v.setState(1);
-    }
-    if (key == GLFW_KEY_R && action == GLFW_PRESS)
-    {
-        // v.setState(2);
-    }
-
-}
-
-//MOUSE SINGLE INPUT
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
-        shooting = 1;
-    }
-    else
-    {
-        shooting = -1;
     }
 }
 
@@ -1267,9 +1193,9 @@ static std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& proj,
 static glm::mat4 getLightSpaceMatrix(const float nearPlane, const float farPlane)
 {
     const auto proj = glm::perspective(
-        glm::radians(c.fov), (float)fb_width / (float)fb_height, nearPlane,
+        glm::radians(p->playerCamera.fov), (float)fb_width / (float)fb_height, nearPlane,
         farPlane);
-    const auto corners = getFrustumCornersWorldSpace(proj, c.view);
+    const auto corners = getFrustumCornersWorldSpace(proj, p->playerCamera.view);
 
     glm::vec3 center = glm::vec3(0, 0, 0);
     for (const auto& v : corners)

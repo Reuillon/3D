@@ -6,6 +6,7 @@
 #include "Viewmodel.h"
 #include "Collision.h"
 #include "camera.h"
+#include "debug.h"
 
 class Player
 {
@@ -195,22 +196,22 @@ class Player
 		};
 		float floor[96] =
 		{
-			0.000000, -1.368745, 0.873606,
-			-0.334314, -1.368745, 0.807106,
-			-0.617732, -1.368745, 0.617733,
-			-0.807106, -1.368745, 0.334315,
-			-0.873605, -1.368745, -0.000000,
-			-0.807106, -1.368745, -0.334314,
-			-0.617733, -1.368745, -0.617732,
-			-0.334315, -1.368745, -0.807106,
-			0.000000, -1.368745, -0.873606,
-			0.334314, -1.368745, -0.807107,
-			0.617732, -1.368745, -0.617733,
-			0.807106, -1.368745, -0.334315,
-			0.873606, -1.368745, -0.000000,
-			0.807107, -1.368745, 0.334315,
-			0.617733, -1.368745, 0.617733,
-			0.334314, -1.368745, 0.807106,
+			0.000000, -1.206353, 0.873606,
+			0.334314, -1.206353, 0.807106,
+			0.617733, -1.206353, 0.617733,
+			0.807107, -1.206353, 0.334315,
+			0.873606, -1.206353, -0.000000,
+			0.807106, -1.206353, -0.334315,
+			0.617732, -1.206353, -0.617733,
+			0.334314, -1.206353, -0.807107,
+			0.000000, -1.206353, -0.873606,
+			-0.334315, -1.206353, -0.807106,
+			-0.617733, -1.206353, -0.617732,
+			-0.807106, -1.206353, -0.334314,
+			-0.873605, -1.206353, -0.000000,
+			-0.807106, -1.206353, 0.334315,
+			-0.617732, -1.206353, 0.617733,
+			-0.334314, -1.206353, 0.807106,
 			0.000000, -1.421372, 0.873606,
 			-0.334314, -1.421372, 0.807106,
 			-0.617732, -1.421372, 0.617733,
@@ -231,31 +232,47 @@ class Player
 
 
 	public:
+		//PLAYER ATTRIBUTES
 		MeshCollider playerCollider;
 		MeshCollider floorCollider;
 		Viewmodel* primary;
+		Viewmodel* secondary;
 		GLFWwindow* pWindow;
 		ResolutionData r;
 
+		//PLAYER STATES
+		bool latch = false;
 		bool isJump = false;
 		bool isGrounded = false;
-		bool latch = false;
 		bool isFalling = false;
+		bool movingVertical = false;
+		bool movingHorizontal = false;
 		
+		//MOUSE OFFSET FOR MOUSE CONTROLS
 		float screenX, screenY;
 		double lastX, lastY;
 
+		//PLAYER MOVEMENT BEHAVIOR
+		float newDelta;
+		float airMomentumTimer = 0.0f;
+		float horizontalSpeed = 0.0f;
+		float verticalSpeed = 0.0f;
+
 		glm::vec3 gravity = glm::vec3(0.0);
 		glm::vec3 lastSpeed = glm::vec3(0);
+		glm::vec3 redirect = glm::vec3(0);
 		glm::vec2 normalizedSpeed = glm::vec2(0);
+		glm::vec3 playerForward = glm::vec3(0.0);
+		glm::vec3 groundVelocity = glm::vec3(0.0);
 		glm::vec2 momentum = glm::vec2(0);
 		
+		//PLAYER INFORMATION
 		glm::vec3 playerPosition = glm::vec3(0.0);
 		glm::vec3 playerRotation = glm::vec3(0.0);
 		camera playerCamera;
 
 		Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window);
-		void update(float deltaTime, Shader& shader);
+		void update(float deltaTime, Shader& shader, std::vector<MeshCollider>& collisionMap);
 		void playerControls();
 		void mouseControl();
 };

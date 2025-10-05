@@ -198,22 +198,22 @@ class camera
 		};
 		float floor[96] =
 		{
-			0.000000, -1.368745, 0.873606,
-			-0.334314, -1.368745, 0.807106,
-			-0.617732, -1.368745, 0.617733,
-			-0.807106, -1.368745, 0.334315,
-			-0.873605, -1.368745, -0.000000,
-			-0.807106, -1.368745, -0.334314,
-			-0.617733, -1.368745, -0.617732,
-			-0.334315, -1.368745, -0.807106,
-			0.000000, -1.368745, -0.873606,
-			0.334314, -1.368745, -0.807107,
-			0.617732, -1.368745, -0.617733,
-			0.807106, -1.368745, -0.334315,
-			0.873606, -1.368745, -0.000000,
-			0.807107, -1.368745, 0.334315,
-			0.617733, -1.368745, 0.617733,
-			0.334314, -1.368745, 0.807106,
+			0.000000, -1.206353, 0.873606,
+			0.334314, -1.206353, 0.807106,
+			0.617733, -1.206353, 0.617733,
+			0.807107, -1.206353, 0.334315,
+			0.873606, -1.206353, -0.000000,
+			0.807106, -1.206353, -0.334315,
+			0.617732, -1.206353, -0.617733,
+			0.334314, -1.206353, -0.807107,
+			0.000000, -1.206353, -0.873606,
+			-0.334315, -1.206353, -0.807106,
+			-0.617733, -1.206353, -0.617732,
+			-0.807106, -1.206353, -0.334314,
+			-0.873605, -1.206353, -0.000000,
+			-0.807106, -1.206353, 0.334315,
+			-0.617732, -1.206353, 0.617733,
+			-0.334314, -1.206353, 0.807106,
 			0.000000, -1.421372, 0.873606,
 			-0.334314, -1.421372, 0.807106,
 			-0.617732, -1.421372, 0.617733,
@@ -231,30 +231,23 @@ class camera
 			0.617733, -1.421372, 0.617733,
 			0.334314, -1.421372, 0.807106
 		};
-		MeshCollider cameraCollider;
-		MeshCollider floorCollider;
+
 		camera(const unsigned int width, const unsigned int height, const unsigned int cFov);
 		camera();
 
-		glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 3.0f);
-		glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+		glm::vec3 cameraPos = glm::vec3(0.0f);
+		glm::vec3 cameraTarget = glm::vec3(0.0f);
 		glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 		glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
 		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 		glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 		glm::vec3 front = glm::vec3(0.0f);
-		glm::vec3 forw = front;
 		glm::mat4 projection;
 		glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-		glm::vec3 nextPosition = glm::vec3(0.0f);
+
 		
-		void forward();
-		void left();
-		void right();
-		void back();
-		void jump();
-		void crouch();
+		
 		void update(float deltaTime);
 		void camRot(float xOffset, float yOffset);
 		void fovMod(float val);

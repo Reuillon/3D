@@ -162,7 +162,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 
 	animate.loopAnim(true);
 	animController(window);
-	glClear(GL_DEPTH_BUFFER_BIT);
+	
 
 	m.draw(shader);
 }
