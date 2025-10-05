@@ -266,9 +266,9 @@ static GLFWwindow* windowInit()
   
 
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    initPBR("TEXTURES/hdri/color.hdr");
+    //initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
+    initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
     
     return window;

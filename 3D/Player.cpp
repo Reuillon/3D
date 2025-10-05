@@ -24,6 +24,7 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
 
 int swapWeapon = -1;
 float rate = 5000;
+
 Debug debugger;
 void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& collisionMap)
 {
@@ -76,6 +77,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     if (isFalling)
     {
         playerCollider.moveCollider(glm::vec3(0.0, gravity.y * deltaTime, 0.0));
+        
 
         gravity.y -= (20 * deltaTime);
         if (gravity.y < -300)
@@ -93,9 +95,11 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     }
 
     //CHECK IF PLAYER IS ON THE GROUND
+  
+
+    normalizedSpeed = glm::vec2(0);
     if (isGrounded)
     {
-        normalizedSpeed = glm::vec2(0);
         //WASD CONTROLS ON THE GROUND
         glm::vec3 temp = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
         glm::vec2 hori = glm::vec2(temp.x, temp.z);
@@ -106,34 +110,44 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         }
         normalizedSpeed = (hori * (abs(speedNorm.x) * horizontalSpeed)) + (glm::vec2(playerForward.x, playerForward.z) * (abs(speedNorm.y) * verticalSpeed));
         playerCollider.moveCollider(glm::vec3(normalizedSpeed.x * deltaTime, 0.0, normalizedSpeed.y * deltaTime));
-     
+        playerCollider.moveCollider(glm::vec3(momentum.x * deltaTime, 0.0, momentum.y * deltaTime));
+        momentum /= 1 + (deltaTime * 8);
         
         //KEEPS PLAYER MOMENTUM WHEN JUMPING AS LONG AS NEXT JUMP IS FAST ENOUGH
         airMomentumTimer += deltaTime;
 
-        if (airMomentumTimer > 0.05f)
+        if (airMomentumTimer > 0.025f)
         {
             lastSpeed = glm::vec3(0);
         }
-        lastSpeed = glm::vec3(normalizedSpeed.x , 0 , normalizedSpeed.y);
-  
-        
-        
-        
-        normalizedSpeed = glm::vec2(0);
 
+
+        
     }
     else
     {
+        verticalSpeed = 0;
+        horizontalSpeed = 0;
+        glm::vec2 normalAirVector = glm::vec3(0.0);
+        if (lastSpeed.x != 0 && lastSpeed.z != 0)
+        {
+            normalAirVector = glm::normalize(glm::vec2(lastSpeed.x, lastSpeed.z));
+            momentum = normalAirVector;
+        }
+        else
+        {
+            momentum = glm::vec2(0.0);
+            normalAirVector = glm::vec2(0);
+        }
+
         airMomentumTimer = 0.0;
-        playerCollider.moveCollider(glm::vec3(lastSpeed.x * deltaTime , 0.0, lastSpeed.z * deltaTime));
-
+        playerCollider.moveCollider(glm::vec3(normalAirVector.x * 15.0 * deltaTime , 0.0, normalAirVector.y * 15.0 * deltaTime));
+        momentum = glm::vec2(normalAirVector.x * 12, normalAirVector.y * 12);
     }
-
+    
   
-
-
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 1.5, playerCollider.pos.z);
+   
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 1.9, playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     groundVelocity = glm::vec3(0.0);
     movingHorizontal = false;
@@ -170,6 +184,7 @@ void Player::playerControls()
             movingVertical = true;
             verticalSpeed += 70 * newDelta;
         }
+        lastSpeed += playerForward * 100.0f;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_A))
     {
@@ -178,7 +193,7 @@ void Player::playerControls()
             movingHorizontal = true;
             horizontalSpeed -= 70 * newDelta;
         }
-
+        lastSpeed -= glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * 100.0f;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_S))
     {
@@ -186,8 +201,8 @@ void Player::playerControls()
         {
             movingVertical = true;
             verticalSpeed -= 70 * newDelta;
-        }
-
+        } 
+        lastSpeed -= playerForward * 100.0f;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_D))
     {
@@ -196,7 +211,7 @@ void Player::playerControls()
             movingHorizontal = true;
             horizontalSpeed += 70 * newDelta;
         }
- 
+       lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * 100.0f;
     }
 
     
@@ -232,9 +247,7 @@ void Player::playerControls()
     {
         verticalSpeed = 0;
     }
-    if (movingHorizontal && movingVertical)
-    {
-    }
+    
 
 
     if (glfwGetKey(pWindow, GLFW_KEY_LEFT_SHIFT))
