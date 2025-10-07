@@ -7,6 +7,7 @@
 #include "Collision.h"
 #include "camera.h"
 #include "debug.h"
+#include "utility.h"
 
 class Player
 {
@@ -263,9 +264,13 @@ class Player
 		glm::vec3 redirect = glm::vec3(0);
 		glm::vec2 normalizedSpeed = glm::vec2(0);
 		glm::vec3 playerForward = glm::vec3(0.0);
-		glm::vec3 groundVelocity = glm::vec3(0.0);
 		glm::vec2 momentum = glm::vec2(0);
-		
+		glm::vec2 airVelocity = glm::vec2(0);
+		float groundAcceleration = 70.0;
+		float airAcceleration = 0.0;
+
+
+
 		//PLAYER INFORMATION
 		glm::vec3 playerPosition = glm::vec3(0.0);
 		glm::vec3 playerRotation = glm::vec3(0.0);

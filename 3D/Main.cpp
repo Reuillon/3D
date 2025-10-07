@@ -266,9 +266,9 @@ static GLFWwindow* windowInit()
   
 
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
+    initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
-    initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
+    //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
     
     return window;
@@ -663,6 +663,7 @@ int main()
         glDisable(GL_CULL_FACE);
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
+       
         /*
         {
             model = glm::mat4(1.0f);
@@ -711,7 +712,7 @@ int main()
         glfwPollEvents();
         debug.debugControls(window, deltaTime); 
         //PRINT FRAMERATE
-        //std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
+        std::cout << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n";
 
     }
 
