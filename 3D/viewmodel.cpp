@@ -96,6 +96,8 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	shader.setInt("prefilterMap", 6);
 	shader.setInt("brdfLUT", 7);
 	c.fov = 45;
+
+
 	c.update(deltaTime);
 	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
@@ -165,6 +167,9 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	
 
 	m.draw(shader);
+	c.cameraNear = 0.001f;
+	c.cameraFar = 10000.0f;
+
 }
 float thisTimer = 0.0;
 bool isShoot = false; 

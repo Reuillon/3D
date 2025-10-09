@@ -11,6 +11,7 @@ class camera
 	public:
 		unsigned int scrWidth = 1;
 		unsigned int scrHeight = 1;
+		float cameraNear = 0.1, cameraFar = 10000;
 		float yaw = -90.0f;
 		float pitch = 0.0f;
 		float fov = 95;

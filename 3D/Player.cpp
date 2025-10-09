@@ -58,12 +58,13 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
             //COLLISION RESOLUTION FOR HITTING THE WALL IN AIR
             if (lastSpeed != glm::vec3(0.0) && !movingHorizontal && !movingVertical)
             {
-                lastSpeed = (glm::normalize(lastSpeed) - (r.Normal));
-                airAcceleration /= 1 + (deltaTime * 2000);
+                lastSpeed = (glm::normalize(-r.Normal));
+                airAcceleration /= 1 + (deltaTime * 4000);
+
             }
             else
             {
-                airAcceleration /= 1 + (deltaTime * 25);
+                airAcceleration /= 1 + (deltaTime * 35);
             }
 
             normalizedSpeed = glm::vec3(normalizedSpeed.x,0,normalizedSpeed.y) - r.Normal;
@@ -80,7 +81,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     playerForward.x = cos(glm::radians(playerCamera.yaw));
     playerForward.z = sin(glm::radians(playerCamera.yaw));
     //RESET POSITION IF OUT OF BOUNDS
-    if (playerCollider.pos.y < -100)
+    if (playerCollider.pos.y < 0)
     {
         playerCollider.setTransform(glm::vec3(100.0f, 105.0f, 100.0), glm::vec3(0.0));
         gravity = glm::vec3(0.0);
@@ -114,6 +115,8 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         if (lastSpeed != glm::vec3(0)) {lastSpeed /= 1 + (newDelta * 350);}
         if (movingHorizontal && movingVertical) { groundAcceleration = 105; }
         else { groundAcceleration = 70; }
+
+        MAXSPEED = 1.0;
 
         //WASD CONTROLS ON THE GROUND
         glm::vec3 temp = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
@@ -156,8 +159,8 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         horizontalSpeed = 0;
 
         airMomentumTimer = 0.0;
-        momentum = glm::vec2(normalAirVector.x * airAcceleration, normalAirVector.y * airAcceleration);
-        playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * deltaTime , 0.0, normalAirVector.y * airAcceleration * deltaTime));
+        momentum = glm::vec2(normalAirVector.x * airAcceleration * MAXSPEED, normalAirVector.y * airAcceleration * MAXSPEED);
+        playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
     
   
@@ -168,6 +171,8 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
 
     glDisable(GL_CULL_FACE);
     glClear(GL_DEPTH_BUFFER_BIT);
+    
+    //RENDER VIEWMODEL
     primary->render(playerCamera, shader, pWindow);
     //secondary->render(playerCamera, shader, pWindow);
 
@@ -185,77 +190,115 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     mouseControl();
 }
 
-const float speed = 2.0f;
 void Player::playerControls()
 {
-
-    
     if (glfwGetKey(pWindow, GLFW_KEY_W))
     {
-            movingVertical = true;
+        movingVertical = true;
         if (isGrounded)
         {
             if (verticalSpeed < 0) {verticalSpeed /= (1 + (newDelta * 20));}
             verticalSpeed += groundAcceleration * newDelta;
         }
         airVelocity.y += 35 * newDelta;
-        airAcceleration += 70 * newDelta;
-        lastSpeed += playerForward * airVelocity.y;
-    }
-    if (glfwGetKey(pWindow, GLFW_KEY_A))
-    {
-            movingHorizontal = true;
-        if (isGrounded)
+        airAcceleration += 70 * newDelta * MAXSPEED;
+        lastSpeed +=  playerForward * airVelocity.y * MAXSPEED;
+        if (lastSpeed != glm::vec3(0.0))
         {
-            if (horizontalSpeed > 0) {horizontalSpeed /= (1 + (newDelta * 20));}
-            horizontalSpeed -= groundAcceleration * newDelta;
+            normalizedAirSpeed = glm::normalize(lastSpeed);
+            if (u.oppositeDirection(1.0, 1.0, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(playerForward.x, playerForward.z)))
+            {
+                airAcceleration /= 1 + (newDelta * 20);
+                MAXSPEED = airAcceleration / 15;
+            }
+
         }
-        airVelocity.x += 35 * newDelta;
-        airAcceleration += 70 * newDelta;
-        lastSpeed -= glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_S))
     {
-            movingVertical = true;
+        movingVertical = true;
         if (isGrounded)
         {
             if (verticalSpeed > 0) {verticalSpeed /= (1 + (newDelta * 20));}
             verticalSpeed -= groundAcceleration * newDelta;
         } 
         airVelocity.y += 35 * newDelta;
-        airAcceleration += 70 * newDelta;
-        lastSpeed -= playerForward * airVelocity.y;
+        airAcceleration += 70 * newDelta * MAXSPEED;
+        lastSpeed -= playerForward * airVelocity.y * MAXSPEED;
+        if (lastSpeed != glm::vec3(0.0))
+        {
+            normalizedAirSpeed = glm::normalize(-lastSpeed);
+            if (u.oppositeDirection(1.0, 1.0, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(playerForward.x, playerForward.z)))
+            {
+                airAcceleration /= 1 + (newDelta * 20);
+                MAXSPEED = airAcceleration / 15;
+            }
+
+        }
+    }
+
+    if (glfwGetKey(pWindow, GLFW_KEY_A))
+    {
+        movingHorizontal = true;
+        if (isGrounded)
+        {
+            if (horizontalSpeed > 0) {horizontalSpeed /= (1 + (newDelta * 20));}
+            horizontalSpeed -= groundAcceleration * newDelta;
+        }
+        airVelocity.x += 35 * newDelta;
+        airAcceleration += 70 * newDelta * MAXSPEED;
+        lastSpeed -= glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
+        if (lastSpeed != glm::vec3(0.0))
+        {
+            normalizedAirSpeed = glm::normalize(-lastSpeed);
+            glm::vec3 airStrafe = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
+            if (u.oppositeDirection(0.2, 0.2, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(airStrafe.x, airStrafe.z)))
+            {
+                airAcceleration /= 1 + (newDelta * 20);
+                MAXSPEED = airAcceleration / 15;
+            }
+        }
     }
     if (glfwGetKey(pWindow, GLFW_KEY_D))
     {
-           movingHorizontal = true;
+       movingHorizontal = true;
        if (isGrounded)
        {
            if (horizontalSpeed < 0) { horizontalSpeed /= (1 + (newDelta * 20)); }
            horizontalSpeed += groundAcceleration * newDelta;
        }
        airVelocity.x += 35 * newDelta;
-       airAcceleration += 70 * newDelta;
-       lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x;
+       airAcceleration += 70 * newDelta * MAXSPEED;
+       lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
+       if (lastSpeed != glm::vec3(0.0))
+       {
+           normalizedAirSpeed = glm::normalize(lastSpeed);
+           glm::vec3 airStrafe = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
+           if (u.oppositeDirection(0.2, 0.2, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(airStrafe.x, airStrafe.z)))
+           {
+               airAcceleration /= 1 + (newDelta * 20);
+               MAXSPEED = airAcceleration / 15;
+           }
+       }
     }
 
     //SLOWS PLAYER DOWN WHEN NO INPUTS ARE PRESENT
     if (!movingVertical && isGrounded)
     {
-        verticalSpeed /= (1 + (newDelta * 20));
+        verticalSpeed /= (1 + (newDelta * 10));
     }
     if (!movingHorizontal && isGrounded)
     {
-        horizontalSpeed /= (1 + (newDelta * 20));
+        horizontalSpeed /= (1 + (newDelta * 10));
     }
     
     //SPEED CAPS FOR GROUND MOVEMENT
     if (horizontalSpeed > 15) {horizontalSpeed = 15;}
     else if (horizontalSpeed < -15) {horizontalSpeed = -15;}
-    else if (horizontalSpeed > -0.001 && horizontalSpeed < 0.001) {horizontalSpeed = 0;}
+    else if (u.checkBounds(-0.01, 0.01,horizontalSpeed)) {horizontalSpeed = 0;}
     if (verticalSpeed > 15) {verticalSpeed = 15;}
     else if (verticalSpeed < -15) {verticalSpeed = -15;}
-    else if (verticalSpeed > -0.001 && verticalSpeed < 0.001) {verticalSpeed = 0;}
+    else if (u.checkBounds(-0.01, 0.01, verticalSpeed)) {verticalSpeed = 0;}
 
     //SPEED CAPS FOR AIR MOVEMENT
     if (airAcceleration > 15) {airAcceleration = 15;}

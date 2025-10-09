@@ -266,6 +266,9 @@ class Player
 		glm::vec3 playerForward = glm::vec3(0.0);
 		glm::vec2 momentum = glm::vec2(0);
 		glm::vec2 airVelocity = glm::vec2(0);
+		glm::vec3 normalizedAirSpeed = glm::vec3(0);
+		
+		float MAXSPEED = 1.0;
 		float groundAcceleration = 70.0;
 		float airAcceleration = 0.0;
 

@@ -7,7 +7,7 @@ camera::camera(const unsigned int width, const unsigned int height, const unsign
 	scrWidth = width;
 	scrHeight = height;
 	fov = cFov;
-	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.001f, 2000.0f);
+	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, cameraNear, cameraFar);
 }
 camera::camera()
 {
@@ -17,7 +17,7 @@ void camera::init(const unsigned int width, const unsigned int height, const uns
 	scrWidth = width;
 	scrHeight = height;
 	fov = cFov;
-	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.001f, 2000.0f);
+	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, cameraNear, cameraFar);
 }
 
 void camera::camRot(float xOffset, float yOffset)
@@ -49,7 +49,7 @@ void camera::update(float deltaTime)
 	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 	cameraFront = glm::normalize(front);
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, 0.1f, 10000.0f);
+	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, cameraNear, cameraFar);
 }
 void camera::fovMod(float val)
 {
