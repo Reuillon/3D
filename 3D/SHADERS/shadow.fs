@@ -60,9 +60,9 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
     }
     // calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(fs_in.Normal);
-    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.05);
     bias = clamp(bias, 0.0, clampVal);
-    const float biasModifier = 0.5f;
+    const float biasModifier = 1.0f;
     if (layer == cascadeCount)
     {
         bias *= 1 / (farPlane * biasModifier);

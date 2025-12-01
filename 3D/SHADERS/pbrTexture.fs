@@ -212,8 +212,9 @@ void main()
      kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
     
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 irradiance = texture(irradianceMap, N).rgb * 1.2;
     vec3 diffuse      = irradiance * albedo;
+    //vec3 diffuse      =  albedo;
     
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
     const float MAX_REFLECTION_LOD = 2.5;
@@ -225,9 +226,13 @@ void main()
     specular = prefilteredColor * (F * brdf.x + brdf.y) * spec;
 
     vec3 ambient = (kD * diffuse + specular) ;
+    //vec3 ambient = (kD * diffuse) ;
     //ambient = ambient / (ambient+ vec3(1.0));
     //ambient = pow(ambient, vec3(1.0/1.1));
+    
+    
     vec3 color = ambient + Lo;
+    //vec3 color = albedo;
 
     // HDR tonemapping
     color = color / (color + vec3(1.0));

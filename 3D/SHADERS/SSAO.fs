@@ -7,12 +7,12 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
-uniform vec3 samples[32];
+uniform vec3 samples[64];
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
-int kernelSize = 32;
-float radius = 0.5;
-float bias = 0.025;
+int kernelSize = 64;
+float radius = 0.3;
+float bias = 0.05;
 
 // tile noise texture over screen based on screen dimensions divided by noise size
 const vec2 noiseScale = vec2(2560.0/4.0, 1440.0/4.0); 
@@ -29,8 +29,14 @@ void main()
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
     vec3 bitangent = cross(normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, normal);
-    // iterate over the sample kernel and calculate occlusion factor
     float occlusion = 0.0;
+    if (fragPos.z >= 1.0)
+    {
+        occlusion = 1.0;
+        FragColor = occlusion;
+        return;
+    }
+    // iterate over the sample kernel and calculate occlusion factor
     for(int i = 0; i < kernelSize; ++i)
     {
         // get sample position
@@ -50,7 +56,8 @@ void main()
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;           
     }
-    occlusion = 1.0 - (occlusion / kernelSize);
     
-    FragColor = occlusion;
+    occlusion = 1.0 - (occlusion / kernelSize);
+
+    FragColor = occlusion;    
 }

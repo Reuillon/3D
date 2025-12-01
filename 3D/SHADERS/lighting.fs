@@ -10,7 +10,7 @@ uniform sampler2D ssao;
 uniform sampler2D shadowMap;
 
 uniform vec3 lightDir;
-uniform vec3 viewPos;
+
 
 
 
@@ -21,14 +21,14 @@ void main()
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec3 Normal = texture(gNormal, TexCoords).rgb;
     vec3 Diffuse = texture(gAlbedo, TexCoords).rgb ;
-    float AmbientOcclusion = texture(ssao, TexCoords).r;
+    float AmbientOcclusion = pow(texture(ssao, TexCoords).r, 5.0);
    
     
     vec3 color = Diffuse;
     vec3 normal = Normal;
     vec3 lightColor = vec3(1.0);
     // ambient
-    vec3 ambient = vec3(0.6 * Diffuse )* AmbientOcclusion; 
+    vec3 ambient = vec3(Diffuse * 0.8) * AmbientOcclusion; 
     // diffuse
 
     vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lightColor;
@@ -41,8 +41,12 @@ void main()
     vec3 specular = spec * lightColor;    
     // calculate shadow
                      
-    vec3 lighting = (ambient * (diffuse + specular) * texture(shadowMap, TexCoords).rgb) * color  ;    
-    
+    vec3 lighting = (ambient * (diffuse + specular)) * color * texture(shadowMap, TexCoords).rgb  ;    
+    //vec3 lighting = (ambient * (diffuse + specular)) * color;    
+    //HDR TONEMAPPING
+    lighting = lighting / (lighting + vec3(1.0));
+    // gamma correct
+    lighting = pow(lighting, vec3(1.0/2.2)); 
     FragColor = vec4(lighting, 1.0);
     //FragColor = vec4((diffuse ), 1.0) ;
 }
