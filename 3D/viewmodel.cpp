@@ -36,18 +36,18 @@ glm::vec3 lastPos;
 
 glm::vec3 lightDirTEST = glm::normalize(glm::vec3(30.0f, -5.0, 30.0f));
 
-void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
+void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float speed, float gravity, bool isGrounded)
 {
-	if (lastPos.x != c.cameraPos.x || lastPos.z != c.cameraPos.z)
+	if (speed != 0)
 	{
 		
-		swayX += deltaTime * 1 * 8;
-		swayY += deltaTime * 2 * 8;
+		swayX += deltaTime * speed * 1 * 8;
+		swayY += deltaTime * speed * 2 * 8;
 	}
 	else
 	{
-		swayX /= 1.0008f;
-		swayY /= 1.0008f;
+		swayX /= 1 + (deltaTime * 2);
+		swayY /= 1 + (deltaTime * 2);
 	}
 	if (swayX > 2 * PI) {swayX = swayX - (2 * PI);}
 	if (swayY > 2 * PI) {swayY = swayY - (2 * PI);}
@@ -72,14 +72,14 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 		offsetX = -2.0;}
 	if (offsetY < -1.2){
 		offsetY = -1.2;}
-	totalAMT_X += offsetX * 0.001;
-	totalAMT_Y += offsetY * 0.001;
+	totalAMT_X += offsetX * 0.35 * deltaTime;
+	totalAMT_Y += offsetY * 0.35 * deltaTime;
 
-	totalAMT_X /= (1.026 / (1 + deltaTime));
-	totalAMT_Y /= (1.026 / (1 + deltaTime));
+	totalAMT_X /= (1 + (10.26 * deltaTime));
+	totalAMT_Y /= (1 + (10.26 * deltaTime));
 	
-	c.pitch += recoil * 1.1;
-	c.yaw += recoilX * 1.1;
+	c.pitch += recoil * 1001 * deltaTime;
+	c.yaw += recoilX * 1001 * deltaTime;
 	float currentFrame = glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
 
@@ -106,41 +106,14 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 
 	if (spread > 1.5)
 	{
-		spread /= 1.0065 * (1 + deltaTime);
+		spread /= 1 * (1.65 + deltaTime);
 	}
 	if (spread < 1.5)
 	{
 		spread = 1.5;
 	}
 
-	glm::vec3 lightPositions[] =
-	{
-		glm::vec3(-10.0f,  10.0f, 00.0f),
-		glm::vec3(10.0f,  10.0f, 00.0f),
-		glm::vec3(-10.0f, -10.0f, 10.0f),
-		glm::vec3(10.0f, -10.0f, 10.0f)
 
-	};
-	glm::vec3 lightColors[] =
-	{
-		glm::vec3(200.0f, 200.0f, 200.0f),
-		glm::vec3(200.0f, 200.0f, 200.0f),
-		glm::vec3(200.0f, 200.0f, 200.0f),
-		glm::vec3(200.0f, 200.0f, 200.0f)
-	};
-	/**/
-	// render light source (simply re-render sphere at light positions)
-	// this looks a bit off as we use the same shader, but it'll make their positions obvious and 
-	// keeps the codeprint small.
-	/*
-	for (unsigned int i = 0; i < 4; ++i)
-	{
-		glm::vec3 newPos = lightPositions[i] + glm::vec3(0.0, 0.0, 0.0);
-		newPos = lightPositions[i];
-		shader.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
-		shader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-	}
-	*/
 	//CALCULATE BONE TRANSFORM
 	auto transforms = animate.GetFinalBoneMatrices();
 
@@ -154,7 +127,27 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	model = glm::inverse(model) * glm::inverse(c.view);
 	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-	model = glm::translate(model, glm::vec3(5.0f, -0.5 + (( - recoil/2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY)), (0.41 + (( - recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
+	if (gravity == 0)
+	{
+		fallSpeed /= 1 + (deltaTime * 2);
+	}
+	if (gravity > 0)
+	{
+		fallSpeed += 0.1 * deltaTime;
+	}
+	else if (gravity < 0)
+	{
+		fallSpeed -= 0.1 * deltaTime;
+	}
+	fallSpeed = 0;
+	if (isGrounded)
+	{
+		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), ( -0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
+	}
+	else
+	{
+		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), ( - 0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
+	}
 	model = glm::rotate(model, (float)( ((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, (float)( 0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
@@ -166,9 +159,8 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	animController(window);
 	
 
+
 	m.draw(shader);
-	c.cameraNear = 0.001f;
-	c.cameraFar = 10000.0f;
 
 }
 float thisTimer = 0.0;
@@ -318,16 +310,16 @@ void Viewmodel::animController(GLFWwindow* window)
 	{
 		recoil = 0;
 		recoilX = 0;
-		randomNum = ((rand() % 401) - 200);
+		randomNum = ((rand() % 41) - 20);
 	}
 	if (thisTimer < 0.045 && thisTimer > 0.035)
 	{
-		recoil = (95.5f * deltaTime) ;
+		recoil = (30.5f * deltaTime) ;
 		recoilX = (randomNum * 0.1f * deltaTime) ;
 	}
 	if (thisTimer < 0.08 && thisTimer > 0.065)
 	{
-		recoil = ( -(25.5f * deltaTime)) ;
+		recoil = ( -(10.5f * deltaTime)) ;
 		recoilX = (-(recoilX / 3) * deltaTime * 0.1f) ;
 	}
 	

@@ -171,7 +171,7 @@ void mapRender(camera& c, Shader& shader, Model& m, glm::vec3 rot,glm::vec3 pos)
     model = glm::rotate(model, (float)(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, (float)(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
     shader.setMat4("model", model);
-    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+    shader.setMat3("normalMatrix",glm::mat3(model));
     m.draw(shader);
 
 }

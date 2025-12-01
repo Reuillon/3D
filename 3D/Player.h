@@ -238,6 +238,7 @@ class Player
 		MeshCollider floorCollider;
 		Viewmodel* primary;
 		Viewmodel* secondary;
+		Viewmodel* melee;
 		GLFWwindow* pWindow;
 		ResolutionData r;
 

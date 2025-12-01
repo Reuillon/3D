@@ -3,7 +3,7 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
     //LOAD VIEWMODELS
-    primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
+    //primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
     //secondary = new Viewmodel(12, "Models/GUN/PEESTOL.fbx");
     
     //primary = new Viewmodel(11, "Models/GUN/BS2.fbx");
@@ -29,6 +29,8 @@ Debug debugger;
 Utility u;
 void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& collisionMap)
 {
+    playerCamera.cameraFar = 2500;
+    playerCamera.cameraNear = 0.1;
     newDelta = deltaTime;
     normalizedSpeed = glm::vec2(0);
     
@@ -56,15 +58,16 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         {
             
             //COLLISION RESOLUTION FOR HITTING THE WALL IN AIR
-            if (lastSpeed != glm::vec3(0.0) && !movingHorizontal && !movingVertical)
+            if (lastSpeed != glm::vec3(0.0))
             {
-                lastSpeed = (glm::normalize(-r.Normal));
-                airAcceleration /= 1 + (deltaTime * 4000);
+                //lastSpeed = (glm::normalize(-r.Normal));
+                airAcceleration /= 1 + (deltaTime * 40);
 
             }
             else
             {
                 airAcceleration /= 1 + (deltaTime * 35);
+                MAXSPEED /= 1 + (deltaTime * 2);
             }
 
             normalizedSpeed = glm::vec3(normalizedSpeed.x,0,normalizedSpeed.y) - r.Normal;
@@ -108,6 +111,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         playerCollider.pos = glm::vec3(100, 105, 100);
     }
 
+
     //CHECK IF PLAYER IS ON THE GROUND
     if (isGrounded)
     {
@@ -116,8 +120,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         if (movingHorizontal && movingVertical) { groundAcceleration = 105; }
         else { groundAcceleration = 70; }
 
-        MAXSPEED = 1.0;
-
+        
         //WASD CONTROLS ON THE GROUND
         glm::vec3 temp = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
         glm::vec2 hori = glm::vec2(temp.x, temp.z);
@@ -138,9 +141,10 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         {
             airVelocity = glm::vec2(0);
             lastSpeed = glm::vec3(0);
-            if (u.checkBounds(-1,1, horizontalSpeed) && u.checkBounds(-1, 1, verticalSpeed)) { airAcceleration = 0; }
+            MAXSPEED = 1.0;
+            if (u.checkBounds(-1,1, horizontalSpeed) && u.checkBounds(-1, 1, verticalSpeed)) { airAcceleration /= 1 + (newDelta * 10); }
         }
-
+   
     }
     else
     {
@@ -157,24 +161,24 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         }
         verticalSpeed = 0;
         horizontalSpeed = 0;
-
+        
         airMomentumTimer = 0.0;
         momentum = glm::vec2(normalAirVector.x * airAcceleration * MAXSPEED, normalAirVector.y * airAcceleration * MAXSPEED);
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
-    
   
     playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 1.9, playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;
 
-    glDisable(GL_CULL_FACE);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glDisable(GL_CULL_FACE);
+    //glClear(GL_DEPTH_BUFFER_BIT);
     
     //RENDER VIEWMODEL
-    primary->render(playerCamera, shader, pWindow);
-    //secondary->render(playerCamera, shader, pWindow);
+    //primary->render(playerCamera, shader, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
+   
+    //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 
     if (swapWeapon == -1)
     {
@@ -183,7 +187,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     {
     }
     glEnable(GL_CULL_FACE);
-   
+    //glClear(GL_DEPTH_BUFFER_BIT);
     playerCamera.fov = 70;
     playerCamera.update(deltaTime);
     playerControls();
@@ -192,6 +196,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
 
 void Player::playerControls()
 {
+
     if (glfwGetKey(pWindow, GLFW_KEY_W))
     {
         movingVertical = true;
@@ -200,8 +205,8 @@ void Player::playerControls()
             if (verticalSpeed < 0) {verticalSpeed /= (1 + (newDelta * 20));}
             verticalSpeed += groundAcceleration * newDelta;
         }
-        airVelocity.y += 35 * newDelta;
-        airAcceleration += 70 * newDelta * MAXSPEED;
+        airVelocity.y += 10 * newDelta;
+        airAcceleration += 35 * newDelta * MAXSPEED;
         lastSpeed +=  playerForward * airVelocity.y * MAXSPEED;
         if (lastSpeed != glm::vec3(0.0))
         {
@@ -222,8 +227,8 @@ void Player::playerControls()
             if (verticalSpeed > 0) {verticalSpeed /= (1 + (newDelta * 20));}
             verticalSpeed -= groundAcceleration * newDelta;
         } 
-        airVelocity.y += 35 * newDelta;
-        airAcceleration += 70 * newDelta * MAXSPEED;
+        airVelocity.y += 10 * newDelta;
+        airAcceleration += 35 * newDelta * MAXSPEED;
         lastSpeed -= playerForward * airVelocity.y * MAXSPEED;
         if (lastSpeed != glm::vec3(0.0))
         {
@@ -245,8 +250,8 @@ void Player::playerControls()
             if (horizontalSpeed > 0) {horizontalSpeed /= (1 + (newDelta * 20));}
             horizontalSpeed -= groundAcceleration * newDelta;
         }
-        airVelocity.x += 35 * newDelta;
-        airAcceleration += 70 * newDelta * MAXSPEED;
+        airVelocity.x += 10 * newDelta;
+        airAcceleration += 35 * newDelta * MAXSPEED;
         lastSpeed -= glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
         if (lastSpeed != glm::vec3(0.0))
         {
@@ -267,8 +272,8 @@ void Player::playerControls()
            if (horizontalSpeed < 0) { horizontalSpeed /= (1 + (newDelta * 20)); }
            horizontalSpeed += groundAcceleration * newDelta;
        }
-       airVelocity.x += 35 * newDelta;
-       airAcceleration += 70 * newDelta * MAXSPEED;
+       airVelocity.x += 10 * newDelta;
+       airAcceleration += 35 * newDelta * MAXSPEED;
        lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
        if (lastSpeed != glm::vec3(0.0))
        {

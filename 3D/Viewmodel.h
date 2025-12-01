@@ -26,10 +26,10 @@ class Viewmodel
 		float spread;
 		float length;
 		float thickness;
-		
+		float fallSpeed = 0;
 		Viewmodel(short int animLength, std::string path);
 
-		void render(camera& c, Shader& shader, GLFWwindow* window);
+		void render(camera& c, Shader& shader, GLFWwindow* window, float speed, float gravity, bool isGrounded);
 
 		void animController(GLFWwindow* window);
 
