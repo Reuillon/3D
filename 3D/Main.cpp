@@ -43,7 +43,7 @@ int fb_height;
 
 //FRAMEBUFFER PROPERTIES
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gAlbedo, gShadow;
+unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow;
 
 //SHADOWS
 unsigned int shadowFBO;
@@ -108,7 +108,7 @@ static GLFWwindow* windowInit()
     
     //SETS WINDOW SETTINGS
     glfwInit();
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_REFRESH_RATE, 0);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -168,9 +168,9 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/tiergarten_4k.hdr");
   
 
-    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
+    initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/color.hdr");
-    initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
     //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
     
@@ -280,6 +280,8 @@ int main()
     shadowPass.use();
     shadowPass.setInt("diffuseTexture", 0);
 
+    //DEFERRED GEOMETRY PASS
+    shaderGeometryPass.use();
     //DEFERRED LIGHTING PASS
     shaderLightingPass.use();
     shaderLightingPass.setInt("gPosition", 0);
@@ -287,9 +289,10 @@ int main()
     shaderLightingPass.setInt("gAlbedo", 2);
     shaderLightingPass.setInt("ssao", 3);
     shaderLightingPass.setInt("shadowMap", 4);
-
-    //DEFERRED GEOMETRY PASS
-    shaderGeometryPass.use();
+    shaderLightingPass.setInt("gPBR", 5);
+    shaderLightingPass.setInt("irradianceMap", 6);
+    shaderLightingPass.setInt("prefilterMap", 7);
+    shaderLightingPass.setInt("brdfLUT", 8);
 
 
     //SSAO PASS
@@ -420,13 +423,13 @@ int main()
         {
             shadowPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
         }
-        shadowPass.setFloat("clampVal", 0.01f);
+        shadowPass.setFloat("clampVal", 0.0001f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         glEnable(GL_CULL_FACE);
         mapRender(p->playerCamera, shadowPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
        
-
+   
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -438,13 +441,15 @@ int main()
         mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
     
         // 2. generate SSAO texture
-              // ------------------------
+        // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
         glClear(GL_COLOR_BUFFER_BIT);
+        
         shaderSSAO.use();
         // Send kernel + rotation
         for (unsigned int i = 0; i < 64; ++i){shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);}
         shaderSSAO.setMat4("projection", p->playerCamera.projection);
+        shaderSSAO.setMat4("view", p->playerCamera.view);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -468,6 +473,7 @@ int main()
         glViewport(0, 0, fb_width, fb_height);
         glClear(GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
+        shaderLightingPass.setVec3("camPos", p->playerCamera.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -478,8 +484,17 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
         glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D, shadowMap);
-        glEnable(GL_CULL_FACE);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, gPBR);
+        glActiveTexture(GL_TEXTURE6);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+        
         renderQuad();
+        glActiveTexture(GL_TEXTURE0);
         
 
 
@@ -498,7 +513,6 @@ int main()
         debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
         debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
         
-        */
 
         //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
         if (toggleDebug == 1)
@@ -513,7 +527,7 @@ int main()
             glDisable(GL_CULL_FACE);
             mapRender(p->playerCamera, shaderPBRT, map, glm::vec3(0), glm::vec3(100, 100, 100));
         }
-     
+        */
 
        
         /*
@@ -753,7 +767,7 @@ static void initFramebuffer()
     // position color buffer
     glGenTextures(1, &gPosition);
     glBindTexture(GL_TEXTURE_2D, gPosition);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -773,10 +787,16 @@ static void initFramebuffer()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedo, 0);
-
+    // PBR Values (METALLIC + ROUGHNESS)
+    glGenTextures(1, &gPBR);
+    glBindTexture(GL_TEXTURE_2D, gPBR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gPBR, 0);
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
-    unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-    glDrawBuffers(3, attachments);
+    unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+    glDrawBuffers(4, attachments);
     // create and attach depth buffer (renderbuffer)
 
     glGenRenderbuffers(1, &rboDepth);
@@ -843,11 +863,11 @@ static void initPBR(const char* hdrPath)
     {
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, 512, 512, 0, GL_RGB, GL_FLOAT, nullptr);
     }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // pbr: set up projection and view matrices for capturing data onto the 6 cubemap face directions
     // ----------------------------------------------------------------------------------------------
     glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 2500.0f);
