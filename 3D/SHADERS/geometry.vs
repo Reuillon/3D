@@ -7,7 +7,6 @@ out vec3 FragPos;
 out vec2 TexCoords;
 out vec3 Normal;
 
-uniform bool invertedNormals;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -15,12 +14,12 @@ uniform mat4 projection;
 
 void main()
 {
-    vec4 viewPos = view * model * vec4(aPos, 1.0);
+    vec4 viewPos = model * vec4(aPos, 1.0);
     FragPos = viewPos.xyz; 
     TexCoords = aTexCoords;
     
-    mat3 normalMatrix = transpose(inverse(mat3(view * model)));
-    Normal = normalMatrix * aNormal;
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+    Normal = normalize(normalMatrix * aNormal);
     
-    gl_Position = projection * viewPos;
+    gl_Position = projection * view * viewPos;
 }

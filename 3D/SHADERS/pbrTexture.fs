@@ -151,7 +151,7 @@ void main()
     {
         //V =normalize(camPos);
     }
-   
+
 
    
     
@@ -210,7 +210,7 @@ void main()
     
      kS = F;
      kD = 1.0 - kS;
-    kD *= 1.0 - metallic;	  
+     kD *= 1.0 - metallic;	  
     
     vec3 irradiance = texture(irradianceMap, N).rgb * 1.2;
     vec3 diffuse      = irradiance * albedo;
