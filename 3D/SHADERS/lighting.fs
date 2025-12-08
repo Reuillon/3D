@@ -149,15 +149,13 @@ void main()
     const float MAX_REFLECTION_LOD = 5.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    if (texture(shadowMap, TexCoords).r < 1.0)
-    {
-        spec = 0.0;
-    }
+    spec = spec * texture(shadowMap, TexCoords).r;
+    
 
     specular = prefilteredColor * (F * brdf.x + brdf.y) * spec;
 
-    //vec3 ambient = (kD * diffuse + specular) * AmbientOcclusion;
-    vec3 ambient = (kD * diffuse + specular);
+    vec3 ambient = (kD * diffuse + specular) * AmbientOcclusion;
+    //vec3 ambient = (kD * diffuse + specular);
     
     vec3 color = (ambient + Lo);
 
@@ -167,5 +165,10 @@ void main()
     //color = pow(color, vec3(1.0/2.2)) * AmbientOcclusion; 
     //color = pow(color, vec3(1.0/2.2)) * AmbientOcclusion; 
     color = pow(color, vec3(1.0/2.2)); 
-    FragColor = vec4(color, 1.0) * vec4(texture(shadowMap, TexCoords).rgb, 1.0);
+    if (WorldPos.z <= 1.0)
+    {
+        FragColor = vec4(0.0) ;
+        return;
+    }
+    FragColor = vec4(color * texture(shadowMap, TexCoords).r, 1.0);
 }
