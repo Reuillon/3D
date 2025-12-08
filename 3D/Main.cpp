@@ -29,7 +29,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 //INITIALIZER FUNCTIONS
 static void initShadowMap();
 static void initFramebuffer();
-static void initPBR(const char* hdrPath);
+static void initPBR(const char* hdrPath, Shader& equirectangularToCubemapShader, Shader& irradianceShader, Shader& backgroundShader, Shader& prefilterShader, Shader& brdfShader);
 static void initSSAO();
 
 // RESOLUTION
@@ -101,11 +101,11 @@ Debug debug;
 //INITIALZES WINDOW AND RENDER PIPELINE
 static GLFWwindow* windowInit()
 {
-    
-    #ifdef __APPLE__
-         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    #endif
-    
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
     //SETS WINDOW SETTINGS
     glfwInit();
     glfwSwapInterval(0);
@@ -119,10 +119,10 @@ static GLFWwindow* windowInit()
     glfwWindowHint(GLFW_ALPHA_BITS, 16);
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
+
 
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RENDERER", glfwGetPrimaryMonitor(), NULL);
-    
+
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -131,13 +131,13 @@ static GLFWwindow* windowInit()
     }
 
     //SET LISTENERS FOR DETECTING INPUT
-    glfwMakeContextCurrent(window); 
+    glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, key_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     //glfwSetMouseButtonCallback(window, &Input::mouse_button_callback);
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
-    
+
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -145,7 +145,7 @@ static GLFWwindow* windowInit()
         std::cout << "Failed to initialize GLAD" << std::endl;
         exit(-1);
     }
-    
+
     //INITIALIZERS FOR VARIOUS GRAPHICAL EFFECTS
     initSSAO();
     initShadowMap();
@@ -166,23 +166,23 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/tief_etz_4k.hdr");
     //initPBR("TEXTURES/hdri/little_paris_eiffel_tower_4k.hdr");
     //initPBR("TEXTURES/hdri/tiergarten_4k.hdr");
-  
 
-    initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
+
+    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
+    
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
     //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
-    
+
     return window;
 }
 Player* p;
 int toggleDebug = -1;
 int main()
-{   
+{
     // glfw window creation
     // --------------------
-    GLFWwindow* window = windowInit();  
+    GLFWwindow* window = windowInit();
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -190,7 +190,7 @@ int main()
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    
+
     //UI
     Shader crosshair("SHADERS/depth.vs", "SHADERS/UI.fs");
 
@@ -211,13 +211,13 @@ int main()
 
     //PBR
     Shader shaderPBRT("SHADERS/pbr.vs", "SHADERS/pbrTexture.fs");
-    Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
-    Shader brdfShader("SHADERS/brdf.vs", "SHADERS/brdf.fs");
-
     //CUBEMAPPING
     Shader equirectangularToCubemapShader("SHADERS/cubemap.vs", "SHADERS/cubemapConvert.fs");
     Shader irradianceShader("SHADERS/cubemap.vs", "SHADERS/irradianceConvolution.fs");
     Shader backgroundShader("SHADERS/background.vs", "SHADERS/background.fs");
+    Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
+    Shader brdfShader("SHADERS/brdf.vs", "SHADERS/brdf.fs");
+
 
     //DEBUG SHADERS
     Shader defaultShader("SHADERS/Default.vs", "SHADERS/Default.fs");
@@ -227,19 +227,21 @@ int main()
     Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
     Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
 
+    initPBR("TEXTURES/hdri/color.hdr", equirectangularToCubemapShader, irradianceShader, backgroundShader, prefilterShader, brdfShader);
+
     /////ACTORS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     p = new Player(SCR_WIDTH, SCR_HEIGHT, window);
-    shadowCascadeLevels[0] = (p->playerCamera.cameraFar/2.5) / 50.0f;
-    shadowCascadeLevels[1] = (p->playerCamera.cameraFar/2.5) / 25.0f;
-    shadowCascadeLevels[2] = (p->playerCamera.cameraFar/2.5) / 10.0f;
-    shadowCascadeLevels[3] = (p->playerCamera.cameraFar/2.5) / 2.0f;
+    shadowCascadeLevels[0] = (p->playerCamera.cameraFar / 2.5) / 50.0f;
+    shadowCascadeLevels[1] = (p->playerCamera.cameraFar / 2.5) / 25.0f;
+    shadowCascadeLevels[2] = (p->playerCamera.cameraFar / 2.5) / 10.0f;
+    shadowCascadeLevels[3] = (p->playerCamera.cameraFar / 2.5) / 2.0f;
 
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    
+
     //MAPS
     //Model map("Models/NEWDUST/DUST.fbx");
     Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
@@ -270,12 +272,12 @@ int main()
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
     //DEBUGGER FOR CHECKING POST PROCESSING EFFECTS
     unsigned int woodTexture = loadTexture("TEXTURES/white.png");
-    
+
     /**/
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    
+
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
     shadowPass.setInt("diffuseTexture", 0);
@@ -302,8 +304,8 @@ int main()
     shaderSSAO.setInt("texNoise", 2);
     shaderSSAOBlur.use();
     shaderSSAOBlur.setInt("ssaoInput", 0);
-    
-    
+
+
     //CUBEMAP SHADER
     glm::mat4 projection = glm::perspective(glm::radians(p->playerCamera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, p->playerCamera.cameraNear, p->playerCamera.cameraFar);
     backgroundShader.use();
@@ -319,7 +321,7 @@ int main()
     shaderPBRT.setInt("irradianceMap", 5);
     shaderPBRT.setInt("prefilterMap", 6);
     shaderPBRT.setInt("brdfLUT", 7);
-    
+
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
@@ -335,7 +337,7 @@ int main()
 
         p->update(deltaTime, viewShader, testMap);
         //debug.drawGrid(p->playerCamera);
-        lightDir = glm::normalize(glm::vec3(1.25,0.75,0.85));
+        lightDir = glm::normalize(glm::vec3(1.25, 0.75, 0.85));
         //glm::vec3 lightPos = glm::vec3(0 + xC, -10 + yC, 10 + zC);
         //DELTA TIME CALCULATION
         float currentFrame = glfwGetTime();
@@ -361,18 +363,7 @@ int main()
         glActiveTexture(GL_TEXTURE7);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
-        //DRAWS CUBEMAP FOR IBL
-        glDisable(GL_CULL_FACE);
-        backgroundShader.use();
-        backgroundShader.setMat4("view", p->playerCamera.view);
-        glActiveTexture(GL_TEXTURE0);
-        //DRAWS BLURRED MAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-        //DRAWS LOW RES CUBEMAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-        //DRAWS HIGH RES CUBEMAP
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-        renderCube();
+        
 
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -390,7 +381,7 @@ int main()
         }
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-       
+
 
 
         depthShader.setMat4("model", model);
@@ -398,19 +389,21 @@ int main()
         depthShader.setMat4("view", p->playerCamera.view);
         depthShader.use();
 
-        
+
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
         mapRender(p->playerCamera, depthShader, map, glm::vec3(0), glm::vec3(100, 100, 100));
+     
         shadowPass.use();
         // reset viewport
         glViewport(0, 0, fb_width, fb_height);
         glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-     
-      
+
+
+
 
         shadowPass.setMat4("projection", p->playerCamera.projection);
         shadowPass.setMat4("view", p->playerCamera.view);
@@ -428,8 +421,10 @@ int main()
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         glEnable(GL_CULL_FACE);
         mapRender(p->playerCamera, shadowPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
-       
-   
+        
+
+
+
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -437,17 +432,17 @@ int main()
         shaderGeometryPass.use();
         glDisable(GL_CULL_FACE);
         glEnable(GL_CULL_FACE);
-  
+
         mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
-    
+
         // 2. generate SSAO texture
         // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
         glClear(GL_COLOR_BUFFER_BIT);
-        
+
         shaderSSAO.use();
         // Send kernel + rotation
-        for (unsigned int i = 0; i < 64; ++i){shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);}
+        for (unsigned int i = 0; i < 64; ++i) { shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]); }
         shaderSSAO.setMat4("projection", p->playerCamera.projection);
         shaderSSAO.setMat4("view", p->playerCamera.view);
         glActiveTexture(GL_TEXTURE0);
@@ -457,6 +452,8 @@ int main()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, noiseTexture);
         renderQuad();
+
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         // 3. blur SSAO texture to remove noise
         // ------------------------------------
@@ -467,11 +464,32 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        
+        
 
         // 4. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
         // -----------------------------------------------------------------------------------------------------
         glViewport(0, 0, fb_width, fb_height);
-        glClear(GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_CULL_FACE);
+
+        backgroundShader.use();
+        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(p->playerCamera.view));
+        backgroundShader.setMat4("view", viewNoTranslation);
+        backgroundShader.setMat4("projection", p->playerCamera.projection);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+
+        renderCube();
+
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
+
         shaderLightingPass.use();
         shaderLightingPass.setVec3("camPos", p->playerCamera.cameraPos);
         glActiveTexture(GL_TEXTURE0);
@@ -492,18 +510,19 @@ int main()
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         renderQuad();
+        glDisable(GL_BLEND);
         glActiveTexture(GL_TEXTURE0);
-        
-
 
         
+
         /*
         */
         /*
-        
-        
+
+
         */
 
         /*
@@ -512,7 +531,7 @@ int main()
         debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
         debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
         debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
-        
+
 
         //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
         if (toggleDebug == 1)
@@ -529,23 +548,23 @@ int main()
         }
         */
 
-       
+
         /*
         */
         //glEnable(GL_CULL_FACE);
         //staticRender(p->playerCamera, shaderPBRT, base);
         //drawSand(p->playerCamera, sandShader, sand, envCubemap);
         //drawWater(p->playerCamera, waterShader, water, envCubemap);
-        
-        
+
+
         //glDisable(GL_CULL_FACE);
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
-       
+
         /*
         {
             model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f)); 
+            model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
             crosshair.use();
             model = glm::mat4(1.0f);
             model = glm::scale(model, glm::vec3(0.005f * p->primary->length, 0.0025f * p->primary->thickness, 0.005f));
@@ -810,18 +829,11 @@ static void initFramebuffer()
 }
 
 //INITIALIZES CUBEMAPS FOR PBR + IBL
-static void initPBR(const char* hdrPath)
+static void initPBR(const char* hdrPath, Shader &equirectangularToCubemapShader, Shader &irradianceShader, Shader &backgroundShader, Shader &prefilterShader, Shader &brdfShader)
 {
     unsigned int captureFBO;
     unsigned int captureRBO;
     unsigned int hdrTexture;
-    Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
-    Shader brdfShader("SHADERS/brdf.vs", "SHADERS/brdf.fs");
-
-    //CUBEMAPPING
-    Shader equirectangularToCubemapShader("SHADERS/cubemap.vs", "SHADERS/cubemapConvert.fs");
-    Shader irradianceShader("SHADERS/cubemap.vs", "SHADERS/irradianceConvolution.fs");
-    Shader backgroundShader("SHADERS/background.vs", "SHADERS/background.fs");
 
     glGenFramebuffers(1, &captureFBO);
     glGenRenderbuffers(1, &captureRBO);
@@ -1149,4 +1161,3 @@ std::vector<glm::mat4> getLightSpaceMatrices()
     }
     return ret;
 }
-

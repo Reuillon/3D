@@ -92,7 +92,7 @@ void Mesh::draw(Shader &shader)
         shader.setFloat("hasRoughness", 0.0f);
         shader.setFloat("rough", material.roughness);
     }
-   
+    
     shader.setFloat("spec", material.specular);
     
     
