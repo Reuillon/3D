@@ -2,17 +2,14 @@
 out vec4 FragColor;
 
 
-in VS_OUT {
-    vec3 FragPos;
-    vec3 Normal;
-    vec2 TexCoords;
-} fs_in;
+
+in vec3 WorldPos;
+in vec3 Normal;
 
 
 uniform sampler2DArray shadowMap;
 
 uniform vec3 lightDir;
-uniform vec3 viewPos;
 uniform float farPlane;
 uniform float clampVal;
 uniform mat4 view;
@@ -46,10 +43,7 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
 
     vec4 fragPosLightSpace = lightSpaceMatrices[layer] * vec4(fragPosWorldSpace, 1.0);
     // perform perspective divide
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-
+    vec3 projCoords = (fragPosLightSpace.xyz / fragPosLightSpace.w) * 0.5 + 0.5;
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
 
@@ -59,7 +53,7 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
         return 0.0;
     }
     // calculate bias (based on depth map resolution and slope)
-    vec3 normal = normalize(fs_in.Normal);
+    vec3 normal = normalize(Normal);
     float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.05);
     bias = clamp(bias, 0.0, clampVal);
     const float biasModifier = 1.0f;
@@ -94,7 +88,7 @@ void main()
     // ambient
     vec3 ambient = 0.5 * color;
     
-    float shadow = ShadowCalculation(fs_in.FragPos);                      
+    float shadow = ShadowCalculation(WorldPos);                      
     vec3 lighting = (ambient + (1.0 - (shadow) * 1.25));    
 
     FragColor = vec4(lighting, 1.0) * 2.0;

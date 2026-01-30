@@ -23,7 +23,7 @@ uniform float metal;
 uniform float spec;
 
 in vec2 TexCoords;
-in vec3 FragPos;
+in vec3 WorldPos;
 in vec3 Normal;
 
 
@@ -32,7 +32,7 @@ in vec3 Normal;
 void main()
 {     
     // store the fragment position vector in the first gbuffer texture
-    gPosition = FragPos;
+    gPosition = WorldPos;
     // also store the per-fragment normals into the gbuffer
     gNormal = Normal;
     if(hasTexture < 0.5)
