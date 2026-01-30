@@ -102,7 +102,6 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
 	shader.setVec3("camPos", c.cameraPos);
-	shader.setVec3("lightDir", lightDirTEST);
 
 	if (spread > 1.5)
 	{
@@ -115,7 +114,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 
 
 	//CALCULATE BONE TRANSFORM
-	auto transforms = animate.GetFinalBoneMatrices();
+    transforms = animate.GetFinalBoneMatrices();
 
 	for (int i = 0; i < transforms.size(); ++i)
 	{
@@ -125,7 +124,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	glm::mat4 model = glm::mat4(1.0f);
 
 	model = glm::inverse(model) * glm::inverse(c.view);
-	model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
+	model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
 	{

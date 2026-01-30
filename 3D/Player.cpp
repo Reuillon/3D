@@ -3,7 +3,7 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
     //LOAD VIEWMODELS
-    //primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
+    primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
     //secondary = new Viewmodel(12, "Models/GUN/PEESTOL.fbx");
     
     //primary = new Viewmodel(11, "Models/GUN/BS2.fbx");
@@ -34,7 +34,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     newDelta = deltaTime;
     normalizedSpeed = glm::vec2(0);
     
-    //COLLISION CHECKS
+    //COLLISION CHECKSa
     ResolutionData r;
     isFalling = false;
     isGrounded = false;
@@ -176,7 +176,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     //glClear(GL_DEPTH_BUFFER_BIT);
     
     //RENDER VIEWMODEL
-    //primary->render(playerCamera, shader, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
+    primary->render(playerCamera, shader, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
    
     //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 

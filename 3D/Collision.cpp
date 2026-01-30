@@ -214,7 +214,7 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float delta
     while (true)
     {
         elapsedTime += deltaTime;
-        if (elapsedTime > 1.0)
+        if (elapsedTime > 0.5)
         {
             r.hasCollision = false;
             return r;

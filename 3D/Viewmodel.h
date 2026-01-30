@@ -27,6 +27,8 @@ class Viewmodel
 		float length;
 		float thickness;
 		float fallSpeed = 0;
+		//CALCULATE BONE TRANSFORM
+	    std::vector<glm::mat4> transforms = animate.GetFinalBoneMatrices();
 		Viewmodel(short int animLength, std::string path);
 
 		void render(camera& c, Shader& shader, GLFWwindow* window, float speed, float gravity, bool isGrounded);
