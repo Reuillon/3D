@@ -9,7 +9,7 @@ Animation::Animation(const std::string& animationPath, Model* model, int anim)
 	m_Duration = animation->mDuration;
 	m_TicksPerSecond = animation->mTicksPerSecond;
 	aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
-	globalTransformation = globalTransformation.Inverse();
+
 	ReadHierarchyData(m_RootNode, scene->mRootNode);
 	ReadMissingBones(animation, *model);
 }
@@ -22,7 +22,7 @@ void Animation::initialize(const std::string& animationPath, Model* model, int a
 	m_Duration = animation->mDuration;
 	m_TicksPerSecond = animation->mTicksPerSecond;
 	aiMatrix4x4 globalTransformation = scene->mRootNode->mTransformation;
-	globalTransformation = globalTransformation.Inverse();
+
 	ReadHierarchyData(m_RootNode, scene->mRootNode);
 	ReadMissingBones(animation, *model);
 }
@@ -41,7 +41,7 @@ Bone* Animation::FindBone(const std::string& name)
 
 
 
-void Animation::ReadMissingBones(const aiAnimation* animation, Model& model) 
+void Animation::ReadMissingBones(const aiAnimation* animation, Model& model)
 {
 	int size = animation->mNumChannels;
 
@@ -65,7 +65,7 @@ void Animation::ReadMissingBones(const aiAnimation* animation, Model& model)
 
 	m_BoneInfoMap = boneInfoMap;
 }
-void Animation::ReadHierarchyData(AssimpNodeData& dest, const aiNode* src) 
+void Animation::ReadHierarchyData(AssimpNodeData& dest, const aiNode* src)
 {
 	assert(src);
 

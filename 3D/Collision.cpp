@@ -74,13 +74,10 @@ glm::vec3 MeshCollider::FindFurthestVertex(glm::vec3 direction)
     return maxPoint;
 }
 
-
-
 glm::vec3 Support(MeshCollider& collider1, MeshCollider& collider2, glm::vec3 direction)
 {
     return collider1.FindFurthestVertex(direction) - collider2.FindFurthestVertex(-direction);
 }
-
 
 //GJK COLLISION AND HELPER FUNCTIONS
 bool SameDirection(const glm::vec3& direction, const glm::vec3& ao)
@@ -427,7 +424,7 @@ std::vector<MeshCollider> initCollisionMap(std::string filePath)
                     {
                         vertice[vertIndex] = std::stof(s);
                         vertIndex = 0;
-                        vertices.push_back(glm::vec3(vertice[0] + 100, vertice[1] + 100, vertice[2] + 100));
+                        vertices.push_back(glm::vec3(vertice[0], vertice[1], vertice[2]));
                     }
                 }
 

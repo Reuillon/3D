@@ -43,7 +43,7 @@ int fb_height;
 
 //FRAMEBUFFER PROPERTIES
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow;
+unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow, gPOS_IBL;
 
 //SHADOWS
 unsigned int shadowFBO;
@@ -55,7 +55,6 @@ unsigned int ssaoFBO, ssaoBlurFBO;
 unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
 unsigned int noiseTexture;
 std::vector<glm::vec3> ssaoKernel;
-
 std::uniform_real_distribution<GLfloat> randomFloats(0.0, 1.0); // generates random floats between 0.0 and 1.0
 std::default_random_engine generator;
 
@@ -71,12 +70,12 @@ unsigned int lightFBO;
 unsigned int matricesUBO;
 unsigned int lightDepthMaps;
 constexpr unsigned int depthMapResolution = 1024 * 8;
-glm::vec3 lightDir = glm::normalize(glm::vec3());
+glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
 std::vector<glm::mat4> getLightSpaceMatrices();
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
-std::vector<float> shadowCascadeLevels{ 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f, 2500.0f / 2.0f };
+std::vector<float> shadowCascadeLevels{ 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f, 100.0f / 2.0f };
 
 //DELTATIME VALUES
 double deltaTime = 0.0f;
@@ -149,7 +148,7 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     //debug.initializeGrid(4);
-    //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
     //initPBR("TEXTURES/hdri/meadow_2k.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
@@ -162,15 +161,18 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/tief_etz_4k.hdr");
     //initPBR("TEXTURES/hdri/little_paris_eiffel_tower_4k.hdr");
     //initPBR("TEXTURES/hdri/tiergarten_4k.hdr");
+    //initPBR("TEXTURES/hdri/studio_garden_2k.hdr");
+    //initPBR("TEXTURES/hdri/wildflower_field_2k.hdr");
+    //initPBR("TEXTURES/hdri/cannon_2k.hdr");
 
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/ballawley_park_4k.hdr");
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr");
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    initPBR("TEXTURES/hdri/color.hdr");
+    //initPBR("TEXTURES/hdri/color.hdr");
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
     //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
-    //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
+    // initPBR("TEXTURES/hdri/soliltude_4k.hdr");
 
     return window;
 }
@@ -192,10 +194,6 @@ int main()
     //UI
     Shader crosshair("SHADERS/depth.vs", "SHADERS/UI.fs");
 
-    //VIEWMODEL
-    //Shader viewShader("SHADERS/animated.vs", "SHADERS/pbrTexture.fs");
-    Shader viewShader("SHADERS/animated.vs", "SHADERS/pbrTexture.fs");
-
     //SHADOWS
     Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
@@ -209,12 +207,7 @@ int main()
     Shader shaderLightingPass("SHADERS/DeferredPBR.vs", "SHADERS/DeferredPBR.fs");
 
     //CUBEMAPPING
-    Shader equirectangularToCubemapShader("SHADERS/cubemap.vs", "SHADERS/cubemapConvert.fs");
-    Shader irradianceShader("SHADERS/cubemap.vs", "SHADERS/irradianceConvolution.fs");
     Shader backgroundShader("SHADERS/background.vs", "SHADERS/background.fs");
-    Shader prefilterShader("SHADERS/cubemap.vs", "SHADERS/prefilter.fs");
-    Shader brdfShader("SHADERS/brdf.vs", "SHADERS/brdf.fs");
-
 
     //DEBUG SHADERS
     Shader defaultShader("SHADERS/Default.vs", "SHADERS/Default.fs");
@@ -240,43 +233,28 @@ int main()
     //MAPS
     Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
 
-
-    //STATIC OBJECTS
-    //Model gun("Models/DUST2/source/BS1.fbx");
-    //Model water("Models/GUN/water.fbx");
-    //Model sand("Models/GUN/water.fbx");
-    //Model base("Models/GUN/base.fbx");
-    //Model shib("Models/shiba/1.fbx");
-    //stbi_set_flip_vertically_on_load(false);
-    //Model gun("Models/DUST2/source/KNIFE.fbx");
-    //Model gun("Models/GUN/DEGGLETMP.fbx");
-    //Model gun("Models/DUST2/source/REV.fbx");
-    //Model macHand("Models/MAC10VIEWMODEL.obj");
-    //Model gun("Models/DUST2/source/REVOLVER.obj");
-    //Model gun("Models/GUN/PEESTOL.obj");
-    //Model gun("Models/GUN/BS2.obj");
-    //Model mySphere("Models/GUN/sphere.fbx");
-    //Model myPaddle("Models/GUN/paddle.fbx");
-
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     std::vector<MeshCollider> testMap = initCollisionMap("Models/GUN/TESTLEVEL/COLLISIONMAP.obj");
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
     //DEBUGGER FOR CHECKING POST PROCESSING EFFECTS
-    //unsigned int woodTexture = loadTexture("TEXTURES/white.png");
+    //unsigned int whiteTexture = loadTexture("TEXTURES/white.png");
 
-    /**/
+
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
-    shadowPass.setInt("diffuseTexture", 0);
 
     //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
+    shaderGeometryPass.setInt("albedoMap", 0);
+    shaderGeometryPass.setInt("metallicMap", 2);
+    shaderGeometryPass.setInt("roughnessMap", 3);
+
     //DEFERRED LIGHTING PASS
     shaderLightingPass.use();
     shaderLightingPass.setInt("gPosition", 0);
@@ -322,11 +300,12 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-    
+        p->update(deltaTime, depthShader, testMap);
 
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
+        /* */
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         const auto lightMatrices = getLightSpaceMatrices();
@@ -336,17 +315,21 @@ int main()
             glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
         }
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        
+
         depthShader.use();
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
         depthShader.setBool("isStatic", true);
-        mapRender(p->playerCamera, depthShader, map, glm::vec3(0), glm::vec3(100, 100, 100));  
+        mapRender(p->playerCamera, depthShader, map, glm::vec3(0), glm::vec3(0));
         
+
+        glEnable(GL_CULL_FACE);
         glDisable(GL_CULL_FACE);
         depthShader.setBool("isStatic", false);
-        p->update(deltaTime, depthShader, testMap);
-        glEnable(GL_CULL_FACE);
+        //RENDER VIEWMODEL
+        //p->primary->render(p->playerCamera, depthShader, window, p->airAcceleration / 14.0f, p->gravity.y, p->isGrounded);
 
         shadowPass.use();
         // reset viewport
@@ -364,27 +347,30 @@ int main()
         shadowPass.setFloat("clampVal", 0.0001f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
+       
         glEnable(GL_CULL_FACE);
-        
         shadowPass.setBool("isStatic", true);
-        mapRender(p->playerCamera, shadowPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
-        
-        glDisable(GL_CULL_FACE);
+        mapRender(p->playerCamera, shadowPass, map, glm::vec3(0), glm::vec3(0));
         shadowPass.setBool("isStatic", false);
-        p->update(deltaTime, shadowPass, testMap);
-        glEnable(GL_CULL_FACE);
+        shadowPass.setFloat("clampVal", 0.001f);
+        glDisable(GL_CULL_FACE);
+        p->primary->render(p->playerCamera, shadowPass, window, p->airAcceleration / 14.0f, p->gravity.y, p->isGrounded);
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glViewport(0, 0, fb_width, fb_height);
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderGeometryPass.use();
         glEnable(GL_CULL_FACE);
         shaderGeometryPass.setBool("isStatic", true);
-        mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0), glm::vec3(100, 100, 100));
+        mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0), glm::vec3(0));
         shaderGeometryPass.setBool("isStatic", false);
+        
+        //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
         glClear(GL_DEPTH_BUFFER_BIT);
         glDisable(GL_CULL_FACE);
-        p->update(deltaTime, shaderGeometryPass, testMap);
+        p->primary->render(p->playerCamera, shaderGeometryPass, window, p->airAcceleration / 14.0f, p->gravity.y, p->isGrounded);
         glEnable(GL_CULL_FACE);
 
         // 2. generate SSAO texture
@@ -396,6 +382,7 @@ int main()
         for (unsigned int i = 0; i < 32; ++i) { shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]); }
         shaderSSAO.setMat4("projection", p->playerCamera.projection);
         shaderSSAO.setMat4("view", p->playerCamera.view);
+        shaderSSAO.setVec3("camPos", p->playerCamera.cameraPos);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -429,12 +416,14 @@ int main()
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); //DRAWS LOW RES MAP
         //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); //DRAWS BLURRED MAP
         glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); //DRAWS FULL RES CUBE MAP
+       
         renderCube();
   
         glEnable(GL_CULL_FACE);
         //END SKYBOX
         shaderLightingPass.use();
         shaderLightingPass.setVec3("camPos", p->playerCamera.cameraPos);
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
@@ -447,6 +436,8 @@ int main()
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, gPBR);
+        glActiveTexture(GL_TEXTURE9);
+        glBindTexture(GL_TEXTURE_2D, gPOS_IBL);
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
         glActiveTexture(GL_TEXTURE7);
@@ -455,6 +446,13 @@ int main()
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        
+        
+        
+     
+        
+        
         if (toggleDebug == 1)
         {
             //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
@@ -468,24 +466,7 @@ int main()
             renderQuad();
             glClear(GL_DEPTH_BUFFER_BIT);
         }
-        
-        /**/
-        ///PBR FORWARD PIPELINE             
-        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
-        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
-        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
 
-        /*
-        glDisable(GL_CULL_FACE);
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
-        glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-
-        glEnable(GL_CULL_FACE);
-       */
 
         //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
         glDisable(GL_BLEND);
@@ -515,47 +496,8 @@ int main()
         //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
         //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
 
-        /*
-        {
-            model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f, 0.0025f, 0.005f));
-            crosshair.use();
-            model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * p->primary->length, 0.0025f * p->primary->thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(p->primary->spread, 0.0, 0.0f));
-            crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p->playerCamera.projection);
-            crosshair.setMat4("view", p->playerCamera.view);
-            renderQuad();
-
-            crosshair.use();
-            model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.005f * p->primary->length, 0.0025f * p->primary->thickness, 0.005f));
-            model = glm::translate(model, glm::vec3(-p->primary->spread, 0.0, 0.0f));
-            crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p->playerCamera.projection);
-            crosshair.setMat4("view", p->playerCamera.view);
-            renderQuad();
-
-            crosshair.use();
-            model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * p->primary->thickness, 0.008f * p->primary->length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, p->primary->spread * 1.1, 0.0f));
-            crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p->playerCamera.projection);
-            crosshair.setMat4("view", p->playerCamera.view);
-            renderQuad();
-
-            crosshair.use();
-            model = glm::mat4(1.0f);
-            model = glm::scale(model, glm::vec3(0.00125f * p->primary->thickness, 0.008f * p->primary->length, 0.005f));
-            model = glm::translate(model, glm::vec3(0.0, -p->primary->spread * 1.1, 0.0f));
-            crosshair.setMat4("model", model);
-            crosshair.setMat4("projection", p->playerCamera.projection);
-            crosshair.setMat4("view", p->playerCamera.view);
-            renderQuad();
-        }
-        */
+        
+       
 
         // input
         // -----
@@ -565,8 +507,9 @@ int main()
 
         stop = clock();
         //PRINT FRAMERATE
-        //std::cout << "GPU TIME: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n" << "CPU TIME: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
-
+        std::cout << "GPU TIME: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n" << "CPU TIME: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
+        
+        
     }
 
 
@@ -717,7 +660,7 @@ static void initSSAO()
     // generate noise texture
     // ----------------------
     std::vector<glm::vec3> ssaoNoise;
-    for (unsigned int i = 0; i < 16; i++)
+    for (unsigned int i = 0; i < 32; i++)
     {
         glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
         ssaoNoise.push_back(noise);
@@ -750,7 +693,7 @@ static void initFramebuffer()
     // normal color buffer
     glGenTextures(1, &gNormal);
     glBindTexture(GL_TEXTURE_2D, gNormal);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
@@ -768,6 +711,7 @@ static void initFramebuffer()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gPBR, 0);
+
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
     unsigned int attachments[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     glDrawBuffers(4, attachments);

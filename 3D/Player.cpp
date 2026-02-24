@@ -3,10 +3,11 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
     //LOAD VIEWMODELS
+    //primary = new Viewmodel(12, "Models/GUN/PEESTOL2.fbx");
     primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
-    //secondary = new Viewmodel(12, "Models/GUN/PEESTOL.fbx");
+
     
-    //primary = new Viewmodel(11, "Models/GUN/BS2.fbx");
+   //zz primary = new Viewmodel(7, "Models/GUN/BS2.fbx");
     //primary = new Viewmodel(11, "Models/GUN/DEGGLETMP.fbx");
 
 	playerCamera.init(SCR_WIDTH, SCR_HEIGHT, 52);
@@ -14,7 +15,7 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
 	playerCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
 	floorCollider.init(floor, sizeof(floor) / sizeof(*floor));
     playerCamera.fov = 70;
-    playerCamera.update(0.001);
+    playerCamera.update(0);
     playerCamera.cameraPos = glm::vec3(0, 0, 0);
     screenX = SCR_WIDTH;
     screenY = SCR_HEIGHT;
@@ -34,7 +35,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     newDelta = deltaTime;
     normalizedSpeed = glm::vec2(0);
     
-    //COLLISION CHECKSa
+    //COLLISION CHECKS
     ResolutionData r;
     isFalling = false;
     isGrounded = false;
@@ -84,9 +85,9 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     playerForward.x = cos(glm::radians(playerCamera.yaw));
     playerForward.z = sin(glm::radians(playerCamera.yaw));
     //RESET POSITION IF OUT OF BOUNDS
-    if (playerCollider.pos.y < 0)
+    if (playerCollider.pos.y < -100)
     {
-        playerCollider.setTransform(glm::vec3(100.0f, 105.0f, 100.0), glm::vec3(0.0));
+        playerCollider.setTransform(glm::vec3(0.0f, 5.0f, 0.0), glm::vec3(0.0));
         gravity = glm::vec3(0.0);
     }
 
@@ -108,7 +109,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     {
         gravity = glm::vec3(0);
         lastSpeed = glm::vec3(0.0);
-        playerCollider.pos = glm::vec3(100, 105, 100);
+        playerCollider.pos = glm::vec3(0, 5, 0);
     }
 
 
@@ -175,8 +176,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     //glDisable(GL_CULL_FACE);
     //glClear(GL_DEPTH_BUFFER_BIT);
     
-    //RENDER VIEWMODEL
-    primary->render(playerCamera, shader, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
+    
    
     //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 
@@ -187,7 +187,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     {
     }
     glEnable(GL_CULL_FACE);
-    //glClear(GL_DEPTH_BUFFER_BIT);
+
     playerCamera.fov = 70;
     playerCamera.update(deltaTime);
     playerControls();

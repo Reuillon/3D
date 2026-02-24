@@ -34,7 +34,6 @@ glm::vec3 lastPos;
 
 
 
-glm::vec3 lightDirTEST = glm::normalize(glm::vec3(30.0f, -5.0, 30.0f));
 
 void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float speed, float gravity, bool isGrounded)
 {
@@ -85,21 +84,11 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 
 	lastFrame = currentFrame;
 
+	glm::mat4 projection = glm::perspective(glm::radians((float)70), (float)2560.0 / (float)1440.0, c.cameraNear, c.cameraFar);
+
+
 	shader.use();
-
-	shader.setInt("albedoMap", 0);
-	shader.setInt("normalMap", 1);
-	shader.setInt("metallicMap", 2);
-	shader.setInt("roughnessMap", 3);
-	shader.setInt("aoMap", 4);
-	shader.setInt("irradianceMap", 5);
-	shader.setInt("prefilterMap", 6);
-	shader.setInt("brdfLUT", 7);
-	c.fov = 45;
-
-
-	c.update(deltaTime);
-	shader.setMat4("projection", c.projection);
+	shader.setMat4("projection", projection);
 	shader.setMat4("view", c.view);
 	shader.setVec3("camPos", c.cameraPos);
 
@@ -113,18 +102,12 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	}
 
 
-	//CALCULATE BONE TRANSFORM
-    transforms = animate.GetFinalBoneMatrices();
-
-	for (int i = 0; i < transforms.size(); ++i)
-	{
-		shader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
-	}
 	//INITIALIZE OBJECT ORIENTATIONS
 	glm::mat4 model = glm::mat4(1.0f);
 
 	model = glm::inverse(model) * glm::inverse(c.view);
-	model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+	
+	model = glm::scale(model, glm::vec3(0.25f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
 	{
@@ -133,7 +116,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	if (gravity > 0)
 	{
 		fallSpeed += 0.1 * deltaTime;
-	}
+	}                                                                                                                
 	else if (gravity < 0)
 	{
 		fallSpeed -= 0.1 * deltaTime;
@@ -150,17 +133,20 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	model = glm::rotate(model, (float)( ((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, (float)( 0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
 	
+	//CALCULATE BONE TRANSFORM
+    transforms = animate.GetFinalBoneMatrices();
+
+	for (int i = 0; i < transforms.size(); ++i)
+	{
+		shader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
+	}
 
 	//SEND OBJECT DATA TO SHADER AND DRAW
 	shader.setMat4("model", model);
 
 	animate.loopAnim(true);
 	animController(window);
-	
-
-
 	m.draw(shader);
-
 }
 float thisTimer = 0.0;
 bool isShoot = false; 
