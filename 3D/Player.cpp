@@ -87,7 +87,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     //RESET POSITION IF OUT OF BOUNDS
     if (playerCollider.pos.y < -100)
     {
-        playerCollider.setTransform(glm::vec3(0.0f, 5.0f, 0.0), glm::vec3(0.0));
+        playerCollider.setTransform(glm::vec3(1000.0f, 1005.0f, 1000.0), glm::vec3(0.0));
         gravity = glm::vec3(0.0);
     }
 
@@ -109,7 +109,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     {
         gravity = glm::vec3(0);
         lastSpeed = glm::vec3(0.0);
-        playerCollider.pos = glm::vec3(0, 5, 0);
+        playerCollider.pos = glm::vec3(1000, 1005, 1000);
     }
 
 
@@ -176,7 +176,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     //glDisable(GL_CULL_FACE);
     //glClear(GL_DEPTH_BUFFER_BIT);
     
-    
+
    
     //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 
@@ -192,6 +192,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     playerCamera.update(deltaTime);
     playerControls();
     mouseControl();
+    primary->updateViewmodel(playerCamera, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
 }
 
 void Player::playerControls()

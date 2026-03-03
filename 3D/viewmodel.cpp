@@ -33,13 +33,11 @@ double swayX = 0.0, swayY = 0.0;
 glm::vec3 lastPos;
 
 
-
-
-void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float speed, float gravity, bool isGrounded)
+void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded)
 {
 	if (speed != 0)
 	{
-		
+
 		swayX += deltaTime * speed * 1 * 8;
 		swayY += deltaTime * speed * 2 * 8;
 	}
@@ -48,8 +46,8 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 		swayX /= 1 + (deltaTime * 2);
 		swayY /= 1 + (deltaTime * 2);
 	}
-	if (swayX > 2 * PI) {swayX = swayX - (2 * PI);}
-	if (swayY > 2 * PI) {swayY = swayY - (2 * PI);}
+	if (swayX > 2 * PI) { swayX = swayX - (2 * PI); }
+	if (swayY > 2 * PI) { swayY = swayY - (2 * PI); }
 
 
 	lastPos = c.cameraPos;
@@ -63,35 +61,30 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	clastX = (double)cposx;
 	clastY = (double)cposy;
 
-	if (offsetX > 2.0){
-		offsetX = 2.0;}
-	if (offsetY > 1.2){
-		offsetY = 1.2;}
-	if (offsetX < -2.0){
-		offsetX = -2.0;}
-	if (offsetY < -1.2){
-		offsetY = -1.2;}
+	if (offsetX > 2.0) {
+		offsetX = 2.0;
+	}
+	if (offsetY > 1.2) {
+		offsetY = 1.2;
+	}
+	if (offsetX < -2.0) {
+		offsetX = -2.0;
+	}
+	if (offsetY < -1.2) {
+		offsetY = -1.2;
+	}
 	totalAMT_X += offsetX * 0.35 * deltaTime;
 	totalAMT_Y += offsetY * 0.35 * deltaTime;
 
 	totalAMT_X /= (1 + (10.26 * deltaTime));
 	totalAMT_Y /= (1 + (10.26 * deltaTime));
-	
+
 	c.pitch += recoil * 1001 * deltaTime;
 	c.yaw += recoilX * 1001 * deltaTime;
 	float currentFrame = glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
 
 	lastFrame = currentFrame;
-
-	glm::mat4 projection = glm::perspective(glm::radians((float)70), (float)2560.0 / (float)1440.0, c.cameraNear, c.cameraFar);
-
-
-	shader.use();
-	shader.setMat4("projection", projection);
-	shader.setMat4("view", c.view);
-	shader.setVec3("camPos", c.cameraPos);
-
 	if (spread > 1.5)
 	{
 		spread /= 1 * (1.65 + deltaTime);
@@ -103,10 +96,10 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 
 
 	//INITIALIZE OBJECT ORIENTATIONS
-	glm::mat4 model = glm::mat4(1.0f);
+    model = glm::mat4(1.0f);
 
 	model = glm::inverse(model) * glm::inverse(c.view);
-	
+
 	model = glm::scale(model, glm::vec3(0.25f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
@@ -116,7 +109,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	if (gravity > 0)
 	{
 		fallSpeed += 0.1 * deltaTime;
-	}                                                                                                                
+	}
 	else if (gravity < 0)
 	{
 		fallSpeed -= 0.1 * deltaTime;
@@ -124,14 +117,30 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	fallSpeed = 0;
 	if (isGrounded)
 	{
-		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), ( -0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
+		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), (-0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed)-(gravity * 0.0025f), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
 	}
 	else
 	{
-		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), ( - 0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
+		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), (-0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed) - (gravity * 0.0025f), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
 	}
-	model = glm::rotate(model, (float)( ((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
-	model = glm::rotate(model, (float)( 0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::rotate(model, (float)(((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::rotate(model, (float)(0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+	animController(window);
+}
+
+void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
+{
+	
+
+	glm::mat4 projection = glm::perspective(glm::radians((float)70), (float)2560.0 / (float)1440.0, c.cameraNear, c.cameraFar);
+
+
+	shader.use();
+	shader.setMat4("projection", projection);
+	shader.setMat4("view", c.view);
+	shader.setVec3("camPos", c.cameraPos);
+
+	
 	
 	//CALCULATE BONE TRANSFORM
     transforms = animate.GetFinalBoneMatrices();
@@ -145,7 +154,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window, float spee
 	shader.setMat4("model", model);
 
 	animate.loopAnim(true);
-	animController(window);
+
 	m.draw(shader);
 }
 float thisTimer = 0.0;

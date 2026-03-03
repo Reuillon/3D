@@ -424,7 +424,7 @@ std::vector<MeshCollider> initCollisionMap(std::string filePath)
                     {
                         vertice[vertIndex] = std::stof(s);
                         vertIndex = 0;
-                        vertices.push_back(glm::vec3(vertice[0], vertice[1], vertice[2]));
+                        vertices.push_back(glm::vec3(vertice[0] + 1000, vertice[1] + 1000, vertice[2] + 1000));
                     }
                 }
 

@@ -166,9 +166,9 @@ void mapRender(camera& c, Shader& shader, Model& m, glm::vec3 rot,glm::vec3 pos)
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
     model = glm::translate(model, glm::vec3(pos.x, pos.y, pos.z));
-    model = glm::rotate(model, (float)(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (float)(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, (float)(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, (float)(rot.x * 0.0174533), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, (float)(rot.y * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, (float)(rot.z * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
     shader.setMat4("model", model);
     m.draw(shader);
 }
