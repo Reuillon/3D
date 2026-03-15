@@ -5,6 +5,7 @@ layout (location = 2) out vec3 gAlbedo;
 layout (location = 3) out vec3 gPBR;
 
 
+
 //checks
 uniform float hasTexture;
 uniform float hasRoughness;
@@ -34,14 +35,14 @@ void main()
     // store the fragment position vector in the first gbuffer texture
     gPosition = WorldPos;
     // also store the per-fragment normals into the gbuffer
-    gNormal = Normal;
+    gNormal = normalize(Normal);
     if(hasTexture < 0.5)
     {
         gAlbedo.rgb = pow(baseColor, vec3(1.0/2.2));
     }
     else
     {
-        gAlbedo.rgb = pow(texture(albedoMap, TexCoords).rgb - 0.01, vec3(2.2));
+        gAlbedo.rgb = pow(texture(albedoMap, TexCoords).rgb, vec3(2.2));
     }
     if(hasMetallic < 0.5)
     {

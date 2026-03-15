@@ -12,6 +12,7 @@ out vec3 Normal;
 
 
 uniform mat4 model;
+uniform mat3 normalMatrix;
 uniform mat4 view;
 uniform mat4 projection;
 
@@ -26,20 +27,28 @@ uniform mat4 finalBonesMatrices[MAX_BONES];
 
 void main()
 {
-	mat4 BoneTransform = finalBonesMatrices[boneIds[0]] * weights[0];
-    if (isStatic == true)
+
+
+    mat4 BoneTransform = mat4(1.0);
+    if(!isStatic)
     {
-        BoneTransform = mat4(1.0);
+        BoneTransform =
+            finalBonesMatrices[boneIds[0]] * weights[0] +
+            finalBonesMatrices[boneIds[1]] * weights[1] +
+            finalBonesMatrices[boneIds[2]] * weights[2] +
+            finalBonesMatrices[boneIds[3]] * weights[3];
     }
-    else
-    {
-        BoneTransform += finalBonesMatrices[boneIds[2]] * weights[2];
-        BoneTransform += finalBonesMatrices[boneIds[3]] * weights[3];
-        BoneTransform += finalBonesMatrices[boneIds[1]] * weights[1];
-    }
+
+    // Transform position
     vec4 totalPosition = BoneTransform * vec4(aPos, 1.0);
-    Normal = normalize(mat3(transpose(inverse(model))) * (BoneTransform * vec4(aNormal, 0.0)).xyz);
+
     WorldPos = vec3(model * totalPosition);
-    mat4 viewModel = view * model;
-    gl_Position =  projection * viewModel * totalPosition;
+
+
+
+    // Transform normal correctly
+    vec3 skinnedNormal = (BoneTransform * vec4(aNormal, 0.0)).xyz;
+    Normal = normalize(normalMatrix * skinnedNormal);
+
+    gl_Position = projection * view * model * totalPosition;
 }

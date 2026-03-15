@@ -26,16 +26,14 @@ void main()
 {
 	TexCoords = aTexCoords;
 
-	mat4 BoneTransform = finalBonesMatrices[boneIds[0]] * weights[0];
-    if (isStatic == true)
+	mat4 BoneTransform = mat4(1.0);
+    if(!isStatic)
     {
-        BoneTransform = mat4(1.0);
-    }
-    else
-    {
-        BoneTransform += finalBonesMatrices[boneIds[2]] * weights[2];
-        BoneTransform += finalBonesMatrices[boneIds[3]] * weights[3];
-        BoneTransform += finalBonesMatrices[boneIds[1]] * weights[1];
+        BoneTransform =
+            finalBonesMatrices[boneIds[0]] * weights[0] +
+            finalBonesMatrices[boneIds[1]] * weights[1] +
+            finalBonesMatrices[boneIds[2]] * weights[2] +
+            finalBonesMatrices[boneIds[3]] * weights[3];
     }
     vec4 totalPosition = BoneTransform * vec4(aPos, 1.0);
     WorldPos = vec3(model * totalPosition);

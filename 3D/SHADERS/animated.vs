@@ -12,6 +12,7 @@ out vec3 Normal;
 out vec2 TexCoords;
 
 uniform mat4 model;
+uniform mat3 normalMatrix;
 uniform mat4 view;
 uniform mat4 projection;
 
@@ -30,7 +31,7 @@ void main()
     BoneTransform += finalBonesMatrices[boneIds[2]] * weights[2];
     BoneTransform += finalBonesMatrices[boneIds[3]] * weights[3];
     vec4 totalPosition = BoneTransform * vec4(aPos, 1.0);
-    Normal = vec3(transpose(inverse(model * BoneTransform)) * vec4(aNormal, 0.0));
+    Normal = normalize(normalMatrix * (BoneTransform * vec4(aNormal, 0.0)).xyz));
     WorldPos = vec3(model * totalPosition);
     mat4 viewModel = view * model;
     gl_Position =  projection * viewModel * totalPosition;

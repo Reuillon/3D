@@ -7,9 +7,9 @@ in vec3 FragPos;
 in vec3 Normal;
 in float oldHeight;
 
-vec3 troughColor = vec3(0.0/255.0, 7.0/255.0, 102.0/255.0) / 4.0;
-vec3 surfaceColor = vec3(0.0/255.0,0.0/255.0,0.0/255.0) / 4.0;
-vec3 peakColor = vec3(0.0/255.0,129.0/255.0,255.0/255.0) / 4.0;
+vec3 troughColor = vec3(0.0/255.0, 7.0/255.0, 102.0/255.0);
+vec3 surfaceColor = vec3(0.0/255.0,0.0/255.0,0.0/255.0);
+vec3 peakColor = vec3(0.0/255.0,129.0/255.0,255.0/255.0);
 
 float peakThreshold = 0.08;
 float peakTransition = 0.05;
@@ -34,7 +34,8 @@ void main()
   vec3 viewDir = normalize(FragPos - viewPos);
   vec3 reflectDir = reflect(viewDir, Normal);
 
-  vec4 reflectionColor = pow(textureCube(cubeMap, reflectDir), vec4(1.0/2.2));
+  //vec4 reflectionColor = pow(textureCube(cubeMap, reflectDir), vec4(1.0/2.2));
+  vec4 reflectionColor = textureCube(cubeMap, reflectDir);
 
   float fresnel = fresnelScale * pow(1.0 - clamp(dot(viewDir, Normal), 0.0, 1.0), fresnelPower);
 
@@ -48,7 +49,10 @@ void main()
   vec3 mix2 = mix(mix1, peakColor, peakFactor);
 
   vec3 finalColor = mix(mix2, reflectionColor.rgb, fresnel);
-  finalColor = pow(finalColor, vec3(1.0/2.2));
-  FragColor = vec4(finalColor, 0.65);
+  //HDR TONEMAPPING
+  finalColor = finalColor / (finalColor + vec3(1.0));
+  //gamma correct
+  finalColor = pow(finalColor, vec3(1.0/2.2)); 
+  FragColor = vec4(finalColor, 0.45);
     
 }

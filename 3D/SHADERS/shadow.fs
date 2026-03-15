@@ -86,10 +86,10 @@ void main()
 {           
     vec3 color = vec3(1.0);   
     // ambient
-    vec3 ambient = 0.5 * color;
+    vec3 ambient = 0.5 * color;   
     
     float shadow = ShadowCalculation(WorldPos);                      
     vec3 lighting = (ambient + (1.0 - (shadow) * 1.25));    
 
-    FragColor = vec4(lighting, 1.0) * 2.0;
+    FragColor = vec4(lighting, 1.0) * 1.5;
 }

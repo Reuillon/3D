@@ -1,24 +1,25 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
+layout (location = 2) in vec2 aTexCoords;
 precision highp float;
 
 out vec3 FragPos;
 out vec3 Normal;
 out vec3 newColor;
-
+out vec2 TexCoords;
 out float oldHeight; 
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform float motion;
+
 
 float waveFrequency = 1.07;
-float waveSpeed = 0.5;
+float waveSpeed = 0.7;
 int waveIterations = 8;
 float wavePersistence = 0.3;
 float waveLucanarity = 2.18;
-float waveAmplitude = 0.034;
+float waveAmplitude = 0.06;
 
 
 vec3 permute(vec3 x) 
@@ -62,7 +63,7 @@ float getElevation(float x, float z) {
   vec2 p = pos.xy;
 
   for(float i = 0.0; i < waveIterations; i++) {
-    float noiseValue = snoise(p * frequency + motion * waveSpeed);
+    float noiseValue = snoise(p * frequency * waveSpeed);
     elevation += amplitude * noiseValue;
     amplitude *= wavePersistence;
     frequency *= waveLucanarity;
@@ -77,7 +78,7 @@ void main()
 {
 	vec4 modelPosition = model * vec4(aPos, 1.0);
     oldHeight = modelPosition.y;
-	
+	TexCoords = aTexCoords;
 	float elevation = getElevation(modelPosition.x, modelPosition.z);
     modelPosition.y += elevation;
 	
