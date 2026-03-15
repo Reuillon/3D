@@ -69,13 +69,13 @@ unsigned int prefilterMap;
 unsigned int lightFBO;
 unsigned int matricesUBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 1024 * 4;
+constexpr unsigned int depthMapResolution = 1024 * 2;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
 std::vector<glm::mat4> getLightSpaceMatrices();
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
-std::vector<float> shadowCascadeLevels{ 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f, 100.0f / 2.0f };
+std::vector<float> shadowCascadeLevels{ 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f, 2500.0f / 2.0f };
 
 //DELTATIME VALUES
 double deltaTime = 0.0f;
@@ -151,7 +151,7 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    initPBR("TEXTURES/hdri/meadow_8k.hdr");
+    initPBR("TEXTURES/hdri/meadow_16k.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
@@ -192,8 +192,8 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
-    //UI
-    Shader crosshair("SHADERS/depth.vs", "SHADERS/UI.fs");
+    //OVERLAYS
+    Shader scope("SHADERS/framebuffer.vs", "SHADERS/crosshair.fs");
 
     //SHADOWS
     Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
@@ -215,8 +215,8 @@ int main()
     debug.defaultShader = defaultShader;
 
     //WATER SHADER 
-    Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
-    Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
+    //Shader waterShader("SHADERS/water.vs", "SHADERS/water.fs");
+    //Shader sandShader("SHADERS/sand.vs", "SHADERS/sand.fs");
 
     /////ACTORS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -232,17 +232,13 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
     //MAPS
-    Model map("Models/GUN/TESTLEVEL/TESTLEVEL.fbx");
-    Model map2("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx");
+    Model map("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx");
 
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     std::vector<MeshCollider> testMap = initCollisionMap("Models/GUN/TESTLEVEL/COLLISIONMAP2.obj");
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
-    //DEBUGGER FOR CHECKING POST PROCESSING EFFECTS
-    //unsigned int whiteTexture = loadTexture("TEXTURES/white.png");
-
 
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -295,6 +291,7 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
+
         start = clock();
 
         //DELTA TIME CALCULATION
@@ -324,8 +321,7 @@ int main()
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
         depthShader.setBool("isStatic", true);
-        //mapRender(p->playerCamera, depthShader, map, glm::vec3(0), glm::vec3(0));
-        mapRender(p->playerCamera, depthShader, map2, glm::vec3(0, 0, 0), glm::vec3(1000));
+        mapRender(p->playerCamera, depthShader, map, glm::vec3(0, 0, 0), glm::vec3(1000));
         
 
         glEnable(GL_CULL_FACE);
@@ -353,12 +349,11 @@ int main()
        
         glEnable(GL_CULL_FACE);
         shadowPass.setBool("isStatic", true);
-        //mapRender(p->playerCamera, shadowPass, map, glm::vec3(0), glm::vec3(0));
-        mapRender(p->playerCamera, shadowPass, map2, glm::vec3(0,0,0), glm::vec3(1000));
+        mapRender(p->playerCamera, shadowPass, map, glm::vec3(0,0,0), glm::vec3(1000));
         shadowPass.setBool("isStatic", false);
         shadowPass.setFloat("clampVal", 0.001f);
         glDisable(GL_CULL_FACE);
-        p->primary->render(p->playerCamera, shadowPass, window);
+        if (p->scopedIn < 0.8){p->primary->render(p->playerCamera, shadowPass, window);}
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -368,14 +363,13 @@ int main()
         shaderGeometryPass.use();
         glEnable(GL_CULL_FACE);
         shaderGeometryPass.setBool("isStatic", true);
-       //mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0), glm::vec3(0));
-        mapRender(p->playerCamera, shaderGeometryPass, map2, glm::vec3(0,0,0), glm::vec3(1000));
+        mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0,0,0), glm::vec3(1000));
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
         glClear(GL_DEPTH_BUFFER_BIT);
         glDisable(GL_CULL_FACE);
-        p->primary->render(p->playerCamera, shaderGeometryPass, window);
+        if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shaderGeometryPass, window); }
         glEnable(GL_CULL_FACE);
 
         // 2. generate SSAO texture
@@ -384,7 +378,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         shaderSSAO.use();
         // Send kernel + rotation
-        for (unsigned int i = 0; i < 32; ++i) { shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]); }
+        for (unsigned int i = 0; i < 16; ++i) { shaderSSAO.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]); }
         shaderSSAO.setMat4("projection", p->playerCamera.projection);
         shaderSSAO.setMat4("view", p->playerCamera.view);
         shaderSSAO.setVec3("camPos", p->playerCamera.cameraPos);
@@ -395,7 +389,6 @@ int main()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, noiseTexture);
         renderQuad();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         // 3. blur SSAO texture to remove noise
         // ------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
@@ -404,10 +397,11 @@ int main()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        
+
+
         // 4. lighting pass: PBR + IBL LIGHTING
         // ------------------------------------
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, fb_width, fb_height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -453,12 +447,6 @@ int main()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
-        
-        
-        
-     
-        
-        
         if (toggleDebug == 1)
         {
             //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
@@ -470,37 +458,21 @@ int main()
         else
         {
             renderQuad();
+            scope.use();
+            scope.setFloat("isScoped", p->scopedIn);
+            renderQuad();
             glClear(GL_DEPTH_BUFFER_BIT);
+
         }
 
 
         //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
         glDisable(GL_BLEND);
 
-
-        /*
-        //DRAWS XYZ LINES
-        //DEFAULT ORIENTATIONS (X,Y,Z)
-        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 0.0, 1.0), glm::vec4(0.0, 1.0, 0.0, 1.0));
-        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(1.0, 0.0, 0.0), glm::vec4(1.0, 0.0, 0.0, 1.0));
-        debug.drawLine(p->playerCamera, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0), glm::vec4(0.0, 0.0, 1.0, 1.0));
-
-
-        
-
-
-
-        /*
-        */
         //glEnable(GL_CULL_FACE);
         //staticRender(p->playerCamera, shaderPBRT, base);
         //drawSand(p->playerCamera, sandShader, sand, envCubemap);
         //drawWater(p->playerCamera, waterShader, water, envCubemap);
-
-
-        //glDisable(GL_CULL_FACE);
-        //WIP CROSSHAIR RENDERER (USES 4 PLANES BECAUSE IM LAZY) 
-        //*THE CURLY BRACKETS MAY CAUSE ERRORS ON OTHER PLATFORMS REMOVE TO FIX
 
         
        
@@ -513,7 +485,7 @@ int main()
 
         stop = clock();
         //PRINT FRAMERATE
-        std::cout << "GPU TIME: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS\n" << "CPU TIME: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
+        std::cout << "GPU TIME: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS " << "CPU TIME: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
         
         
     }
@@ -619,7 +591,7 @@ static void initShadowMap()
 //CREATES THE FRAME BUFFER FOR SSAO
 static void initSSAO()
 {
-    ssaoKernel.reserve(32);
+    ssaoKernel.reserve(16);
     // also create framebuffer to hold SSAO processing stage 
     // -----------------------------------------------------
 
@@ -650,7 +622,7 @@ static void initSSAO()
     // generate sample kernel
     // ----------------------
 
-    for (unsigned int i = 0; i < 32; ++i)
+    for (unsigned int i = 0; i < 16; ++i)
     {
         glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
         sample = glm::normalize(sample);
@@ -666,7 +638,7 @@ static void initSSAO()
     // generate noise texture
     // ----------------------
     std::vector<glm::vec3> ssaoNoise;
-    for (unsigned int i = 0; i < 32; i++)
+    for (unsigned int i = 0; i < 16; i++)
     {
         glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
         ssaoNoise.push_back(noise);

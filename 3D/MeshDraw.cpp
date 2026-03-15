@@ -170,6 +170,7 @@ void mapRender(camera& c, Shader& shader, Model& m, glm::vec3 rot,glm::vec3 pos)
     model = glm::rotate(model, (float)(rot.y * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, (float)(rot.z * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
     shader.setMat4("model", model);
+    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m.draw(shader);
 }
 void drawWater(camera& c, Shader& shader, Model& m, unsigned int envTexture)

@@ -152,12 +152,11 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     {
         diffuse = diffuseMaps[0];
     }
-    
+    /*
     // 3. normal maps
     std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
     
     //THESE MIGHT BE USELESS IN THE LONG TERM.....
-    /*
     // 2. specular maps
     vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
@@ -214,17 +213,6 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     material->Get(AI_MATKEY_REFLECTIVITY, m.metallic);
     material->Get(AI_MATKEY_SHININESS_STRENGTH, m.specular);
     m.specular *= 2;
-    
-
-
-
-
-    /* */
-    //GET ROUGHNESS VALUE
-    //std::cout << "\n\n\n" << m.Diffuse.r << ", " << m.Diffuse.g << ", " << m.Diffuse.b << " | \n\n\n";
-    //std::cout << "\n" << m.roughness << " ";
-    //std::cout << m.metallic << "\n";
-   
 
     // return a mesh object created from the extracted mesh data
     return Mesh(vertices, indices, diffuse, metallic, roughness, m);

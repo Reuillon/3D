@@ -259,6 +259,8 @@ class Player
 		float airMomentumTimer = 0.0f;
 		float horizontalSpeed = 0.0f;
 		float verticalSpeed = 0.0f;
+		float scopedIn = 0.0;
+
 
 		glm::vec3 gravity = glm::vec3(0.0);
 		glm::vec3 lastSpeed = glm::vec3(0);

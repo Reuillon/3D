@@ -52,10 +52,6 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 
 	lastPos = c.cameraPos;
 	glfwGetCursorPos(window, &cposx, &cposy);
-
-
-
-
 	offsetX = ((double)cposx - (double)clastX) * 0.2;
 	offsetY = ((double)clastY - (double)cposy) * 0.2;
 	clastX = (double)cposx;
@@ -93,13 +89,9 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	{
 		spread = 1.5;
 	}
-
-
 	//INITIALIZE OBJECT ORIENTATIONS
     model = glm::mat4(1.0f);
-
 	model = glm::inverse(model) * glm::inverse(c.view);
-
 	model = glm::scale(model, glm::vec3(0.25f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
@@ -117,44 +109,35 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	fallSpeed = 0;
 	if (isGrounded)
 	{
-		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), (-0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed)-(gravity * 0.0025f), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
+		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed)-(gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
 	}
 	else
 	{
-		model = glm::translate(model, glm::vec3(5.0f - (speed / 8), (-0.5 + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed) - (gravity * 0.0025f), (0.41 + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
+		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed) - (gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
 	}
 	model = glm::rotate(model, (float)(((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, (float)(0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
+	normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 	animController(window);
+	//CALCULATE BONE TRANSFORM
+	transforms = animate.GetFinalBoneMatrices();
+	animate.loopAnim(true);
 }
 
 void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 {
-	
-
-	glm::mat4 projection = glm::perspective(glm::radians((float)70), (float)2560.0 / (float)1440.0, c.cameraNear, c.cameraFar);
-
-
 	shader.use();
-	shader.setMat4("projection", projection);
+	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
 	shader.setVec3("camPos", c.cameraPos);
-
-	
-	
-	//CALCULATE BONE TRANSFORM
-    transforms = animate.GetFinalBoneMatrices();
-
 	for (int i = 0; i < transforms.size(); ++i)
 	{
 		shader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", transforms[i]);
 	}
-
 	//SEND OBJECT DATA TO SHADER AND DRAW
 	shader.setMat4("model", model);
-
-	animate.loopAnim(true);
-
+	shader.setMat3("normalMatrix", normalMatrix);
+	
 	m.draw(shader);
 }
 float thisTimer = 0.0;
@@ -300,6 +283,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		
 		
 	}
+
 	if (thisTimer == 0.0)
 	{
 		recoil = 0;

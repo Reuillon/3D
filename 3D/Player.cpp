@@ -3,7 +3,7 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
     //LOAD VIEWMODELS
-    //primary = new Viewmodel(12, "Models/GUN/PEESTOL2.fbx");
+    //primary = new Viewmodel(12, "Models/GUN/PEESTOLOLD.fbx");
     primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
 
     
@@ -25,6 +25,8 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
 
 int swapWeapon = -1;
 
+
+float fovZoom = 0.0;
 
 Debug debugger;
 Utility u;
@@ -91,7 +93,6 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         gravity = glm::vec3(0.0);
     }
 
-
     //GRAVITY CHECK
     if (isFalling)
     {
@@ -112,6 +113,30 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         playerCollider.pos = glm::vec3(1000, 1005, 1000);
     }
 
+    if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2))
+    {
+        scopedIn += (5.0 * deltaTime);
+        fovZoom += (300.0 * deltaTime);
+        primary->viewPos.x -= (4 * deltaTime);
+        primary->viewPos.y += (2 * deltaTime);
+        primary->viewPos.z -= (5 * deltaTime);
+        playerCamera.pitch += sin(glfwGetTime() * 1.8154f) * 0.35f * deltaTime;
+        playerCamera.yaw += cos(glfwGetTime() * 1.045f) * 0.35f * deltaTime;
+    }
+    else
+    {
+        scopedIn -= (5.0 * deltaTime);
+        fovZoom -= (300.0 * deltaTime);
+        primary->viewPos.x += (6 * deltaTime);
+        primary->viewPos.y -= (2 * deltaTime);
+        primary->viewPos.z += (6 * deltaTime);
+    }
+    scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
+    fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
+    playerCamera.fov = 70.0 - fovZoom;
+    primary->viewPos.x = glm::clamp(primary->viewPos.x, 4.07f, 4.85f);
+    primary->viewPos.y = glm::clamp(primary->viewPos.y, -0.548f, -0.286f);
+    primary->viewPos.z = glm::clamp(primary->viewPos.z, -0.405f, 0.443f);
 
     //CHECK IF PLAYER IS ON THE GROUND
     if (isGrounded)
@@ -173,11 +198,6 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     movingHorizontal = false;
     movingVertical = false;
 
-    //glDisable(GL_CULL_FACE);
-    //glClear(GL_DEPTH_BUFFER_BIT);
-    
-
-   
     //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 
     if (swapWeapon == -1)
@@ -188,7 +208,6 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     }
     glEnable(GL_CULL_FACE);
 
-    playerCamera.fov = 70;
     playerCamera.update(deltaTime);
     playerControls();
     mouseControl();
@@ -203,12 +222,12 @@ void Player::playerControls()
         movingVertical = true;
         if (isGrounded)
         {
-            if (verticalSpeed < 0) {verticalSpeed /= (1 + (newDelta * 20));}
+            if (verticalSpeed < 0) { verticalSpeed /= (1 + (newDelta * 20)); }
             verticalSpeed += groundAcceleration * newDelta;
         }
         airVelocity.y += 10 * newDelta;
         airAcceleration += 35 * newDelta * MAXSPEED;
-        lastSpeed +=  playerForward * airVelocity.y * MAXSPEED;
+        lastSpeed += playerForward * airVelocity.y * MAXSPEED;
         if (lastSpeed != glm::vec3(0.0))
         {
             normalizedAirSpeed = glm::normalize(lastSpeed);
@@ -225,9 +244,9 @@ void Player::playerControls()
         movingVertical = true;
         if (isGrounded)
         {
-            if (verticalSpeed > 0) {verticalSpeed /= (1 + (newDelta * 20));}
+            if (verticalSpeed > 0) { verticalSpeed /= (1 + (newDelta * 20)); }
             verticalSpeed -= groundAcceleration * newDelta;
-        } 
+        }
         airVelocity.y += 10 * newDelta;
         airAcceleration += 35 * newDelta * MAXSPEED;
         lastSpeed -= playerForward * airVelocity.y * MAXSPEED;
@@ -248,7 +267,7 @@ void Player::playerControls()
         movingHorizontal = true;
         if (isGrounded)
         {
-            if (horizontalSpeed > 0) {horizontalSpeed /= (1 + (newDelta * 20));}
+            if (horizontalSpeed > 0) { horizontalSpeed /= (1 + (newDelta * 20)); }
             horizontalSpeed -= groundAcceleration * newDelta;
         }
         airVelocity.x += 10 * newDelta;
@@ -267,25 +286,25 @@ void Player::playerControls()
     }
     if (glfwGetKey(pWindow, GLFW_KEY_D))
     {
-       movingHorizontal = true;
-       if (isGrounded)
-       {
-           if (horizontalSpeed < 0) { horizontalSpeed /= (1 + (newDelta * 20)); }
-           horizontalSpeed += groundAcceleration * newDelta;
-       }
-       airVelocity.x += 10 * newDelta;
-       airAcceleration += 35 * newDelta * MAXSPEED;
-       lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
-       if (lastSpeed != glm::vec3(0.0))
-       {
-           normalizedAirSpeed = glm::normalize(lastSpeed);
-           glm::vec3 airStrafe = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
-           if (u.oppositeDirection(0.2, 0.2, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(airStrafe.x, airStrafe.z)))
-           {
-               airAcceleration /= 1 + (newDelta * 20);
-               MAXSPEED = airAcceleration / 15;
-           }
-       }
+        movingHorizontal = true;
+        if (isGrounded)
+        {
+            if (horizontalSpeed < 0) { horizontalSpeed /= (1 + (newDelta * 20)); }
+            horizontalSpeed += groundAcceleration * newDelta;
+        }
+        airVelocity.x += 10 * newDelta;
+        airAcceleration += 35 * newDelta * MAXSPEED;
+        lastSpeed += glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0)) * airVelocity.x * MAXSPEED;
+        if (lastSpeed != glm::vec3(0.0))
+        {
+            normalizedAirSpeed = glm::normalize(lastSpeed);
+            glm::vec3 airStrafe = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
+            if (u.oppositeDirection(0.2, 0.2, glm::vec2(normalizedAirSpeed.x, normalizedAirSpeed.z), glm::vec2(airStrafe.x, airStrafe.z)))
+            {
+                airAcceleration /= 1 + (newDelta * 20);
+                MAXSPEED = airAcceleration / 15;
+            }
+        }
     }
 
     //SLOWS PLAYER DOWN WHEN NO INPUTS ARE PRESENT
@@ -297,17 +316,15 @@ void Player::playerControls()
     {
         horizontalSpeed /= (1 + (newDelta * 10));
     }
-    
+
     //SPEED CAPS FOR GROUND MOVEMENT
-    if (horizontalSpeed > 15) {horizontalSpeed = 15;}
-    else if (horizontalSpeed < -15) {horizontalSpeed = -15;}
-    else if (u.checkBounds(-0.01, 0.01,horizontalSpeed)) {horizontalSpeed = 0;}
-    if (verticalSpeed > 15) {verticalSpeed = 15;}
-    else if (verticalSpeed < -15) {verticalSpeed = -15;}
-    else if (u.checkBounds(-0.01, 0.01, verticalSpeed)) {verticalSpeed = 0;}
+    horizontalSpeed = glm::clamp(horizontalSpeed, -15.0f, 15.0f);
+    if (u.checkBounds(-0.01, 0.01, horizontalSpeed)) { horizontalSpeed = 0; }
+    verticalSpeed = glm::clamp(verticalSpeed, -15.0f, 15.0f);
+    if (u.checkBounds(-0.01, 0.01, verticalSpeed)) { verticalSpeed = 0; }
 
     //SPEED CAPS FOR AIR MOVEMENT
-    if (airAcceleration > 15) {airAcceleration = 15;}
+    if (airAcceleration > 15) { airAcceleration = 15; }
 
 
 
@@ -321,7 +338,7 @@ void Player::playerControls()
     }
 
     //AUTO HOP JUMPING
-    
+
 
     if (glfwGetKey(pWindow, GLFW_KEY_SPACE))
     {
@@ -331,8 +348,8 @@ void Player::playerControls()
     {
         isJump = false;
     }
-   
-    /* 
+
+    /*
     //SINGLE INPUT CONTROL FOR JUMPING
     if (glfwGetKey(pWindow, GLFW_KEY_SPACE))
     {
@@ -356,7 +373,33 @@ void Player::playerControls()
         swapWeapon *= -1;
     }
     */
-
+    /*
+    if (glfwGetKey(pWindow, GLFW_KEY_UP))
+    {
+        primary->viewPos.z += 0.1 * newDelta;
+    }
+    if (glfwGetKey(pWindow, GLFW_KEY_DOWN))
+    {
+        primary->viewPos.z -= 0.1 * newDelta;
+    }
+    if (glfwGetKey(pWindow, GLFW_KEY_RIGHT))
+    {
+        primary->viewPos.x += 0.1 * newDelta;
+    }
+    if (glfwGetKey(pWindow, GLFW_KEY_LEFT))
+    {
+        primary->viewPos.x -= 0.1 * newDelta;
+    }
+    if (glfwGetKey(pWindow, GLFW_KEY_L))
+    {
+        primary->viewPos.y += 0.1 * newDelta;
+    }
+    if (glfwGetKey(pWindow, GLFW_KEY_M))
+    {
+        primary->viewPos.y -= 0.1 * newDelta;
+    }
+    std::cout << primary->viewPos.x << " " << primary->viewPos.y << " " << primary->viewPos.z  << "\n";
+    */
 }
 void Player::mouseControl()
 {
