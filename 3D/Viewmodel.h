@@ -5,6 +5,9 @@
 #include "Camera.h"
 #include <GLFW/glfw3.h>
 #include "Input.h"
+#include "SoundBuffer.h"
+#include "SoundSource.h"
+
 class Viewmodel
 {
 	private:
@@ -19,8 +22,11 @@ class Viewmodel
 		int thisAnim = 1;
 		int playAnim = 1;
 		int reset = 0;
-		
 
+		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
+		uint32_t sound2 = SoundBuffer::get()->addSoundEffect("SOUNDS/Fah.mp3");
+		SoundSource playerSpeaker[2];
+		
 	public:
 		int ammo = 7;
 		float spread;

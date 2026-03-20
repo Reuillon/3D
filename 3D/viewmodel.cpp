@@ -253,7 +253,8 @@ void Viewmodel::animController(GLFWwindow* window)
 				animate.PlayAnimation(&animation[8]);
 				thisAnim = 4;
 			}
-			
+			playerSpeaker[0].Play(sound1);
+			playerSpeaker[1].Play(sound2);
 		}
 		if (thisTimer < 0.165)
 		{

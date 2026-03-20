@@ -22,6 +22,9 @@
 //OPENGL LIBRARIES
 #include <GLFW/glfw3.h>
 
+//OPENAL LIBRARIES
+#include "InitializeSound.h"
+
 //GLFW INPUT FUNCTIONS
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -118,7 +121,7 @@ static GLFWwindow* windowInit()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RENDERER", glfwGetPrimaryMonitor(), NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GAME ^_^", glfwGetPrimaryMonitor(), NULL);
 
     if (window == NULL)
     {
@@ -147,11 +150,12 @@ static GLFWwindow* windowInit()
     initSSAO();
     initShadowMap();
     initFramebuffer();
-    //debug.initializeGrid(4);
+    
+    initPBR("TEXTURES/hdri/meadow_16k.hdr");
+
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
-    initPBR("TEXTURES/hdri/meadow_16k.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
@@ -188,6 +192,18 @@ int main()
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
+    /////SOUNDS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    InitializeSound* defaultSoundDevice = InitializeSound::get();
+
+    /*
+    InitializeSound* defaultSoundDevice = InitializeSound::get();
+    uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
+    SoundSource playerSpeaker;
+    playerSpeaker.Play(sound1);
+    */
+
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -222,10 +238,6 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     p = new Player(SCR_WIDTH, SCR_HEIGHT, window);
-    shadowCascadeLevels[0] = (p->playerCamera.cameraFar / 2.5) / 50.0f;
-    shadowCascadeLevels[1] = (p->playerCamera.cameraFar / 2.5) / 25.0f;
-    shadowCascadeLevels[2] = (p->playerCamera.cameraFar / 2.5) / 10.0f;
-    shadowCascadeLevels[3] = (p->playerCamera.cameraFar / 2.5) / 2.0f;
 
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -243,6 +255,11 @@ int main()
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+
+    shadowCascadeLevels[0] = (p->playerCamera.cameraFar / 2.5) / 50.0f;
+    shadowCascadeLevels[1] = (p->playerCamera.cameraFar / 2.5) / 25.0f;
+    shadowCascadeLevels[2] = (p->playerCamera.cameraFar / 2.5) / 10.0f;
+    shadowCascadeLevels[3] = (p->playerCamera.cameraFar / 2.5) / 2.0f;
 
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
@@ -449,7 +466,7 @@ int main()
         
         if (toggleDebug == 1)
         {
-            //debug.drawCollider(p->playerCamera.floorCollider,p->playerCamera);
+            debug.drawCollider(p->floorCollider,p->playerCamera);
             for (int i = 0; i < testMap.size(); i++)
             {
                 debug.drawCollider(testMap[i], p->playerCamera);
@@ -462,10 +479,7 @@ int main()
             scope.setFloat("isScoped", p->scopedIn);
             renderQuad();
             glClear(GL_DEPTH_BUFFER_BIT);
-
         }
-
-
         //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
         glDisable(GL_BLEND);
 
@@ -474,8 +488,6 @@ int main()
         //drawSand(p->playerCamera, sandShader, sand, envCubemap);
         //drawWater(p->playerCamera, waterShader, water, envCubemap);
 
-        
-       
 
         // input
         // -----
@@ -485,9 +497,7 @@ int main()
 
         stop = clock();
         //PRINT FRAMERATE
-        std::cout << "GPU TIME: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS " << "CPU TIME: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
-        
-        
+        std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
     }
 
 
