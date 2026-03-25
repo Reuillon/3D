@@ -24,7 +24,7 @@ class Viewmodel
 		int reset = 0;
 
 		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
-		uint32_t sound2 = SoundBuffer::get()->addSoundEffect("SOUNDS/Fah.mp3");
+		//uint32_t sound2 = SoundBuffer::get()->addSoundEffect("SOUNDS/Fah.mp3");
 		SoundSource playerSpeaker[2];
 		
 	public:

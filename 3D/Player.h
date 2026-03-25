@@ -3,11 +3,14 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
+
 #include "Viewmodel.h"
 #include "Collision.h"
 #include "camera.h"
 #include "debug.h"
 #include "utility.h"
+#include "SoundBuffer.h"
+#include "SoundSource.h"
 
 class Player
 {
@@ -260,8 +263,11 @@ class Player
 		float horizontalSpeed = 0.0f;
 		float verticalSpeed = 0.0f;
 		float scopedIn = 0.0;
+		
+		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/steps.mp3");
 
-
+		SoundSource playerSpeaker;
+		float stepTimer = 0;
 		glm::vec3 gravity = glm::vec3(0.0);
 		glm::vec3 lastSpeed = glm::vec3(0);
 		glm::vec3 redirect = glm::vec3(0);

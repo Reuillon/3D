@@ -6,10 +6,6 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
     //primary = new Viewmodel(12, "Models/GUN/PEESTOLOLD.fbx");
     primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
 
-    
-   //zz primary = new Viewmodel(7, "Models/GUN/BS2.fbx");
-    //primary = new Viewmodel(11, "Models/GUN/DEGGLETMP.fbx");
-
 	playerCamera.init(SCR_WIDTH, SCR_HEIGHT, 52);
 	pWindow = window;
 	playerCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
@@ -25,8 +21,9 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
 
 int swapWeapon = -1;
 
-
 float fovZoom = 0.0;
+float footstepSpeed = 0.4;
+float footStepAcceleration;
 
 Debug debugger;
 Utility u;
@@ -131,6 +128,8 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         primary->viewPos.y -= (2 * deltaTime);
         primary->viewPos.z += (6 * deltaTime);
     }
+    
+    //SETS MINIMUM AND MAXIMUM POSITION VALUES FOR AIMING DOWN SIGHTS
     scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
     fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
     playerCamera.fov = 70.0 - fovZoom;
@@ -138,14 +137,30 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     primary->viewPos.y = glm::clamp(primary->viewPos.y, -0.548f, -0.286f);
     primary->viewPos.z = glm::clamp(primary->viewPos.z, -0.405f, 0.443f);
 
+ 
+
     //CHECK IF PLAYER IS ON THE GROUND
     if (isGrounded)
     {
+        footStepAcceleration = (glm::clamp((double)(abs(verticalSpeed / 15) + abs(horizontalSpeed / 15)), 0.0, 1.0));
+        footstepSpeed = 1.0 - (footStepAcceleration * 0.6);
+
         //KEEPS VALUE SMALL ENOUGH FOR AIR STRAFE TO BE MORE CONTROLLABLE
         if (lastSpeed != glm::vec3(0)) {lastSpeed /= 1 + (newDelta * 350);}
         if (movingHorizontal && movingVertical) { groundAcceleration = 105; }
         else { groundAcceleration = 70; }
 
+        
+        //PLAY WALKING SOUNDS
+        stepTimer += deltaTime;
+        if ((verticalSpeed != 0 || horizontalSpeed != 0) && stepTimer > footstepSpeed)
+        {
+            float randomValue = ((((double)(rand() % 21)) / 100)) + 0.9f;
+            playerSpeaker.p_Pitch = randomValue * (1.0 - (footStepAcceleration * 0.1));
+            playerSpeaker.p_Gain = randomValue * (1.0 - (footStepAcceleration * 0.1));
+            playerSpeaker.Play(sound1);
+            stepTimer = 0;
+        }
         
         //WASD CONTROLS ON THE GROUND
         glm::vec3 temp = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
@@ -174,6 +189,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     }
     else
     {
+        stepTimer = 0.5;
         glm::vec2 normalAirVector = glm::vec3(0.0);
         if (lastSpeed.x != 0 && lastSpeed.z != 0)
         {
@@ -211,7 +227,7 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
     playerCamera.update(deltaTime);
     playerControls();
     mouseControl();
-    primary->updateViewmodel(playerCamera, pWindow, airAcceleration / 14.0f, gravity.y, isGrounded);
+    primary->updateViewmodel(playerCamera, pWindow, (footStepAcceleration * 15) / 14.0f, gravity.y, isGrounded);
 }
 
 void Player::playerControls()
