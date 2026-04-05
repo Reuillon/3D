@@ -32,7 +32,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 //INITIALIZER FUNCTIONS
 static void initShadowMap();
 static void initFramebuffer();
-static void initPBR(const char* hdrPath);
+static void initPBR(const char* hdrPath, int resolution);
 static void initSSAO();
 
 // RESOLUTION
@@ -73,7 +73,7 @@ unsigned int prefilterMap;
 unsigned int lightFBO;
 unsigned int matricesUBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 1024 * 2;
+constexpr unsigned int depthMapResolution = 1024 * 4;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
@@ -152,7 +152,7 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     
-    initPBR("TEXTURES/hdri/meadow_16k.hdr");
+    initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
 
     //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
@@ -717,7 +717,7 @@ static void initFramebuffer()
 }
 
 //INITIALIZES CUBEMAPS FOR PBR + IBL
-static void initPBR(const char* hdrPath)
+static void initPBR(const char* hdrPath, int resolution)
 {
     unsigned int captureFBO;
     unsigned int captureRBO;
@@ -734,7 +734,7 @@ static void initPBR(const char* hdrPath)
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, resolution, resolution);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
     // pbr: load the HDR environment map
@@ -767,7 +767,7 @@ static void initPBR(const char* hdrPath)
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, 512, 512, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB32F, resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -776,7 +776,7 @@ static void initPBR(const char* hdrPath)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     // pbr: set up projection and view matrices for capturing data onto the 6 cubemap face directions
     // ----------------------------------------------------------------------------------------------
-    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 2500.0f);
+    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
     glm::mat4 captureViews[] =
     {
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
@@ -795,7 +795,7 @@ static void initPBR(const char* hdrPath)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrTexture);
 
-    glViewport(0, 0, 512, 512); // don't forget to configure the viewport to the capture dimensions.
+    glViewport(0, 0, resolution, resolution); // don't forget to configure the viewport to the capture dimensions.
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     for (unsigned int i = 0; i < 6; ++i)
     {
@@ -906,7 +906,7 @@ static void initPBR(const char* hdrPath)
 
     // pre-allocate enough memory for the LUT texture.
     glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, resolution, resolution, 0, GL_RG, GL_FLOAT, 0);
     // be sure to set wrapping mode to GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -916,10 +916,10 @@ static void initPBR(const char* hdrPath)
     // then re-configure capture framebuffer object and render screen-space quad with BRDF shader.
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, resolution, resolution);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
 
-    glViewport(0, 0, 512, 512);
+    glViewport(0, 0, resolution, resolution);
     brdfShader.use();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderQuad();
