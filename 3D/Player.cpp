@@ -27,7 +27,7 @@ float footStepAcceleration;
 
 Debug debugger;
 Utility u;
-void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& collisionMap)
+void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
 {
     playerCamera.cameraFar = 2500;
     playerCamera.cameraNear = 0.1;
@@ -209,12 +209,10 @@ void Player::update(float deltaTime, Shader& shader, std::vector<MeshCollider>& 
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
   
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 1.9, playerCollider.pos.z);
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.25, playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;
-
-    //secondary->render(playerCamera, shader, pWindow, airAcceleration / 28.0f, gravity.y, isGrounded);
 
     if (swapWeapon == -1)
     {

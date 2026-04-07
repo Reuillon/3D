@@ -18,16 +18,19 @@
 
 class Level
 {
-private:
-	std::vector<Model> models;
-	std::vector<Shader> shaders;
-	std::vector<glm::vec3> lights;
-	int mCount = 0;
+	private:
+		glm::vec3 position = glm::vec3(0.0);
+		glm::vec3 rotation = glm::vec3(0.0);
+		glm::vec3 scale = glm::vec3(1.0);
+        glm::mat4 model = glm::mat3(1.0);
+        glm::mat3 inverseMatrix = glm::mat3(1.0);
+        Model map;
+	public:
+        std::vector<MeshCollider> collisionMap;
+        Level(std::string mapModel, std::string mapCollision, glm::vec3 mapPos, glm::vec3 mapRot, glm::vec3 mapScale);
+        
 
-public:
-	void run();
-	Model iniModel(std::string mName,bool isStatic);
-	void iniShader(const char* vertexPath, const char* fragmentPath);
-	void iniLight();
+        void mapRender(camera& c, Shader& shader);
+
 };
 

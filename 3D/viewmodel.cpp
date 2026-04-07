@@ -92,7 +92,7 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	//INITIALIZE OBJECT ORIENTATIONS
     model = glm::mat4(1.0f);
 	model = glm::inverse(model) * glm::inverse(c.view);
-	model = glm::scale(model, glm::vec3(0.25f));
+	model = glm::scale(model, glm::vec3(1.0f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
 	{
@@ -126,7 +126,6 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 
 void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 {
-	shader.use();
 	shader.setMat4("projection", c.projection);
 	shader.setMat4("view", c.view);
 	shader.setVec3("camPos", c.cameraPos);

@@ -149,26 +149,16 @@ unsigned int loadTexture(char const* path)
 void staticRender(camera& c, Shader& shader, Model& m)
 {
     shader.use();
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3(1.0f));
+    model = glm::translate(model, glm::vec3(1000.0f));
+    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
+    
     shader.setMat4("projection", c.projection);
     shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, (-90.0f) * 0.0174533f, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::translate(model, glm::vec3(0.0, 0.0, 0.0));
-    shader.setMat4("model", model);
-    shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-    m.draw(shader);
-}
-void mapRender(camera& c, Shader& shader, Model& m, glm::vec3 rot,glm::vec3 pos)
-{
-    shader.use();
-    shader.setMat4("projection", c.projection);
-    shader.setMat4("view", c.view);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
-    model = glm::translate(model, glm::vec3(pos.x, pos.y, pos.z));
-    model = glm::rotate(model, (float)(rot.x * 0.0174533), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (float)(rot.y * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, (float)(rot.z * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
     shader.setMat4("model", model);
     shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
     m.draw(shader);

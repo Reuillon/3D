@@ -14,10 +14,10 @@
 #include "MeshDraw.h"
 #include "Player.h"
 #include "Debug.h"
+#include "Level.h"
 
 //THESE NEED TO BE WORKED ON
 #include "Input.h"
-#include "Level.h"
 
 //OPENGL LIBRARIES
 #include <GLFW/glfw3.h>
@@ -198,13 +198,6 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     InitializeSound* defaultSoundDevice = InitializeSound::get();
 
-    /*
-    InitializeSound* defaultSoundDevice = InitializeSound::get();
-    uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
-    SoundSource playerSpeaker;
-    playerSpeaker.Play(sound1);
-    */
-
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -243,24 +236,24 @@ int main()
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    Model dummy("Models/GUN/BODY.fbx");
 
     //MAPS
-    Model map("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx");
-
+    Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(1000), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    std::vector<MeshCollider> testMap = initCollisionMap("Models/GUN/TESTLEVEL/COLLISIONMAP2.obj");
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
 
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
-    shadowCascadeLevels[0] = (p->playerCamera.cameraFar / 2.5) / 50.0f;
-    shadowCascadeLevels[1] = (p->playerCamera.cameraFar / 2.5) / 25.0f;
-    shadowCascadeLevels[2] = (p->playerCamera.cameraFar / 2.5) / 10.0f;
-    shadowCascadeLevels[3] = (p->playerCamera.cameraFar / 2.5) / 2.0f;
+    shadowCascadeLevels[0] = (p->playerCamera.cameraFar) / 50.0f;
+    shadowCascadeLevels[1] = (p->playerCamera.cameraFar) / 25.0f;
+    shadowCascadeLevels[2] = (p->playerCamera.cameraFar) / 10.0f;
+    shadowCascadeLevels[3] = (p->playerCamera.cameraFar) / 2.0f;
 
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
@@ -304,12 +297,14 @@ int main()
     glViewport(0, 0, scrWidth, scrHeight);
     clock_t start, stop;
     lightDir = glm::normalize(glm::vec3(1.25, 1.25, 0.85));
+    double Timer = 0.0f;
+    
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-
+        Timer += glfwGetTime();
         start = clock();
 
         //DELTA TIME CALCULATION
@@ -317,7 +312,7 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        p->update(deltaTime, depthShader, testMap);
+        p->update(deltaTime, shipment.collisionMap);
         
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -326,23 +321,18 @@ int main()
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         const auto lightMatrices = getLightSpaceMatrices();
-        glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
-        for (size_t i = 0; i < lightMatrices.size(); ++i)
-        {
-            glBufferSubData(GL_UNIFORM_BUFFER, i * sizeof(glm::mat4x4), sizeof(glm::mat4x4), &lightMatrices[i]);
-        }
-        glBindBuffer(GL_UNIFORM_BUFFER, 0);
         
+        glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, lightMatrices.size() * sizeof(glm::mat4), lightMatrices.data());
 
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
         depthShader.use();
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
         glViewport(0, 0, depthMapResolution, depthMapResolution);
         glClear(GL_DEPTH_BUFFER_BIT);
         depthShader.setBool("isStatic", true);
-        mapRender(p->playerCamera, depthShader, map, glm::vec3(0, 0, 0), glm::vec3(1000));
-        
-
-        glEnable(GL_CULL_FACE);
+        shipment.mapRender(p->playerCamera, depthShader);
+        staticRender(p->playerCamera, depthShader, dummy);
         glDisable(GL_CULL_FACE);
         depthShader.setBool("isStatic", false);
         //RENDER VIEWMODEL
@@ -352,7 +342,7 @@ int main()
         // reset viewport
         glViewport(0, 0, fb_width, fb_height);
         glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
-        glClear(GL_DEPTH_BUFFER_BIT);
+       //glClear(GL_DEPTH_BUFFER_BIT);
         // set light uniforms
         shadowPass.setVec3("lightDir", lightDir);
         shadowPass.setFloat("farPlane", p->playerCamera.cameraFar);
@@ -364,14 +354,16 @@ int main()
         shadowPass.setFloat("clampVal", 0.0001f);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-       
+
         glEnable(GL_CULL_FACE);
         shadowPass.setBool("isStatic", true);
-        mapRender(p->playerCamera, shadowPass, map, glm::vec3(0,0,0), glm::vec3(1000));
+        shipment.mapRender(p->playerCamera, shadowPass);
+        staticRender(p->playerCamera, shadowPass, dummy);
         shadowPass.setBool("isStatic", false);
         shadowPass.setFloat("clampVal", 0.001f);
         glDisable(GL_CULL_FACE);
-        if (p->scopedIn < 0.8){p->primary->render(p->playerCamera, shadowPass, window);}
+        glCullFace(GL_BACK);
+        if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shadowPass, window); }
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -381,7 +373,8 @@ int main()
         shaderGeometryPass.use();
         glEnable(GL_CULL_FACE);
         shaderGeometryPass.setBool("isStatic", true);
-        mapRender(p->playerCamera, shaderGeometryPass, map, glm::vec3(0,0,0), glm::vec3(1000));
+        shipment.mapRender(p->playerCamera, shaderGeometryPass);
+        staticRender(p->playerCamera, shaderGeometryPass, dummy);
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
@@ -426,9 +419,7 @@ int main()
         glDisable(GL_CULL_FACE);
         //DRAW SKYBOX
         backgroundShader.use();
-        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(p->playerCamera.view));
-
-        backgroundShader.setMat4("view", viewNoTranslation);
+        backgroundShader.setMat4("view", p->playerCamera.view);
         backgroundShader.setMat4("projection", p->playerCamera.projection);
         glActiveTexture(GL_TEXTURE0);
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); //DRAWS LOW RES MAP
@@ -454,8 +445,6 @@ int main()
         glBindTexture(GL_TEXTURE_2D, shadowMap);
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, gPBR);
-        glActiveTexture(GL_TEXTURE9);
-        glBindTexture(GL_TEXTURE_2D, gPOS_IBL);
         glActiveTexture(GL_TEXTURE6);
         glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
         glActiveTexture(GL_TEXTURE7);
@@ -468,9 +457,9 @@ int main()
         if (toggleDebug == 1)
         {
             debug.drawCollider(p->floorCollider,p->playerCamera);
-            for (int i = 0; i < testMap.size(); i++)
+            for (int i = 0; i < shipment.collisionMap.size(); i++)
             {
-                debug.drawCollider(testMap[i], p->playerCamera);
+                debug.drawCollider(shipment.collisionMap[i], p->playerCamera);
             }
         }
         else
@@ -483,12 +472,6 @@ int main()
         }
         //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
         glDisable(GL_BLEND);
-
-        //glEnable(GL_CULL_FACE);
-        //staticRender(p->playerCamera, shaderPBRT, base);
-        //drawSand(p->playerCamera, sandShader, sand, envCubemap);
-        //drawWater(p->playerCamera, waterShader, water, envCubemap);
-
 
         // input
         // -----
@@ -537,8 +520,8 @@ static void initShadowMap()
 
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
