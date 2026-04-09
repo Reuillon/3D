@@ -152,9 +152,13 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     
-    initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
-
-    //initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr");
+    //initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
+    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
+    //initPBR("TEXTURES/hdri/color.hdr", 2048);
+    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
+    //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
+    
+    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
@@ -171,12 +175,11 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/wildflower_field_2k.hdr");
     //initPBR("TEXTURES/hdri/cannon_2k.hdr");
 
-    //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr");
+    
     //initPBR("TEXTURES/hdri/ballawley_park_4k.hdr");
-    //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr");
+    
     //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
-    //initPBR("TEXTURES/hdri/color.hdr");
-    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr");
+    
     //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
 
@@ -257,6 +260,8 @@ int main()
 
     //SHADOW MAP DEPTH TEXTURE
     shadowPass.use();
+    shadowPass.setInt("shadowMap", 0);
+
 
     //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
@@ -270,11 +275,12 @@ int main()
     shaderLightingPass.setInt("gNormal", 1);
     shaderLightingPass.setInt("gAlbedo", 2);
     shaderLightingPass.setInt("ssao", 3);
-    shaderLightingPass.setInt("shadowMap", 4);
+    shaderLightingPass.setInt("lightDepthMap", 4);
     shaderLightingPass.setInt("gPBR", 5);
     shaderLightingPass.setInt("irradianceMap", 6);
     shaderLightingPass.setInt("prefilterMap", 7);
     shaderLightingPass.setInt("brdfLUT", 8);
+
 
     //SSAO PASS
     shaderSSAO.use();
@@ -319,6 +325,7 @@ int main()
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         /* */
         glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
         const auto lightMatrices = getLightSpaceMatrices();
         
@@ -333,40 +340,13 @@ int main()
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
         staticRender(p->playerCamera, depthShader, dummy);
-        glDisable(GL_CULL_FACE);
         depthShader.setBool("isStatic", false);
-        //RENDER VIEWMODEL
+        //glDisable(GL_CULL_FACE);
+        ////RENDER VIEWMODEL
         //p->primary->render(p->playerCamera, depthShader, window);
-
-        shadowPass.use();
-        // reset viewport
-        glViewport(0, 0, fb_width, fb_height);
-        glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
-       //glClear(GL_DEPTH_BUFFER_BIT);
-        // set light uniforms
-        shadowPass.setVec3("lightDir", lightDir);
-        shadowPass.setFloat("farPlane", p->playerCamera.cameraFar);
-        shadowPass.setInt("cascadeCount", shadowCascadeLevels.size());
-        for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
-        {
-            shadowPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
-        }
-        shadowPass.setFloat("clampVal", 0.0001f);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
-
-        glEnable(GL_CULL_FACE);
-        shadowPass.setBool("isStatic", true);
-        shipment.mapRender(p->playerCamera, shadowPass);
-        staticRender(p->playerCamera, shadowPass, dummy);
-        shadowPass.setBool("isStatic", false);
-        shadowPass.setFloat("clampVal", 0.001f);
-        glDisable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shadowPass, window); }
+        
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
-        glClear(GL_DEPTH_BUFFER_BIT);
         glViewport(0, 0, fb_width, fb_height);
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -429,9 +409,19 @@ int main()
         renderCube();
   
         glEnable(GL_CULL_FACE);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         //END SKYBOX
         shaderLightingPass.use();
         shaderLightingPass.setVec3("camPos", p->playerCamera.cameraPos);
+        shaderLightingPass.setVec3("lightDir", lightDir);
+        shaderLightingPass.setFloat("farPlane", p->playerCamera.cameraFar);
+        shaderLightingPass.setInt("cascadeCount", shadowCascadeLevels.size());
+        shaderLightingPass.setMat4("view", p->playerCamera.view);
+        for (size_t i = 0; i < shadowCascadeLevels.size(); ++i)
+        {
+            shaderLightingPass.setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", shadowCascadeLevels[i]);
+        }
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
@@ -442,7 +432,8 @@ int main()
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
         glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, shadowMap);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, gPBR);
         glActiveTexture(GL_TEXTURE6);
@@ -451,6 +442,7 @@ int main()
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
@@ -464,6 +456,7 @@ int main()
         }
         else
         {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             renderQuad();
             scope.use();
             scope.setFloat("isScoped", p->scopedIn);
@@ -548,36 +541,9 @@ static void initShadowMap()
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4x4) * 16, nullptr, GL_STATIC_DRAW);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, matricesUBO);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    // create depth texture
-    glGenVertexArrays(1, &quadVAOs);
-    glGenBuffers(1, &quadVBOs);
-    glBindVertexArray(quadVAOs);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBOs);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    
 
-    glGenFramebuffers(1, &shadowFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
-    // create a color attachment texture
 
-    glGenTextures(1, &shadowMap);
-    glBindTexture(GL_TEXTURE_2D, shadowMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadowMap, 0);
-    // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-
-    glGenRenderbuffers(1, &rboShadow);
-    glBindRenderbuffer(GL_RENDERBUFFER, rboShadow);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT); // use a single renderbuffer object for both a depth AND stencil buffer.
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rboShadow); // now actually attach it
-    // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 }
