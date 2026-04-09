@@ -1,4 +1,4 @@
-#version 410 core
+#version 420 core
 out vec4 FragColor;
 
 
@@ -54,7 +54,7 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
     }
     // calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(Normal);
-    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.05);
+    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);
     bias = clamp(bias, 0.0, clampVal);
     const float biasModifier = 1.0f;
     if (layer == cascadeCount)
@@ -83,13 +83,12 @@ float ShadowCalculation(vec3 fragPosWorldSpace)
 }
 
 void main()
-{           
-    vec3 color = vec3(1.0);   
+{              
     // ambient
-    vec3 ambient = 0.5 * color;   
+    vec3 ambient = vec3(0.5);   
     
     float shadow = ShadowCalculation(WorldPos);                      
-    vec3 lighting = (ambient + (1.0 - (shadow) * 1.25));    
+    vec3 lighting = (vec3(0.5) + (1.0 - (shadow) * 1.25)) * 1.5;    
 
     FragColor = vec4(lighting, 1.0) * 1.5;
 }

@@ -7,14 +7,25 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedo;
 uniform sampler2D ssao;
-uniform sampler2D shadowMap;
 uniform sampler2D gPBR;
-uniform sampler2D gPOS_IBL;
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+
+uniform sampler2DArray lightDepthMap;
+
+
+
 uniform vec3 lightDir;
 uniform vec3 camPos;
+uniform float farPlane;
+uniform mat4 view;
+layout (std140) uniform LightSpaceMatrices
+{
+    mat4 lightSpaceMatrices[16];
+};
+uniform float cascadePlaneDistances[16];
+uniform int cascadeCount;   // number of frusta - 1
 
 
 vec3 WorldPos = texture(gPosition, TexCoords).rgb;
@@ -22,6 +33,60 @@ vec3 albedo = texture(gAlbedo, TexCoords).rgb;
 float metallic = texture(gPBR, TexCoords).r;
 float roughness = texture(gPBR, TexCoords).g;
 float spec = texture(gPBR, TexCoords).b;
+
+float ShadowCalculation(vec3 fragPosWorldSpace, vec3 N)
+{
+    // select cascade layer
+    vec4 fragPosViewSpace = view * vec4(fragPosWorldSpace, 1.0);
+    float depthValue = -fragPosViewSpace.z;
+
+    int layer = -1;
+    for (int i = 0; i < cascadeCount; ++i)
+    {
+        if (depthValue < cascadePlaneDistances[i])
+        {
+            layer = i;
+            break;
+        }
+    }
+    if (layer == -1)
+    {
+        layer = cascadeCount -1;
+    }
+
+    vec4 fragPosLightSpace = lightSpaceMatrices[layer] * vec4(fragPosWorldSpace, 1.0);
+    // perform perspective divide
+    vec3 projCoords = (fragPosLightSpace.xyz / fragPosLightSpace.w) * 0.5 + 0.5;
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    
+    // keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
+    if (currentDepth > 1.0)
+    {
+        return 0.0;
+    }
+    // calculate bias (based on depth map resolution and slope)
+    vec3 normal = normalize(N);
+    float NdotL = max(dot(normalize(N), normalize(lightDir)), 0.0);
+    float bias = max(0.0005, 0.0015 * (1.0 - NdotL));
+
+    // PCF
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(lightDepthMap, 0));
+
+
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(lightDepthMap, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+            shadow += (currentDepth - bias) > pcfDepth ? 1.0 : 0.0;
+        }    
+    }      
+    shadow /= 9.0;
+
+    return shadow;
+}
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -77,12 +142,15 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 
 
 void main()
-{     
+{   
+
+
     // retrieve data from gbuffer
     float SSAO = pow(texture(ssao, TexCoords).r, 5.0);
 
     //NORMAL VECTOR
     vec3 N = normalize(texture(gNormal, TexCoords).rgb);
+ 
 
     //VIEW DIRECTION
     vec3 V = normalize(camPos-WorldPos);
@@ -90,6 +158,8 @@ void main()
     //REFLECT DIRECTION
     vec3 R = normalize(reflect(-V, N)); 
   
+
+    float shadow = ShadowCalculation(WorldPos, N);
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
     vec3 F0 = vec3(0.04); 
@@ -100,12 +170,11 @@ void main()
     
     // calculate per-light radiance
     //LIGHT DIRECTION
-    vec3 L = normalize(vec3(1.25, 0.75, 0.85));
+    vec3 L = normalize(lightDir);
 
     vec3 H = normalize(V + L);
-
-    //vec3 radiance = vec3(1.0 * 20, 0.75 * 20, 0.14* 20);
-    vec3 radiance = pow(vec3(1.0, 0.6, 0.2), vec3(1.0/2.2));
+ 
+    vec3 radiance = vec3(3.0);
 
 
     // Cook-Torrance BRDF
@@ -142,14 +211,14 @@ void main()
     kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
     
-    vec3 irradiance = texture(irradianceMap, N).rgb * 1.2;
+    vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse      = irradiance * albedo;
     
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
     const float MAX_REFLECTION_LOD = 5.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    spec = spec * texture(shadowMap, TexCoords).r;
+    spec = spec;
     
 
     specular = prefilteredColor * (F * brdf.x + brdf.y) * spec;
@@ -158,17 +227,23 @@ void main()
    
 
     
-    vec3 color = (ambient + Lo);
+    vec3 color = (ambient + ((Lo * (1.0 - shadow))));
+ 
+
+
     if (WorldPos.z <= 0.0)
     {
         FragColor = vec4(0.0);
         return;
     }
    
+   
+    
     // HDR tonemapping
     color = color / (color + vec3(1.0));
     // gamma correct
     color = pow(color, vec3(1.0/2.2)); 
-
-    FragColor = vec4(color * texture(shadowMap, TexCoords).r, 1.0);
+    
+    
+    FragColor = vec4(color, 1.0);
 }
