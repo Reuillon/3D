@@ -11,7 +11,6 @@ Level::Level(std::string mapModel, std::string mapCollision, glm::vec3 mapPos, g
 	collisionMap = initCollisionMap(mapCollision);
     model = glm::scale(model, scale);
     model = glm::translate(model, glm::vec3(position.x, position.y, position.z));
-
     inverseMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 };
 

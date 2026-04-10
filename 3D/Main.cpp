@@ -8,6 +8,7 @@
 #include "stb_image.h"
 #include "Collision.h"
 #include "Animator.h"
+#include "Actor.h"
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
@@ -158,7 +159,7 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
     
-    initPBR("TEXTURES/hdri/sunset_fairway_2k.hdr", 2048);
+    initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
@@ -209,7 +210,6 @@ int main()
     Shader scope("SHADERS/framebuffer.vs", "SHADERS/crosshair.fs");
 
     //SHADOWS
-    Shader shadowPass("SHADERS/shadow.vs", "SHADERS/shadow.fs");
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
  
     //POSTPROCESSING
@@ -258,11 +258,6 @@ int main()
     shadowCascadeLevels[2] = (p->playerCamera.cameraFar) / 10.0f;
     shadowCascadeLevels[3] = (p->playerCamera.cameraFar) / 2.0f;
 
-    //SHADOW MAP DEPTH TEXTURE
-    shadowPass.use();
-    shadowPass.setInt("shadowMap", 0);
-
-
     //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
     shaderGeometryPass.setInt("albedoMap", 0);
@@ -304,7 +299,30 @@ int main()
     clock_t start, stop;
     lightDir = glm::normalize(glm::vec3(1.25, 1.25, 0.85));
     double Timer = 0.0f;
-    
+    glm::vec3 spawns[8] = 
+    {
+        glm::vec3(1003.85,1000.0,1054.82),
+        glm::vec3(1003.38,1000.0,975.849),
+        glm::vec3(1018.0, 1000.0,996.7),
+        glm::vec3(961.392,1000.0,1047.7),
+        glm::vec3(1036.5, 1000.0,1054.32),
+        glm::vec3(1012.6, 1000.0,1014.4),
+        glm::vec3(961.525,1000.033,970.35),
+        glm::vec3(1028.8, 1000.0,975.2)
+    };
+    srand(time(0));
+    int enemyRespawn = rand() % 8;
+    int lastSpawn = enemyRespawn;
+    int randRot = rand() % 360;
+    Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0));
+
+    uint32_t hurt = SoundBuffer::get()->addSoundEffect("SOUNDS/marioHurt.mp3");
+    uint32_t hit = SoundBuffer::get()->addSoundEffect("SOUNDS/HIT.mp3");
+
+    SoundSource worldSpeaker;
+    worldSpeaker.p_Gain = 0.25f;
+    SoundSource hitSpeaker;
+    hitSpeaker.p_Gain = 2.0f;
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -319,6 +337,29 @@ int main()
         lastFrame = currentFrame;
 
         p->update(deltaTime, shipment.collisionMap);
+        ray.vertices[0] = p->playerCamera.cameraPos;
+        ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * 100.0f);
+        ResolutionData rayCast = GJK(ray, enemy.actorCollider[0], deltaTime, false);
+        if (rayCast.hasCollision && p->primary->shootRay)
+        {
+            worldSpeaker.Play(hurt);
+            hitSpeaker.Play(hit);
+
+
+            enemyRespawn = rand() % 8;
+            if (lastSpawn == enemyRespawn)
+            {
+                if (enemyRespawn == 7)
+                {
+                    enemyRespawn -= 1;
+                }
+                else
+                {
+                    enemyRespawn += 1;
+                }
+            }
+            enemy.setPosition(spawns[enemyRespawn]);
+        }
         
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -339,7 +380,7 @@ int main()
         glClear(GL_DEPTH_BUFFER_BIT);
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
-        staticRender(p->playerCamera, depthShader, dummy);
+        enemy.drawActor(p->playerCamera, depthShader);
         depthShader.setBool("isStatic", false);
         //glDisable(GL_CULL_FACE);
         ////RENDER VIEWMODEL
@@ -354,7 +395,7 @@ int main()
         glEnable(GL_CULL_FACE);
         shaderGeometryPass.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, shaderGeometryPass);
-        staticRender(p->playerCamera, shaderGeometryPass, dummy);
+        enemy.drawActor(p->playerCamera, shaderGeometryPass);
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
@@ -448,7 +489,8 @@ int main()
         
         if (toggleDebug == 1)
         {
-            debug.drawCollider(p->floorCollider,p->playerCamera);
+            debug.drawCollider(ray,p->playerCamera);
+            debug.drawCollider(enemy.actorCollider[0], p->playerCamera);
             for (int i = 0; i < shipment.collisionMap.size(); i++)
             {
                 debug.drawCollider(shipment.collisionMap[i], p->playerCamera);
@@ -474,7 +516,8 @@ int main()
 
         stop = clock();
         //PRINT FRAMERATE
-        std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
+        //std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
+        //debug.printVector(p->playerPosition);
     }
 
 

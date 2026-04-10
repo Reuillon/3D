@@ -24,15 +24,16 @@ class Viewmodel
 		int reset = 0;
 
 		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
-		//uint32_t sound2 = SoundBuffer::get()->addSoundEffect("SOUNDS/Fah.mp3");
+		uint32_t sound2 = SoundBuffer::get()->addSoundEffect("SOUNDS/Fah.mp3");
 		SoundSource playerSpeaker[2];
-		
-	public:
 		int ammo = 7;
+	public:
+		bool shootRay;
 		float spread;
 		float length;
 		float thickness;
 		float fallSpeed = 0;
+
 		glm::vec3 viewPos = glm::vec3(4.85f, -0.548, 0.443);
 		//CALCULATE BONE TRANSFORM
 	    std::vector<glm::mat4> transforms = animate.GetFinalBoneMatrices();

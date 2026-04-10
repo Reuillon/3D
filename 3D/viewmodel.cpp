@@ -191,11 +191,11 @@ void Viewmodel::animController(GLFWwindow* window)
 				reset = 1;
 				if (ammo > 0)
 				{
-					thisAnim = 6;
+					thisAnim = 5;
 				}
 				else
 				{
-					thisAnim = 7;
+					thisAnim = 6;
 				}
 			}
 			animBuffer = false;
@@ -229,17 +229,20 @@ void Viewmodel::animController(GLFWwindow* window)
 		reset = 1;
 		thisAnim = 9;
 	}
-	
-	//std::cout << ammo << "\n";
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) && ammo > 0 && animBuffer)
+	bool hasShot = false;
+	if (thisTimer != 0)
+	{
+		shootRay = false;
+	}
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) && ammo > 0 && animBuffer && !hasShot)
 	{
 		if (thisTimer == 0)
 		{
-			ammo = 7;
+			hasShot = true;
+			shootRay = true;
 			ammo -= 1;
 			spread = 5;
 			reset = 1;
-
 			if (ammo > 0)
 			{
 				animate.loopAnim(false);
@@ -253,9 +256,10 @@ void Viewmodel::animController(GLFWwindow* window)
 				thisAnim = 4;
 			}
 			playerSpeaker[0].Play(sound1);
-		    //playerSpeaker[1].Play(sound2);
+		    playerSpeaker[1].Play(sound2);
 		}
-		if (thisTimer < 0.165)
+		
+		if (thisTimer < 1.5)
 		{
 			thisTimer += deltaTime;
 		}
@@ -268,7 +272,8 @@ void Viewmodel::animController(GLFWwindow* window)
 	}
 	else
 	{
-		if (thisTimer > 0.0 && thisTimer <= 0.165)
+		
+		if (thisTimer > 0.0 && thisTimer <= 1.5)
 		{
 			thisTimer += deltaTime;
 		}
@@ -276,15 +281,20 @@ void Viewmodel::animController(GLFWwindow* window)
 			
 		
 		
-		if (thisTimer > 0.165)
+		if (thisTimer > 1.5)
 		{
 			thisTimer = 0;
 		}
 		
 		
 	}
+	
+	if (!glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1))
+	{
+		hasShot = false;
+	}
 
-	if (thisTimer == 0.0)
+	if (thisTimer == 0.0 || thisTimer > 0.165)
 	{
 		recoil = 0;
 		recoilX = 0;
