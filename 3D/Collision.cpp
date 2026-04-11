@@ -1,11 +1,13 @@
 #include "Collision.h"
+#include "Debug.h"
 
 MeshCollider::MeshCollider(float model[], int arraySize)
 {
     for (int i = 0; i < arraySize; i += 3)
     {
-        identity.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
         vertices.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
+        identity.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
+        
     }
 }
 MeshCollider::MeshCollider(){}
@@ -14,8 +16,8 @@ void MeshCollider::init(float model[], int arraySize)
 {
     for (int i = 0; i < arraySize; i += 3)
     {
-        identity.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
         vertices.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
+        identity.push_back(glm::vec3(model[i], model[i + 1], model[i + 2]));
     }
 }
 void MeshCollider::init(std::vector<glm::vec3> model, int arraySize)
@@ -24,27 +26,34 @@ void MeshCollider::init(std::vector<glm::vec3> model, int arraySize)
     vertices.clear();
     for (int i = 0; i < arraySize; i ++)
     {
-        identity.push_back(model[i]);
         vertices.push_back(model[i]);
+        identity.push_back(model[i]);
     }
 }
+
 
 //SET TRANSFORMS FOR COLLIDER
 void MeshCollider::setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 newScale)
 {
+    pos = newPos;
+    rot = rotation;
+    scale = newScale;
 
     for (int i = 0; i < vertices.size(); i++)
     {
-        pos = newPos;
-        rot = rotation;
-        scale = newScale;
+
+        /**/
         //SET ROTATION AND SCALE
         vertices[i].x = ((identity[i].x * newScale.x) * (cos(rotation.y) * cos(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * cos(rotation.z)) - (cos(rotation.x) * sin(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * cos(rotation.z)) + (sin(rotation.x) * sin(rotation.z))));
         vertices[i].y = ((identity[i].x * newScale.x) * (cos(rotation.y) * sin(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * sin(rotation.z)) + (cos(rotation.x) * cos(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * sin(rotation.z)) - (sin(rotation.x) * cos(rotation.z))));
         vertices[i].z = ((identity[i].x * newScale.x) * (-sin(rotation.y))) + ((identity[i].y * newScale.y) * (sin(rotation.x) * cos(rotation.y))) + ((identity[i].z * newScale.z) * (cos(rotation.x) * cos(rotation.y)));
+        
 
         //SET POSITION
-        vertices[i] = vertices[i] + newPos;
+        vertices[i].x = vertices[i].x + pos.x;
+        vertices[i].y = vertices[i].y + pos.y;
+        vertices[i].z = vertices[i].z + pos.z;
+
     }
 }
 
@@ -182,7 +191,6 @@ bool Tetrahedron(Simplex& points, glm::vec3& direction)
 
 bool NextSimplex(Simplex& points, glm::vec3& direction)
 {
-    //    std::cout << points.size() <<  "\n";
     switch (points.size())
     {
     case 2:  return Line(points, direction);
@@ -379,7 +387,6 @@ std::vector<MeshCollider> initCollisionMap(std::string filePath)
 {
 
     std::vector<MeshCollider> collisionMap;
-    std::vector<MeshCollider> clearVector;
     MeshCollider currentMeshData;
     std::fstream colliderData(filePath);
     std::string text;
@@ -424,12 +431,13 @@ std::vector<MeshCollider> initCollisionMap(std::string filePath)
                     {
                         vertice[vertIndex] = std::stof(s);
                         vertIndex = 0;
-                        vertices.push_back(glm::vec3(vertice[0] + 1000, vertice[1] + 1000, vertice[2] + 1000));
+                        vertices.push_back(glm::vec3(vertice[0], vertice[1], vertice[2]));
                     }
                 }
 
             }
         }
     }
+   
     return collisionMap;
 }

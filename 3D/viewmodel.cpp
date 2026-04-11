@@ -156,6 +156,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	///
 	/// 
 	///
+	/*
 	if (glfwGetKey(window, GLFW_KEY_1))
 	{
 		reset = 1;
@@ -181,25 +182,6 @@ void Viewmodel::animController(GLFWwindow* window)
 
 		reset = 1;
 		thisAnim = 3;
-	}
-	if (glfwGetKey(window, GLFW_KEY_R))
-	{
-		if (ammo < 8)
-		{
-			if (animBuffer)
-			{
-				reset = 1;
-				if (ammo > 0)
-				{
-					thisAnim = 5;
-				}
-				else
-				{
-					thisAnim = 6;
-				}
-			}
-			animBuffer = false;
-		}
 	}
 	
 
@@ -229,6 +211,27 @@ void Viewmodel::animController(GLFWwindow* window)
 		reset = 1;
 		thisAnim = 9;
 	}
+	*/
+
+	if (glfwGetKey(window, GLFW_KEY_R))
+	{
+		if (ammo < 5)
+		{
+			if (animBuffer)
+			{
+				reset = 1;
+				if (ammo > 0)
+				{
+					thisAnim = 5;
+				}
+				else
+				{
+					thisAnim = 6;
+				}
+			}
+			animBuffer = false;
+		}
+	}
 	bool hasShot = false;
 	if (thisTimer != 0)
 	{
@@ -256,7 +259,6 @@ void Viewmodel::animController(GLFWwindow* window)
 				thisAnim = 4;
 			}
 			playerSpeaker[0].Play(sound1);
-		    playerSpeaker[1].Play(sound2);
 		}
 		
 		if (thisTimer < 1.5)
@@ -398,12 +400,12 @@ void Viewmodel::animController(GLFWwindow* window)
 		if (thisAnim == 6)
 		{
 			animBuffer = true;
-			ammo = 8;
+			ammo = 4;
 		}
 		if (thisAnim == 5)
 		{
 			animBuffer = true;
-			ammo = 7;
+			ammo = 3;
 		}
 
 		thisTimer = 0.0;

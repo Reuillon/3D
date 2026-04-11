@@ -284,7 +284,7 @@ class Player
 
 
 		//PLAYER INFORMATION
-		glm::vec3 playerPosition = glm::vec3(0.0);
+		glm::vec3 playerPosition = glm::vec3(1000.0);
 		glm::vec3 playerRotation = glm::vec3(0.0);
 		camera playerCamera;
 

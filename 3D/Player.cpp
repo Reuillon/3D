@@ -209,7 +209,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
   
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.25, playerCollider.pos.z);
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.5, playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;

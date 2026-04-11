@@ -21,16 +21,15 @@ struct ResolutionData
 struct MeshCollider
 {
     private:
-        std::vector<glm::vec3> identity;
         
     public:
-
+        std::vector<glm::vec3> identity;
         std::vector<glm::vec3> vertices;
         glm::vec3 pos = glm::vec3(0.0f);
         glm::vec3 rot = glm::vec3(0.0f);
         glm::vec3 scale = glm::vec3(1.0f);
         glm::vec3 color = glm::vec3(1.0f);
-
+        
         //INITIALIZES MESH DATA AND MESHIDENTITY DATA
         MeshCollider(float model[], int arraySize);
         MeshCollider();

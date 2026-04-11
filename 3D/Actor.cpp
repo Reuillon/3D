@@ -1,4 +1,6 @@
 #include "Actor.h"
+#include "Debug.h"
+
 
 Actor::Actor(std::string loadActorModel, std::string loadActorCollider, glm::vec3 setPosition, glm::vec3 setRotation)
 {	
@@ -6,10 +8,14 @@ Actor::Actor(std::string loadActorModel, std::string loadActorCollider, glm::vec
 	actorModel = tempModel;
 	actorCollider = initCollisionMap(loadActorCollider);
 	actorPosition = setPosition;
-	actorCollider[0].setTransform(glm::vec3(actorPosition.x - 1000.0f, actorPosition.y - 1000.0f, actorPosition.z - 1000.0f), glm::vec3(0.0));
-	actorRotation = setRotation;
+	for (int i = 0; i < actorCollider.size(); i++)
+	{
+		actorCollider[i].setTransform(glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z), glm::vec3(0.0, actorRotation.y, 0.0));
+	}
 	model = glm::translate(model, glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z));
+	model = glm::rotate(model, actorRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	inverseMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+	
 };
 void Actor::drawActor(camera& c, Shader& shader)
 {
@@ -19,13 +25,19 @@ void Actor::drawActor(camera& c, Shader& shader)
 	shader.setMat3("normalMatrix", inverseMatrix);
 	actorModel.draw(shader);
 }
-void Actor::setPosition(glm::vec3 position)
+
+void Actor::setTransform(glm::vec3 position, glm::vec3 rotation)
 {
 	actorPosition = position;
+	actorRotation = rotation;
 	model = glm::mat4(1.0);
-	actorCollider[0].setTransform(glm::vec3(actorPosition.x - 1000.0f, actorPosition.y - 1000.0f, actorPosition.z - 1000.0f), glm::vec3(0.0));
-	model = glm::translate(model, glm::vec3(position.x, position.y, position.z));
+	for (int i = 0; i< actorCollider.size() ;i++)
+	{
+		actorCollider[i].setTransform(glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z), glm::vec3(0.0,actorRotation.y,0.0));
+	}
+	model = glm::translate(model, glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z));
+	model = glm::rotate(model, actorRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+	
 	inverseMatrix = glm::mat3(1.0);
 	inverseMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-	
 }

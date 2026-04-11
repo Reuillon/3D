@@ -152,14 +152,14 @@ static GLFWwindow* windowInit()
     initSSAO();
     initShadowMap();
     initFramebuffer();
-    
+    //☺
     //initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
     //initPBR("TEXTURES/hdri/color.hdr", 2048);
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
-    
     initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
+    
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
@@ -239,7 +239,7 @@ int main()
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    Model dummy("Models/GUN/BODY.fbx");
+    Model zy("Models/GUN/BODY.fbx");
 
     //MAPS
     Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(1000), glm::vec3(0, 0, 0), glm::vec3(1.0));
@@ -307,17 +307,20 @@ int main()
         glm::vec3(961.392,1000.0,1047.7),
         glm::vec3(1036.5, 1000.0,1054.32),
         glm::vec3(1012.6, 1000.0,1014.4),
-        glm::vec3(961.525,1000.033,970.35),
+        glm::vec3(961.525,1000.0,970.35),
         glm::vec3(1028.8, 1000.0,975.2)
     };
     srand(time(0));
     int enemyRespawn = rand() % 8;
     int lastSpawn = enemyRespawn;
-    int randRot = rand() % 360;
-    Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0));
+    float randRot = rand() % 360;
+    Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    Actor enemy2("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    Actor enemy3("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
 
     uint32_t hurt = SoundBuffer::get()->addSoundEffect("SOUNDS/marioHurt.mp3");
     uint32_t hit = SoundBuffer::get()->addSoundEffect("SOUNDS/HIT.mp3");
+    uint32_t headshot = SoundBuffer::get()->addSoundEffect("SOUNDS/HEADSHOT.mp3");
 
     SoundSource worldSpeaker;
     worldSpeaker.p_Gain = 0.25f;
@@ -339,26 +342,97 @@ int main()
         p->update(deltaTime, shipment.collisionMap);
         ray.vertices[0] = p->playerCamera.cameraPos;
         ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * 100.0f);
-        ResolutionData rayCast = GJK(ray, enemy.actorCollider[0], deltaTime, false);
-        if (rayCast.hasCollision && p->primary->shootRay)
+        for (int i = 0; i < enemy.actorCollider.size(); ++i)
         {
-            worldSpeaker.Play(hurt);
-            hitSpeaker.Play(hit);
-
-
-            enemyRespawn = rand() % 8;
-            if (lastSpawn == enemyRespawn)
+            
+            ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], deltaTime, false);
+            if (rayCast.hasCollision && p->primary->shootRay)
             {
-                if (enemyRespawn == 7)
+                if (i == 0)
                 {
-                    enemyRespawn -= 1;
+                    hitSpeaker.Play(headshot);
                 }
-                else
+
+                hitSpeaker.Play(hit);
+                worldSpeaker.Play(hurt);
+                randRot = rand() % 360;
+                enemyRespawn = rand() % 8;
+
+                if (lastSpawn == enemyRespawn)
                 {
-                    enemyRespawn += 1;
+                    if (enemyRespawn == 7)
+                    {
+                        enemyRespawn -= 1;
+                    }
+                    else
+                    {
+                        enemyRespawn += 1;
+                    }
                 }
+                lastSpawn = enemyRespawn;
+                enemy.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(),0));
             }
-            enemy.setPosition(spawns[enemyRespawn]);
+        }
+        for (int i = 0; i < enemy2.actorCollider.size(); ++i)
+        {
+
+            ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], deltaTime, false);
+            if (rayCast.hasCollision && p->primary->shootRay)
+            {
+                if (i == 0)
+                {
+                    hitSpeaker.Play(headshot);
+                }
+                hitSpeaker.Play(hit);
+                worldSpeaker.Play(hurt);
+                randRot = rand() % 360;
+                enemyRespawn = rand() % 8;
+
+                if (lastSpawn == enemyRespawn)
+                {
+                    if (enemyRespawn == 7)
+                    {
+                        enemyRespawn -= 1;
+                    }
+                    else
+                    {
+                        enemyRespawn += 1;
+                    }
+                }
+                lastSpawn = enemyRespawn;
+                enemy2.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+            }
+        }
+        for (int i = 0; i < enemy3.actorCollider.size(); ++i)
+        {
+
+            ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], deltaTime, false);
+            if (rayCast.hasCollision && p->primary->shootRay)
+            {
+                if (i == 0)
+                {
+                    hitSpeaker.Play(headshot);
+                }
+                hitSpeaker.Play(hit);
+                
+                worldSpeaker.Play(hurt);
+                randRot = rand() % 360;
+                enemyRespawn = rand() % 8;
+
+                if (lastSpawn == enemyRespawn)
+                {
+                    if (enemyRespawn == 7)
+                    {
+                        enemyRespawn -= 1;
+                    }
+                    else
+                    {
+                        enemyRespawn += 1;
+                    }
+                }
+                lastSpawn = enemyRespawn;
+                enemy3.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+            }
         }
         
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -381,6 +455,8 @@ int main()
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
         enemy.drawActor(p->playerCamera, depthShader);
+        enemy2.drawActor(p->playerCamera, depthShader);
+        enemy3.drawActor(p->playerCamera, depthShader);
         depthShader.setBool("isStatic", false);
         //glDisable(GL_CULL_FACE);
         ////RENDER VIEWMODEL
@@ -396,6 +472,8 @@ int main()
         shaderGeometryPass.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, shaderGeometryPass);
         enemy.drawActor(p->playerCamera, shaderGeometryPass);
+        enemy2.drawActor(p->playerCamera, shaderGeometryPass);
+        enemy3.drawActor(p->playerCamera, shaderGeometryPass);
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
@@ -489,9 +567,14 @@ int main()
         
         if (toggleDebug == 1)
         {
-            debug.drawCollider(ray,p->playerCamera);
-            debug.drawCollider(enemy.actorCollider[0], p->playerCamera);
-            for (int i = 0; i < shipment.collisionMap.size(); i++)
+
+            for (int i = 0; i < enemy.actorCollider.size(); ++i)
+            {
+                debug.drawCollider(enemy.actorCollider[i], p->playerCamera);
+                debug.drawCollider(enemy2.actorCollider[i], p->playerCamera);
+                debug.drawCollider(enemy3.actorCollider[i], p->playerCamera);
+            }
+            for (int i = 0; i < shipment.collisionMap.size(); ++i)
             {
                 debug.drawCollider(shipment.collisionMap[i], p->playerCamera);
             }
@@ -516,7 +599,7 @@ int main()
 
         stop = clock();
         //PRINT FRAMERATE
-        //std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
+        std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
         //debug.printVector(p->playerPosition);
     }
 
