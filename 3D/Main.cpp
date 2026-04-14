@@ -80,7 +80,7 @@ glm::vec3 lightDir;
 //CASCADED SHADOW MAP 
 std::vector<glm::mat4> getLightSpaceMatrices();
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
-std::vector<float> shadowCascadeLevels{ 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f, 2500.0f / 2.0f };
+std::vector<float> shadowCascadeLevels{ 2500.0f / 100.0f, 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f };
 
 //DELTATIME VALUES
 double deltaTime = 0.0f;
@@ -239,7 +239,7 @@ int main()
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    Model zy("Models/GUN/BODY.fbx");
+    Model contact("Models/GUN/HITPOINT.fbx");
 
     //MAPS
     Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(1000), glm::vec3(0, 0, 0), glm::vec3(1.0));
@@ -253,10 +253,10 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
-    shadowCascadeLevels[0] = (p->playerCamera.cameraFar) / 50.0f;
-    shadowCascadeLevels[1] = (p->playerCamera.cameraFar) / 25.0f;
-    shadowCascadeLevels[2] = (p->playerCamera.cameraFar) / 10.0f;
-    shadowCascadeLevels[3] = (p->playerCamera.cameraFar) / 2.0f;
+    shadowCascadeLevels[0] = (p->playerCamera.cameraFar) / 100.0f;
+    shadowCascadeLevels[1] = (p->playerCamera.cameraFar) / 75.0f;
+    shadowCascadeLevels[2] = (p->playerCamera.cameraFar) / 50.0f;
+    shadowCascadeLevels[3] = (p->playerCamera.cameraFar) / 25.0f;
 
     //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
@@ -326,6 +326,8 @@ int main()
     worldSpeaker.p_Gain = 0.25f;
     SoundSource hitSpeaker;
     hitSpeaker.p_Gain = 2.0f;
+    SoundSource headSpeaker;
+    headSpeaker.p_Gain = 0.5;
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -350,7 +352,7 @@ int main()
             {
                 if (i == 0)
                 {
-                    hitSpeaker.Play(headshot);
+                    headSpeaker.Play(headshot);
                 }
 
                 hitSpeaker.Play(hit);
@@ -381,7 +383,7 @@ int main()
             {
                 if (i == 0)
                 {
-                    hitSpeaker.Play(headshot);
+                    headSpeaker.Play(headshot);
                 }
                 hitSpeaker.Play(hit);
                 worldSpeaker.Play(hurt);
@@ -411,7 +413,7 @@ int main()
             {
                 if (i == 0)
                 {
-                    hitSpeaker.Play(headshot);
+                    headSpeaker.Play(headshot);
                 }
                 hitSpeaker.Play(hit);
                 
@@ -474,6 +476,7 @@ int main()
         enemy.drawActor(p->playerCamera, shaderGeometryPass);
         enemy2.drawActor(p->playerCamera, shaderGeometryPass);
         enemy3.drawActor(p->playerCamera, shaderGeometryPass);
+        staticRender(p->playerCamera, shaderGeometryPass, contact, glm::vec3(1000.0, 1005.0, 1000.0), glm::vec3(0.0));
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)

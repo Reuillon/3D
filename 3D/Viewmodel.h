@@ -23,9 +23,12 @@ class Viewmodel
 		int playAnim = 1;
 		int reset = 0;
 
-		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
-		SoundSource playerSpeaker[2];
-		int ammo = 7;
+		uint32_t shoot = SoundBuffer::get()->addSoundEffect("SOUNDS/SNIPE.mp3");
+		uint32_t reload = SoundBuffer::get()->addSoundEffect("SOUNDS/Reload.mp3");
+		uint32_t reloadEmpty = SoundBuffer::get()->addSoundEffect("SOUNDS/ReloadEmpty.mp3");
+		SoundSource playerSpeaker[3];
+		
+		int ammo = 5;
 	public:
 		bool shootRay;
 		float spread;

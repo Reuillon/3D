@@ -215,17 +215,19 @@ void Viewmodel::animController(GLFWwindow* window)
 
 	if (glfwGetKey(window, GLFW_KEY_R))
 	{
-		if (ammo < 5)
+		if (ammo < 6)
 		{
 			if (animBuffer)
 			{
 				reset = 1;
 				if (ammo > 0)
 				{
+					playerSpeaker[1].Play(reload);
 					thisAnim = 5;
 				}
 				else
 				{
+					playerSpeaker[2].Play(reloadEmpty);
 					thisAnim = 6;
 				}
 			}
@@ -258,7 +260,7 @@ void Viewmodel::animController(GLFWwindow* window)
 				animate.PlayAnimation(&animation[8]);
 				thisAnim = 4;
 			}
-			playerSpeaker[0].Play(sound1);
+			playerSpeaker[0].Play(shoot);
 		}
 		
 		if (thisTimer < 1.5)
@@ -400,12 +402,12 @@ void Viewmodel::animController(GLFWwindow* window)
 		if (thisAnim == 6)
 		{
 			animBuffer = true;
-			ammo = 4;
+			ammo = 5;
 		}
 		if (thisAnim == 5)
 		{
 			animBuffer = true;
-			ammo = 3;
+			ammo = 6;
 		}
 
 		thisTimer = 0.0;

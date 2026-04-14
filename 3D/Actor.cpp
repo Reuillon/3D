@@ -10,9 +10,9 @@ Actor::Actor(std::string loadActorModel, std::string loadActorCollider, glm::vec
 	actorPosition = setPosition;
 	for (int i = 0; i < actorCollider.size(); i++)
 	{
-		actorCollider[i].setTransform(glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z), glm::vec3(0.0, actorRotation.y, 0.0));
+		actorCollider[i].setTransform(actorPosition, glm::vec3(0.0, actorRotation.y, 0.0));
 	}
-	model = glm::translate(model, glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z));
+	model = glm::translate(model, actorPosition);
 	model = glm::rotate(model, actorRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	inverseMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 	
@@ -33,9 +33,9 @@ void Actor::setTransform(glm::vec3 position, glm::vec3 rotation)
 	model = glm::mat4(1.0);
 	for (int i = 0; i< actorCollider.size() ;i++)
 	{
-		actorCollider[i].setTransform(glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z), glm::vec3(0.0,actorRotation.y,0.0));
+		actorCollider[i].setTransform(actorPosition, glm::vec3(0.0,actorRotation.y,0.0));
 	}
-	model = glm::translate(model, glm::vec3(actorPosition.x, actorPosition.y, actorPosition.z));
+	model = glm::translate(model, actorPosition);
 	model = glm::rotate(model, actorRotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	
 	inverseMatrix = glm::mat3(1.0);
