@@ -231,7 +231,7 @@ void main()
  
 
 
-    if (WorldPos.z <= 0.0)
+    if (length(WorldPos) < 0.0001)
     {
         FragColor = vec4(0.0);
         return;

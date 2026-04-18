@@ -37,6 +37,5 @@ void main()
     }
     vec4 totalPosition = BoneTransform * vec4(aPos, 1.0);
     WorldPos = vec3(model * totalPosition);
-    mat4 viewModel = model;
-    gl_Position =  viewModel * totalPosition;
+    gl_Position =  model * totalPosition;
 }
