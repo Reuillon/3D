@@ -86,7 +86,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
     //RESET POSITION IF OUT OF BOUNDS
     if (playerCollider.pos.y < -100)
     {
-        playerCollider.setTransform(glm::vec3(1000.0f, 1005.0f, 1000.0), glm::vec3(0.0));
+        playerCollider.setTransform(glm::vec3(0.0f, 5.0f, 0.0), glm::vec3(0.0));
         gravity = glm::vec3(0.0);
     }
 
@@ -107,7 +107,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
     {
         gravity = glm::vec3(0);
         lastSpeed = glm::vec3(0.0);
-        playerCollider.pos = glm::vec3(1000, 1005, 1000);
+        playerCollider.pos = glm::vec3(0, 5, 0);
     }
 
     if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2))
@@ -209,7 +209,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
   
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.5, playerCollider.pos.z);
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38, playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;

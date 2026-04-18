@@ -236,9 +236,7 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float delta
             if (resolve == true)
             {
                 r = EPA(points, collider1, collider2, deltaTime);
-                
                 collider1.setTransform(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
-
             }
             return r;
         }

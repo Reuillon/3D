@@ -146,16 +146,16 @@ unsigned int loadTexture(char const* path)
 }
 
 //renders a model without animation
-void staticRender(camera& c, Shader& shader, Model& m)
+void staticRender(camera& c, Shader& shader, Model& m, glm::vec3 position, glm::vec3 rotation, glm::vec3 scale)
 {
     shader.use();
 
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(1.0f));
-    model = glm::translate(model, glm::vec3(1000.0f));
-    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, (float)(0.0 * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, glm::vec3(scale));
+    model = glm::translate(model, glm::vec3(position.x, position.y, position.z));
+    model = glm::rotate(model, (float)(rotation.x * 0.0174533), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, (float)(rotation.y * 0.0174533), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, (float)(rotation.z * 0.0174533), glm::vec3(0.0f, 0.0f, 1.0f));
     
     shader.setMat4("projection", c.projection);
     shader.setMat4("view", c.view);

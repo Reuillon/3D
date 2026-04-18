@@ -15,5 +15,4 @@ void renderQuad();
 unsigned int loadTexture(char const* path);
 void drawSand(camera& c, Shader& shader, Model& m, unsigned int envTexture);
 void drawWater(camera& c, Shader& shader, Model& m, unsigned int envTexture);
-void mapRender(camera& c, Shader& shader, Model& m, glm::vec3 rot, glm::vec3 pos = glm::vec3(0.0f));
-void staticRender(camera& c, Shader& shader, Model& m);
+void staticRender(camera& c, Shader& shader, Model& m, glm::vec3 position, glm::vec3 rotation, glm::vec3 scale);

@@ -41,6 +41,7 @@ const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
 
 
+
 //FRAMEBUFFER SIZE
 int fb_width;
 int fb_height;
@@ -94,6 +95,11 @@ float rayIdentity[6] =
 {
     0.0, 0.0, 0.0,
     0.0, 0.0, 1.0
+};
+float pointIdentity[6] =
+{
+    0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0
 };
 
 //GLOBAL INPUT OBJECT
@@ -153,7 +159,7 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     //☺
-    //initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
+    //`initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
     //initPBR("TEXTURES/hdri/color.hdr", 2048);
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
@@ -201,6 +207,15 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     InitializeSound* defaultSoundDevice = InitializeSound::get();
+    uint32_t hurt = SoundBuffer::get()->addSoundEffect("SOUNDS/marioHurt.mp3");
+    uint32_t hit = SoundBuffer::get()->addSoundEffect("SOUNDS/HIT.mp3");
+    uint32_t headshot = SoundBuffer::get()->addSoundEffect("SOUNDS/HEADSHOT.mp3");
+    SoundSource worldSpeaker;
+    SoundSource hitSpeaker;
+    SoundSource headSpeaker;
+    worldSpeaker.p_Gain = 0.25f;
+    hitSpeaker.p_Gain = 2.0f;
+    headSpeaker.p_Gain = 0.5;
 
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -242,12 +257,13 @@ int main()
     Model contact("Models/GUN/HITPOINT.fbx");
 
     //MAPS
-    Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(1000), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
     
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     MeshCollider ray(rayIdentity, sizeof(rayIdentity) / sizeof(*rayIdentity));
+    MeshCollider point(pointIdentity, sizeof(pointIdentity) / sizeof(*pointIdentity));
 
     //INITIALIZE SHADER UNIFORM DATA
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -301,33 +317,28 @@ int main()
     double Timer = 0.0f;
     glm::vec3 spawns[8] = 
     {
-        glm::vec3(1003.85,1000.0,1054.82),
-        glm::vec3(1003.38,1000.0,975.849),
-        glm::vec3(1018.0, 1000.0,996.7),
-        glm::vec3(961.392,1000.0,1047.7),
-        glm::vec3(1036.5, 1000.0,1054.32),
-        glm::vec3(1012.6, 1000.0,1014.4),
-        glm::vec3(961.525,1000.0,970.35),
-        glm::vec3(1028.8, 1000.0,975.2)
+        glm::vec3(3.85,0.0,54.82),
+        glm::vec3(3.38,0.0,-24.151),
+        glm::vec3(18.0, 0.0,-3.3),
+        glm::vec3(-38.608,0.0,47.7),
+        glm::vec3(36.5, 0.0,54.32),
+        glm::vec3(12.6, 0.0,14.4),
+        glm::vec3(-38.475,0.0,-29.65),
+        glm::vec3(28.8, 0.0,-24.8)
     };
     srand(time(0));
     int enemyRespawn = rand() % 8;
     int lastSpawn = enemyRespawn;
     float randRot = rand() % 360;
     Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    enemyRespawn = rand() % 8;
     Actor enemy2("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    enemyRespawn = rand() % 8;
     Actor enemy3("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
 
-    uint32_t hurt = SoundBuffer::get()->addSoundEffect("SOUNDS/marioHurt.mp3");
-    uint32_t hit = SoundBuffer::get()->addSoundEffect("SOUNDS/HIT.mp3");
-    uint32_t headshot = SoundBuffer::get()->addSoundEffect("SOUNDS/HEADSHOT.mp3");
-
-    SoundSource worldSpeaker;
-    worldSpeaker.p_Gain = 0.25f;
-    SoundSource hitSpeaker;
-    hitSpeaker.p_Gain = 2.0f;
-    SoundSource headSpeaker;
-    headSpeaker.p_Gain = 0.5;
+    
+    glm::vec3 finalPoint = glm::vec3(0.0);
+    float rayDistance = 100.0f;
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -343,16 +354,37 @@ int main()
 
         p->update(deltaTime, shipment.collisionMap);
         ray.vertices[0] = p->playerCamera.cameraPos;
-        ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * 100.0f);
+        ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
+        point.vertices[0] = p->playerCamera.cameraPos;
+
+        glm::vec3 closestPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+
         for (int i = 0; i < enemy.actorCollider.size(); ++i)
         {
-            
             ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], deltaTime, false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
+                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
                 if (i == 0)
                 {
                     headSpeaker.Play(headshot);
+                }
+
+                ResolutionData hitPoint;
+                for (float j = 0.0f; j < rayDistance; j += 0.1)
+                {
+                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                    hitPoint = GJK(point, enemy.actorCollider[i], deltaTime, false);
+                    if (hitPoint.hasCollision)
+                    {
+                        j = rayDistance;
+
+                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                        {
+                            closestPoint = point.vertices[1];
+                        }
+
+                    }
                 }
 
                 hitSpeaker.Play(hit);
@@ -373,7 +405,13 @@ int main()
                 }
                 lastSpawn = enemyRespawn;
                 enemy.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(),0));
+                
+                
             }
+        }
+        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+        {
+            finalPoint = closestPoint;
         }
         for (int i = 0; i < enemy2.actorCollider.size(); ++i)
         {
@@ -381,6 +419,22 @@ int main()
             ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], deltaTime, false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
+                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                ResolutionData hitPoint;
+                for (float j = 0.0f; j < rayDistance; j += 0.1)
+                {
+                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                    hitPoint = GJK(point, enemy2.actorCollider[i], deltaTime, false);
+                    if (hitPoint.hasCollision)
+                    {
+                        j = rayDistance;
+                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                        {
+                            closestPoint = point.vertices[1];
+                        }
+                    }
+                }
+
                 if (i == 0)
                 {
                     headSpeaker.Play(headshot);
@@ -403,14 +457,38 @@ int main()
                 }
                 lastSpawn = enemyRespawn;
                 enemy2.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+
             }
+
         }
+        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+        {
+            finalPoint = closestPoint;
+        }
+
         for (int i = 0; i < enemy3.actorCollider.size(); ++i)
         {
 
             ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], deltaTime, false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
+                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                ResolutionData hitPoint;
+                for (float j = 0.0f; j < rayDistance; j += 0.1)
+                {
+
+                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                    hitPoint = GJK(point, enemy3.actorCollider[i], deltaTime, false);
+                    if (hitPoint.hasCollision)
+                    {
+                        j = rayDistance;
+                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                        {
+                            closestPoint = point.vertices[1];
+                        }
+                    }
+                }
+
                 if (i == 0)
                 {
                     headSpeaker.Play(headshot);
@@ -434,9 +512,39 @@ int main()
                 }
                 lastSpawn = enemyRespawn;
                 enemy3.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+
             }
         }
-        
+        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+        {
+            finalPoint = closestPoint;
+        }
+        for (int i = 0; i < shipment.collisionMap.size(); ++i)
+        {
+            ResolutionData rayCast = GJK(ray, shipment.collisionMap[i], deltaTime, false);
+            if (rayCast.hasCollision && p->primary->shootRay)
+            {
+                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                ResolutionData hitPoint;
+                for (float j = 0.0f; j < rayDistance; j += 0.1)
+                {
+
+                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                    hitPoint = GJK(point, shipment.collisionMap[i], deltaTime, false);
+                    if (hitPoint.hasCollision)
+                    {
+                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                        {
+                            closestPoint = point.vertices[1];
+                        }
+                    }
+                }
+            }
+        }
+        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+        {
+            finalPoint = closestPoint;
+        }
         ///DEFFERED RENDERER        ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -476,7 +584,8 @@ int main()
         enemy.drawActor(p->playerCamera, shaderGeometryPass);
         enemy2.drawActor(p->playerCamera, shaderGeometryPass);
         enemy3.drawActor(p->playerCamera, shaderGeometryPass);
-        staticRender(p->playerCamera, shaderGeometryPass, contact, glm::vec3(1000.0, 1005.0, 1000.0), glm::vec3(0.0));
+        
+        staticRender(p->playerCamera, shaderGeometryPass, contact, finalPoint, glm::vec3(0.0f), glm::vec3(1.0f));
         shaderGeometryPass.setBool("isStatic", false);
         
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
