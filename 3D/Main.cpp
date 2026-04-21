@@ -115,10 +115,10 @@ static GLFWwindow* windowInit()
     //SETS WINDOW SETTINGS
     glfwInit();
     glfwSwapInterval(0);
-    glfwWindowHint(GLFW_SAMPLES, 4);
+    //glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_REFRESH_RATE, 0);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_RED_BITS, 16);
     glfwWindowHint(GLFW_GREEN_BITS, 16);
     glfwWindowHint(GLFW_BLUE_BITS, 16);
@@ -332,15 +332,19 @@ int main()
     int lastSpawn = enemyRespawn;
     float randRot = rand() % 360;
     Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
-    enemy.setPosition(spawns[enemyRespawn]);
     enemyRespawn = rand() % 8;
     Actor enemy2("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
     enemyRespawn = rand() % 8;
     Actor enemy3("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
 
+    glCullFace(GL_BACK);
+    glEnable(GL_DEPTH_TEST);
     
     glm::vec3 finalPoint = glm::vec3(0.0);
     float rayDistance = 100.0f;
+
+    float printTimer = 0.0f;
+
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -406,12 +410,10 @@ int main()
                     }
                 }
                 lastSpawn = enemyRespawn;
-                enemy.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime() * 1.25f, (float)glfwGetTime() * 1.05f, (float)glfwGetTime() * 1.15f));
-                
-                
+                enemy.setTransform(spawns[enemyRespawn], glm::vec3(0.0));
             }
         }
-        enemy.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
+        enemy.setTransform(enemy.actorPosition, glm::vec3(0.0, (float)glfwGetTime() * 3.16548f, 0.0));
         if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
         {
             finalPoint = closestPoint;
@@ -553,13 +555,12 @@ int main()
         ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         /* */
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-        glEnable(GL_DEPTH_TEST);
         const auto lightMatrices = getLightSpaceMatrices();
         
+
+        //RENDER DEPTH MAP FOR SHADOW CALCULATIONS
         glBindBuffer(GL_UNIFORM_BUFFER, matricesUBO);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, lightMatrices.size() * sizeof(glm::mat4), lightMatrices.data());
-
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
         depthShader.use();
         glBindFramebuffer(GL_FRAMEBUFFER, lightFBO);
@@ -571,8 +572,8 @@ int main()
         enemy2.drawActor(p->playerCamera, depthShader);
         enemy3.drawActor(p->playerCamera, depthShader);
         depthShader.setBool("isStatic", false);
+        
         //glDisable(GL_CULL_FACE);
-        ////RENDER VIEWMODEL
         //p->primary->render(p->playerCamera, depthShader, window);
         
         // 1. geometry pass: render scene's geometry/color data into gbuffer
@@ -700,6 +701,9 @@ int main()
             renderQuad();
             scope.use();
             scope.setFloat("isScoped", p->scopedIn);
+            scope.setFloat("xSway", 7.5 * (sin(p->primary->swayX)));
+            scope.setFloat("ySway", 7.5 * (sin(p->primary->swayY)));
+            
             renderQuad();
             glClear(GL_DEPTH_BUFFER_BIT);
         }
@@ -713,9 +717,15 @@ int main()
         //debug.debugControls(window, deltaTime);
 
         stop = clock();
-        //PRINT FRAMERATE
-        std::cout << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n";
-        //debug.printVector(p->playerPosition);
+
+        printTimer += deltaTime;
+        if (printTimer > 1.0)
+        {
+            //PRINT FRAMERATE
+            std::cout << "\033[2J\033[1;1H\n" << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS\n" << p->primary->ammo << "\n";
+            //debug.printVector(p->playerPosition);
+            printTimer = 0.0f;
+        }
     }
 
 

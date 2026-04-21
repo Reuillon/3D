@@ -20,17 +20,7 @@ Viewmodel::Viewmodel(short int animLength, std::string path)
 }
 
 
-float PI = 3.1415926535;
-float recoil = 0.0;
-float recoilX = 0.0;
-double cposx = 0.0, cposy = 0.0;
-double clastX = 1.0, clastY = 1.0;
-double offsetX, offsetY;
-double totalAMT_X = 0.0, totalAMT_Y = 0.0;
-double delta = 0.0;
-double swayX = 0.0, swayY = 0.0;
 
-glm::vec3 lastPos;
 
 
 void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded)

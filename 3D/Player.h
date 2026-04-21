@@ -278,10 +278,12 @@ class Player
 		glm::vec3 normalizedAirSpeed = glm::vec3(0);
 		
 		float MAXSPEED = 1.0;
+		float MAX_WALKING_SPEED = 15.0;
 		float groundAcceleration = 70.0;
 		float airAcceleration = 0.0;
+		float fallAcceleration = 1.0;
 
-
+		double mouseSensitivity = 0.033f;
 
 		//PLAYER INFORMATION
 		glm::vec3 playerPosition = glm::vec3(1000.0);

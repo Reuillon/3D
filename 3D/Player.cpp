@@ -44,31 +44,39 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         if (r.hasCollision && !isJump)
         {
             gravity = glm::vec3(0.0);
+            
         }
         if (r.hasCollision)
         {
+            
             isGrounded = true;
+            if (fallAcceleration > 1.0)
+            {
+                float randomValue = ((((double)(rand() % 21)) / 100)) + 0.9f;
+                playerSpeaker.p_Pitch = randomValue * 0.9;
+                playerSpeaker.p_Gain = randomValue;
+                playerSpeaker.Play(sound1);
+                fallAcceleration = 1.0f;
+            }
+
             if (isJump)
             {
                 gravity.y = 11;
             }
+
         }
         r = GJK(playerCollider, collisionMap[i], deltaTime, true);
         if (r.hasCollision)
         {
             
             //COLLISION RESOLUTION FOR HITTING THE WALL IN AIR
-            if (lastSpeed != glm::vec3(0.0))
+            if (lastSpeed != glm::vec3(0.0) && !movingHorizontal && !movingVertical)
             {
-                //lastSpeed = (glm::normalize(-r.Normal));
-                airAcceleration /= 1 + (deltaTime * 40);
+                lastSpeed = (glm::normalize(-r.Normal) + (lastSpeed * 0.4f));
+                airAcceleration /= 1 + (deltaTime * 80);
 
             }
-            else
-            {
-                airAcceleration /= 1 + (deltaTime * 35);
-                MAXSPEED /= 1 + (deltaTime * 2);
-            }
+  
 
             normalizedSpeed = glm::vec3(normalizedSpeed.x,0,normalizedSpeed.y) - r.Normal;
             isFalling = false;
@@ -94,7 +102,15 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
     if (isFalling)
     {
         playerCollider.moveCollider(glm::vec3(0.0, gravity.y * deltaTime, 0.0));
-        gravity.y -= (20 * deltaTime);
+        if (gravity.y < 0)
+        {
+            fallAcceleration += (3.0 * deltaTime);
+        }
+        else
+        {
+            fallAcceleration = 1.0f;
+        }
+        gravity.y -= (30 * fallAcceleration * deltaTime);
         if (gravity.y < -300)
         {
             gravity.y = -300;
@@ -131,6 +147,8 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
     
     //SETS MINIMUM AND MAXIMUM POSITION VALUES FOR AIMING DOWN SIGHTS
     scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
+    MAX_WALKING_SPEED = 15.0f * (1 - (scopedIn * 0.25));
+    mouseSensitivity = 0.033f * (1 - (scopedIn * 0.5));
     fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
     playerCamera.fov = 70.0 - fovZoom;
     primary->viewPos.x = glm::clamp(primary->viewPos.x, 4.07f, 4.85f);
@@ -153,7 +171,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         
         //PLAY WALKING SOUNDS
         stepTimer += deltaTime;
-        if ((verticalSpeed != 0 || horizontalSpeed != 0) && stepTimer > footstepSpeed)
+        if ((abs(verticalSpeed/MAX_WALKING_SPEED) >= 0.5  || abs(horizontalSpeed / MAX_WALKING_SPEED) >= 0.5) && stepTimer > footstepSpeed)
         {
             float randomValue = ((((double)(rand() % 21)) / 100)) + 0.9f;
             playerSpeaker.p_Pitch = randomValue * (1.0 - (footStepAcceleration * 0.1));
@@ -209,7 +227,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
   
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38, playerCollider.pos.z);
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.05 * (sin(primary->swayY))), playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;
@@ -332,9 +350,9 @@ void Player::playerControls()
     }
 
     //SPEED CAPS FOR GROUND MOVEMENT
-    horizontalSpeed = glm::clamp(horizontalSpeed, -15.0f, 15.0f);
+    horizontalSpeed = glm::clamp(horizontalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
     if (u.checkBounds(-0.01, 0.01, horizontalSpeed)) { horizontalSpeed = 0; }
-    verticalSpeed = glm::clamp(verticalSpeed, -15.0f, 15.0f);
+    verticalSpeed = glm::clamp(verticalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
     if (u.checkBounds(-0.01, 0.01, verticalSpeed)) { verticalSpeed = 0; }
 
     //SPEED CAPS FOR AIR MOVEMENT
@@ -428,7 +446,7 @@ void Player::mouseControl()
     yoffsetS = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
-    xoffsetS *= sensitivity;
-    yoffsetS *= sensitivity;
+    xoffsetS *= mouseSensitivity;
+    yoffsetS *= mouseSensitivity;
     playerCamera.camRot(xoffsetS, yoffsetS);
 }

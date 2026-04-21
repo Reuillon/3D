@@ -11,10 +11,13 @@ Level::Level(std::string mapModel, std::string mapCollision, glm::vec3 mapPos, g
 	collisionMap = initCollisionMap(mapCollision);
     for (int i = 0; i < collisionMap.size(); i++)
     {
-        collisionMap[i].setTransform(glm::vec3(position.x, position.y, position.z), glm::vec3(0.0));
+        collisionMap[i].setTransform(position, rotation, scale);
     }
     model = glm::scale(model, scale);
-    model = glm::translate(model, glm::vec3(position.x, position.y, position.z));
+    model = glm::translate(model, position);
+    model = glm::rotate(model, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
     inverseMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
 };
 

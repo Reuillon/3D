@@ -28,8 +28,8 @@ class Viewmodel
 		uint32_t reloadEmpty = SoundBuffer::get()->addSoundEffect("SOUNDS/ReloadEmpty.mp3");
 		SoundSource playerSpeaker[3];
 		
-		int ammo = 5;
 	public:
+		int ammo = 5;
 		bool shootRay;
 		float spread;
 		float length;
@@ -41,6 +41,18 @@ class Viewmodel
 		double accumulator = 0.0;
 		bool animBuffer = true;
 		int thisAnim = 1;
+		float PI = 3.1415926535;
+		float recoil = 0.0;
+		float recoilX = 0.0;
+		double cposx = 0.0, cposy = 0.0;
+		double clastX = 1.0, clastY = 1.0;
+		double offsetX, offsetY;
+		double totalAMT_X = 0.0, totalAMT_Y = 0.0;
+		double delta = 0.0;
+		double swayX = 0.0, swayY = 0.0;
+
+		glm::vec3 lastPos;
+
 
 		glm::vec3 viewPos = glm::vec3(4.85f, -0.548, 0.443);
 		//CALCULATE BONE TRANSFORM
