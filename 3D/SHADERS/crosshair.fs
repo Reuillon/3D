@@ -3,7 +3,8 @@ out vec4 FragColor;
 
 uniform float isScoped;
 
-float x = 2560,y = 1440;
+uniform float x = 2560,y = 1440;
+uniform float xSway,ySway;
 float alpha = 0.0;
 
 float crosshairSize = 30.0;
@@ -31,7 +32,7 @@ void main()
     else if (isScoped >= 0.8) //THIS BLOCK DRAWS SCOPE OVERLAY
     {
         vec3 color = vec3(0.0);
-        vec2 pixelDistance = gl_FragCoord.xy - vec2(x * 0.5, y * 0.5);
+        vec2 pixelDistance = (gl_FragCoord.xy - vec2(xSway, ySway))  - vec2(x * 0.5, y * 0.5);
         float distance = dot(pixelDistance, pixelDistance);
         float radius = y * y * 0.25 * 0.81;
         
@@ -48,23 +49,25 @@ void main()
         {
           
 
-            if (gl_FragCoord.x > ((x/2) - 1) && gl_FragCoord.x < ((x/2) + 1) || gl_FragCoord.y > ((y/2) - 1) && gl_FragCoord.y < ((y/2) + 1))
+            if (gl_FragCoord.x > (((x/2) - 1) + xSway)  && gl_FragCoord.x < (((x/2) + 1) + xSway ) || gl_FragCoord.y > (((y/2) - 1) + (ySway)) && gl_FragCoord.y < (((y/2) + 1) + (ySway)))
             {
-                if (distance < x/3)
+                if ((gl_FragCoord.x < (((x/2) + xSway) + (x/80)) && gl_FragCoord.x > (((x/2) + xSway) - (x/80))) && (gl_FragCoord.y < (((y/2) + ySway) + (x/80)) && gl_FragCoord.y > (((y/2) + ySway) - (x/80))))
                 {
+                    //WORK ON THIS COLORS LOOK STRANGE BECAUSE OF RADIUS
                     color = vec3(1.0,0.0,0.0);
+                    //color = vec3(0.0,0.0,0.0);
                 }
                 alpha = 1.0f;
                 FragColor = vec4(color, alpha);
                 return;
             }
-            if ((gl_FragCoord.y < ((y/2) + (y/150)) && gl_FragCoord.y > ((y/2) - (y/150))) && (int(gl_FragCoord.x) % 80 <= 1) && distance > (x/2))
+            if ((gl_FragCoord.y < (((y/2) + ySway) + ((y/150))) && gl_FragCoord.y > (((y/2) + ySway) - ((y/150)))) && (int(gl_FragCoord.x - xSway) % 80 <= 1) && distance > ((x/2)))
             {
                 alpha = 1.0f;
                 FragColor = vec4(color, alpha);
                 return;
             }
-            if ((gl_FragCoord.x < ((x/2) + (x/300)) && gl_FragCoord.x > ((x/2) - (x/300))) && (int(gl_FragCoord.y) % 80 <= 1) && distance > (x/2))
+            if ((gl_FragCoord.x < (((x/2) + xSway) + (x/300)) && gl_FragCoord.x > (((x/2) + xSway) - (x/300))) && (int(gl_FragCoord.y - ySway) % 80 <= 1) && distance > (x/2))
             {
                 alpha = 1.0f;
                 FragColor = vec4(color, alpha);
@@ -72,7 +75,4 @@ void main()
             }
         }
     }
-
-
-    
 }

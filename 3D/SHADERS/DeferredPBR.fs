@@ -174,7 +174,7 @@ void main()
 
     vec3 H = normalize(V + L);
  
-    vec3 radiance = vec3(3.0);
+    vec3 radiance = vec3(5.0);
 
 
     // Cook-Torrance BRDF
