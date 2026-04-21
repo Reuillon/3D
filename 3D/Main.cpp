@@ -40,15 +40,13 @@ static void initSSAO();
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
 
-
-
 //FRAMEBUFFER SIZE
 int fb_width;
 int fb_height;
 
 //FRAMEBUFFER PROPERTIES
 unsigned int gBuffer;
-unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow, gPOS_IBL;
+unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow;
 
 //SHADOWS
 unsigned int shadowFBO;
@@ -75,7 +73,7 @@ unsigned int prefilterMap;
 unsigned int lightFBO;
 unsigned int matricesUBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 1024 * 4;
+constexpr unsigned int depthMapResolution = 1024 * 2;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
@@ -292,7 +290,10 @@ int main()
     shaderLightingPass.setInt("prefilterMap", 7);
     shaderLightingPass.setInt("brdfLUT", 8);
 
-
+    //OVERLAY SHADER
+    scope.use();
+    scope.setFloat("x", SCR_WIDTH);
+    scope.setFloat("y", SCR_HEIGHT);
     //SSAO PASS
     shaderSSAO.use();
     shaderSSAO.setInt("gPosition", 0);
@@ -331,6 +332,7 @@ int main()
     int lastSpawn = enemyRespawn;
     float randRot = rand() % 360;
     Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    enemy.setPosition(spawns[enemyRespawn]);
     enemyRespawn = rand() % 8;
     Actor enemy2("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
     enemyRespawn = rand() % 8;
@@ -404,11 +406,12 @@ int main()
                     }
                 }
                 lastSpawn = enemyRespawn;
-                enemy.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(),0));
+                enemy.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime() * 1.25f, (float)glfwGetTime() * 1.05f, (float)glfwGetTime() * 1.15f));
                 
                 
             }
         }
+        enemy.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
         if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
         {
             finalPoint = closestPoint;
@@ -456,7 +459,7 @@ int main()
                     }
                 }
                 lastSpawn = enemyRespawn;
-                enemy2.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+                enemy2.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
 
             }
 
@@ -511,7 +514,7 @@ int main()
                     }
                 }
                 lastSpawn = enemyRespawn;
-                enemy3.setTransform(spawns[enemyRespawn], glm::vec3(0, (float)glfwGetTime(), 0));
+                enemy3.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
 
             }
         }

@@ -26,6 +26,8 @@ class Actor
 		glm::mat3 inverseMatrix = glm::mat3(1.0);
 		Actor(std::string loadActorModel, std::string loadActorCollider, glm::vec3 setPosition, glm::vec3 setRotation);
 		void setTransform(glm::vec3 position, glm::vec3 rotation);
+		void setPosition(glm::vec3 position);
+		void setRotation(glm::vec3 rotation);
 		void drawActor(camera& c, Shader& shader);
 };
 
