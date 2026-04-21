@@ -19,7 +19,7 @@ class Viewmodel
 		double deltaTime = 0.0f;
 		float lastFrame = 0.0f;
 		//ANIMATION CONTROLLER
-		int thisAnim = 1;
+		
 		int playAnim = 1;
 		int reset = 0;
 
@@ -35,6 +35,12 @@ class Viewmodel
 		float length;
 		float thickness;
 		float fallSpeed = 0;
+		float thisTimer = 0.0;
+		bool isShoot = false;
+		float randomNum = 0.0;
+		double accumulator = 0.0;
+		bool animBuffer = true;
+		int thisAnim = 1;
 
 		glm::vec3 viewPos = glm::vec3(4.85f, -0.548, 0.443);
 		//CALCULATE BONE TRANSFORM

@@ -110,7 +110,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         playerCollider.pos = glm::vec3(0, 5, 0);
     }
 
-    if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2))
+    if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2) && primary->thisTimer < 0.155 && primary->thisAnim != 6 && primary->thisAnim != 5)
     {
         scopedIn += (5.0 * deltaTime);
         fovZoom += (300.0 * deltaTime);
@@ -421,7 +421,7 @@ void Player::mouseControl()
     glfwGetCursorPos(pWindow, &xPos, &yPos);
     static double xoffsetS = 0.0f;
     static double yoffsetS = 0.0f;
-    double sensitivity = 0.05f;
+    double sensitivity = 0.033f;
     double xpos = (xPos);
     double ypos = (yPos);
     xoffsetS = xpos - lastX;

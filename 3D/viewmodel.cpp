@@ -139,11 +139,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 	
 	m.draw(shader);
 }
-float thisTimer = 0.0;
-bool isShoot = false; 
-float randomNum = 0.0;
-double accumulator = 0.0;
-bool animBuffer = true;
+
 
 void Viewmodel::animController(GLFWwindow* window)
 {
@@ -213,7 +209,7 @@ void Viewmodel::animController(GLFWwindow* window)
 	}
 	*/
 
-	if (glfwGetKey(window, GLFW_KEY_R))
+	if (glfwGetKey(window, GLFW_KEY_R) && thisTimer == 0.0)
 	{
 		if (ammo < 6)
 		{
@@ -263,29 +259,21 @@ void Viewmodel::animController(GLFWwindow* window)
 			playerSpeaker[0].Play(shoot);
 		}
 		
-		if (thisTimer < 1.5)
+		if (thisTimer < 1.6)
 		{
 			thisTimer += deltaTime;
-		}
-		if (thisTimer < (0.015))
-		{
-			
-			//input.x = 4000;
 		}
 		
 	}
 	else
 	{
 		
-		if (thisTimer > 0.0 && thisTimer <= 1.5)
+		if (thisTimer > 0.0)
 		{
 			thisTimer += deltaTime;
 		}
 		
-			
-		
-		
-		if (thisTimer > 1.5)
+		if (thisTimer > 1.6)
 		{
 			thisTimer = 0;
 		}
@@ -320,72 +308,72 @@ void Viewmodel::animController(GLFWwindow* window)
 	
 	switch (thisAnim)
 	{
-	case 0:
-	{
-		animate.loopAnim(true);
-		animate.PlayAnimation(&animation[0]);
-		break;
-	}
+		case 0:
+		{
+			animate.loopAnim(true);
+			animate.PlayAnimation(&animation[0]);
+			break;
+		}
 
-	case 1:
-	{
-		animate.loopAnim(true);
-		animate.PlayAnimation(&animation[0]);
-		break;
-	}
-	case 2:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[2]);
-		break;
-	}
-	case 3:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[3]);
-		break;
-	}
-	case 4:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[4]);
-		break;
-	} case 5:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[5]);
-		break;
-	}
-	case 6:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[6]);
-		break;
-	}
-	case 7:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[7]);
-		break;
-	}
-	case 8:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[8]);
-		break;
-	}
-	case 9:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[9]);
-		break;
-	}
-	default:
-	{
-		animate.loopAnim(false);
-		animate.PlayAnimation(&animation[0]);
-		break;
-	}
+		case 1:
+		{
+			animate.loopAnim(true);
+			animate.PlayAnimation(&animation[0]);
+			break;
+		}
+		case 2:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[2]);
+			break;
+		}
+		case 3:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[3]);
+			break;
+		}
+		case 4:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[4]);
+			break;
+		} case 5:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[5]);
+			break;
+		}
+		case 6:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[6]);
+			break;
+		}
+		case 7:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[7]);
+			break;
+		}
+		case 8:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[8]);
+			break;
+		}
+		case 9:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[9]);
+			break;
+		}
+		default:
+		{
+			animate.loopAnim(false);
+			animate.PlayAnimation(&animation[0]);
+			break;
+		}
 	}
 
 	//SIMPLE ANIMATION CONTROLLER

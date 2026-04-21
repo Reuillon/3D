@@ -159,12 +159,12 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     //☺
-    //`initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
+    initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
     //initPBR("TEXTURES/hdri/color.hdr", 2048);
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
-    initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
+    //initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
     
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
