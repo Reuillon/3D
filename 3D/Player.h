@@ -6,6 +6,7 @@
 
 #include "Viewmodel.h"
 #include "Collision.h"
+#include "MeshDraw.h"
 #include "camera.h"
 #include "debug.h"
 #include "utility.h"
@@ -291,6 +292,7 @@ class Player
 		camera playerCamera;
 
 		Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window);
+		void renderOverlay(Shader &shader, float deltaTime);
 		void update(float deltaTime, std::vector<MeshCollider>& collisionMap);
 		void playerControls();
 		void mouseControl();

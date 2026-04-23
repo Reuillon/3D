@@ -227,7 +227,7 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
         playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * deltaTime , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * deltaTime));
     }
   
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.05 * (sin(primary->swayY))), playerCollider.pos.z);
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.035 * (sin(primary->swayY))), playerCollider.pos.z);
     floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     movingHorizontal = false;
     movingVertical = false;
@@ -244,6 +244,16 @@ void Player::update(float deltaTime, std::vector<MeshCollider>& collisionMap)
     playerControls();
     mouseControl();
     primary->updateViewmodel(playerCamera, pWindow, (footStepAcceleration * 15) / 14.0f, gravity.y, isGrounded);
+}
+
+void Player::renderOverlay(Shader &shader, float deltaTime)
+{
+    shader.use();
+    shader.setFloat("isScoped", scopedIn);
+    shader.setFloat("xSway", (7.5 * (sin(primary->swayX))) + ((-primary->totalAMT_X * 350) / (1 - deltaTime)));
+    shader.setFloat("ySway", (7.5 * (sin(primary->swayY))) + ((-primary->totalAMT_Y * 350) / (1 - deltaTime)));
+
+    renderQuad();
 }
 
 void Player::playerControls()
