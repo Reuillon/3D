@@ -40,7 +40,6 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	if (swayY > 2 * PI) { swayY = swayY - (2 * PI); }
 
 
-	lastPos = c.cameraPos;
 	glfwGetCursorPos(window, &cposx, &cposy);
 	offsetX = ((double)cposx - (double)clastX) * 0.2;
 	offsetY = ((double)clastY - (double)cposy) * 0.2;
@@ -59,21 +58,19 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	if (offsetY < -1.2) {
 		offsetY = -1.2;
 	}
-	totalAMT_X += offsetX * 0.35 * deltaTime;
-	totalAMT_Y += offsetY * 0.35 * deltaTime;
+	totalAMT_X += offsetX * 0.35 * globalTimeStep;
+	totalAMT_Y += offsetY * 0.35 * globalTimeStep;
 
-	totalAMT_X /= (1 + (10.26 * deltaTime));
-	totalAMT_Y /= (1 + (10.26 * deltaTime));
+	totalAMT_X /= (1 + (10.26 * globalTimeStep));
+	totalAMT_Y /= (1 + (10.26 * globalTimeStep));
 
-	c.pitch += recoil * 1001 * deltaTime;
-	c.yaw += recoilX * 1001 * deltaTime;
-	float currentFrame = glfwGetTime();
-	deltaTime = currentFrame - lastFrame;
+	c.pitch += recoil * 1001 * globalTimeStep;
+	c.yaw += recoilX * 1001 * globalTimeStep;
 
-	lastFrame = currentFrame;
+
 	if (spread > 1.5)
 	{
-		spread /= 1 * (1.65 + deltaTime);
+		spread /= 1 * (1.65 + globalTimeStep);
 	}
 	if (spread < 1.5)
 	{
@@ -82,19 +79,18 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	//INITIALIZE OBJECT ORIENTATIONS
     model = glm::mat4(1.0f);
 	model = glm::inverse(model) * glm::inverse(c.view);
-	model = glm::scale(model, glm::vec3(1.0f));
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 	if (gravity == 0)
 	{
-		fallSpeed /= 1 + (deltaTime * 2);
+		fallSpeed /= 1 + (globalTimeStep * 2);
 	}
 	if (gravity > 0)
 	{
-		fallSpeed += 0.1 * deltaTime;
+		fallSpeed += 0.1 * globalTimeStep;
 	}
 	else if (gravity < 0)
 	{
-		fallSpeed -= 0.1 * deltaTime;
+		fallSpeed -= 0.1 * globalTimeStep;
 	}
 	fallSpeed = 0;
 	if (isGrounded)
@@ -103,7 +99,7 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	}
 	else
 	{
-		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed) - (gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
+		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * globalTimeStep) + ((-totalAMT_Y * 2) / (1 - globalTimeStep))) - (fallSpeed) - (gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * globalTimeStep) + ((-totalAMT_X * 2) / (1 - globalTimeStep)))));
 	}
 	model = glm::rotate(model, (float)(((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, (float)(0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -133,7 +129,7 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 
 void Viewmodel::animController(GLFWwindow* window)
 {
-	//accumulator += deltaTime;
+	//accumulator += globalTimeStep;
 	//SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
 	
 
@@ -251,7 +247,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		
 		if (thisTimer < 1.6)
 		{
-			thisTimer += deltaTime;
+			thisTimer += globalTimeStep;
 		}
 		
 	}
@@ -260,7 +256,7 @@ void Viewmodel::animController(GLFWwindow* window)
 		
 		if (thisTimer > 0.0)
 		{
-			thisTimer += deltaTime;
+			thisTimer += globalTimeStep;
 		}
 		
 		if (thisTimer > 1.6)
@@ -284,13 +280,13 @@ void Viewmodel::animController(GLFWwindow* window)
 	}
 	if (thisTimer < 0.045 && thisTimer > 0.035)
 	{
-		recoil = (30.5f * deltaTime) ;
-		recoilX = (randomNum * 0.1f * deltaTime) ;
+		recoil = (30.5f * globalTimeStep) ;
+		recoilX = (randomNum * 0.1f * globalTimeStep) ;
 	}
 	if (thisTimer < 0.08 && thisTimer > 0.065)
 	{
-		recoil = ( -(10.5f * deltaTime)) ;
-		recoilX = (-(recoilX / 3) * deltaTime * 0.1f) ;
+		recoil = ( -(10.5f * globalTimeStep)) ;
+		recoilX = (-(recoilX / 3) * globalTimeStep * 0.1f) ;
 	}
 	
 	

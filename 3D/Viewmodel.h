@@ -1,4 +1,5 @@
 #pragma once
+#include "Global.h"
 #include "Model.h"
 #include "Animator.h"
 #include "Shader.h"
@@ -16,8 +17,6 @@ class Viewmodel
 		Animator animate;
 		Animation *animation;
 
-		double deltaTime = 0.0f;
-		float lastFrame = 0.0f;
 		//ANIMATION CONTROLLER
 		
 		int playAnim = 1;
@@ -51,13 +50,11 @@ class Viewmodel
 		double delta = 0.0;
 		double swayX = 0.0, swayY = 0.0;
 
-		glm::vec3 lastPos;
-
-
 		glm::vec3 viewPos = glm::vec3(4.85f, -0.548, 0.443);
 		//CALCULATE BONE TRANSFORM
 	    std::vector<glm::mat4> transforms = animate.GetFinalBoneMatrices();
 		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 initializedModel = glm::mat4(1.0f);
 		glm::mat3 normalMatrix = glm::mat3(1.0f);
 		Viewmodel(short int animLength, std::string path);
 

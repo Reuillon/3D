@@ -2,6 +2,7 @@
 #include <array>
 #include <iostream>
 #include <random>
+#include <thread>
 #include <time.h>
 
 //ENGINE CLASSES
@@ -16,6 +17,7 @@
 #include "Player.h"
 #include "stb_image.h"
 #include "Shader.h"
+#include "Global.h"
 
 //THESE NEED TO BE WORKED ON
 #include "Input.h"
@@ -78,12 +80,11 @@ constexpr unsigned int depthMapResolution = 1024 * 2;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
-std::vector<glm::mat4> getLightSpaceMatrices();
+std::vector<float> shadowCascadeLevels{ 2500.0f / 100.0f, 2500.0f / 75.0f, 2500.0f / 50.0f, 2500.0f / 25.0f };
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
-std::vector<float> shadowCascadeLevels{ 2500.0f / 100.0f, 2500.0f / 50.0f, 2500.0f / 25.0f, 2500.0f / 10.0f };
+std::vector<glm::mat4> getLightSpaceMatrices();
 
 //DELTATIME VALUES
-double deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 //FRAME TIMER
@@ -158,12 +159,30 @@ static GLFWwindow* windowInit()
     initShadowMap();
     initFramebuffer();
     //☺
-    initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
+    //initPBR("TEXTURES/hdri/port.hdr", 2048);
+    //initPBR("TEXTURES/hdri/german.hdr", 4096);
+    //initPBR("TEXTURES/hdri/cloudz.hdr", 4096);
     //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
     //initPBR("TEXTURES/hdri/color.hdr", 2048);
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
-    //initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
+    srand(time(NULL));
+    int skybox = rand() % 3;
+    std::cout << skybox << "\n";
+    switch (skybox)
+    {
+        case 0:
+        default:    
+            initPBR("TEXTURES/hdri/sunset_fairway_16k.hdr", 2048);
+            break;
+        case 1:
+            initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
+            break;
+        case 2:
+            initPBR("TEXTURES/hdri/canary.hdr", 4096);
+            break;
+    }
+
     
     //initPBR("TEXTURES/hdri/whipple_creek_regional_park_04_2k.hdr");
     //initPBR("TEXTURES/hdri/SKY.hdr");
@@ -193,8 +212,10 @@ static GLFWwindow* windowInit()
 }
 Player* p;
 int toggleDebug = -1;
+//std::thread networkThread;
 int main()
 {
+    std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
     // glfw window creation
     // --------------------
     GLFWwindow* window = windowInit();
@@ -214,14 +235,13 @@ int main()
     SoundSource headSpeaker;
     worldSpeaker.p_Gain = 0.25f;
     hitSpeaker.p_Gain = 2.0f;
-    headSpeaker.p_Gain = 0.5;
+    headSpeaker.p_Gain = 0.25;
 
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
-    //OVERLAYS
-    Shader scope("SHADERS/framebuffer.vs", "SHADERS/crosshair.fs");
+
 
     //SHADOWS
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
@@ -296,10 +316,7 @@ int main()
     shaderLightingPass.setInt("prefilterMap", 7);
     shaderLightingPass.setInt("brdfLUT", 8);
 
-    //OVERLAY SHADER
-    scope.use();
-    scope.setFloat("x", SCR_WIDTH);
-    scope.setFloat("y", SCR_HEIGHT);
+
     //SSAO PASS
     shaderSSAO.use();
     shaderSSAO.setInt("gPosition", 0);
@@ -349,17 +366,15 @@ int main()
     glm::vec3 finalPoint = glm::vec3(0.0);
     float rayDistance = 100.0f;
 
+    float fixedTimer = 0.0f;
+
+
     float printTimer = 0.0f;
-
-    std::string gameState = "NO CONNECTION";
-
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-        gameState = gameServer.getGameState();
-        //gameState = gameServer.getGameState();
         Timer += glfwGetTime();
         start = clock();
 
@@ -368,8 +383,28 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        p->update(deltaTime, shipment.collisionMap);
+        //CALCULATES UPDATES PER FRAME
+        FixedUpdate(deltaTime);
 
+        p->update(shipment.collisionMap);
+        
+        //RESET FIXED UPDATE ITERATOR
+        iterations = 0;
+
+        //gameServer.clientData[4] = -FLT_MAX;
+        //gameServer.clientData[5] = -FLT_MAX;
+        //gameServer.clientData[6] = -FLT_MAX;
+        //gameServer.clientData[7] = -FLT_MAX;
+        //gameServer.clientData[0] = p->playerCollider.pos.x;
+        //gameServer.clientData[1] = p->playerCollider.pos.y + (1.37);
+        //gameServer.clientData[2] = p->playerCollider.pos.z;
+        //gameServer.clientData[3] = -p->playerCamera.yaw * 0.0174533;
+        //gameServer.getGameState();
+        //
+        //enemy3.setTransform(glm::vec3(gameServer.Data[4], gameServer.Data[5] + (1.37), gameServer.Data[6]), glm::vec3(0.0f, gameServer.Data[7], 0.0f));
+
+        //networkThread = std::thread(&Server::getGameState, Server());
+        //networkThread.join();
         ///COLLISION///             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///BEHAVIOR ///             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///PIPELINE ///             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -378,10 +413,9 @@ int main()
         ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
         point.vertices[0] = p->playerCamera.cameraPos;
         glm::vec3 closestPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-
         for (int i = 0; i < enemy.actorCollider.size(); ++i)
         {
-            ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], deltaTime, false);
+            ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
                 finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
@@ -394,7 +428,7 @@ int main()
                 for (float j = 0.0f; j < rayDistance; j += 0.1)
                 {
                     point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy.actorCollider[i], deltaTime, false);
+                    hitPoint = GJK(point, enemy.actorCollider[i], false);
                     if (hitPoint.hasCollision)
                     {
                         j = rayDistance;
@@ -435,7 +469,7 @@ int main()
         for (int i = 0; i < enemy2.actorCollider.size(); ++i)
         {
 
-            ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], deltaTime, false);
+            ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
                 finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
@@ -443,7 +477,7 @@ int main()
                 for (float j = 0.0f; j < rayDistance; j += 0.1)
                 {
                     point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy2.actorCollider[i], deltaTime, false);
+                    hitPoint = GJK(point, enemy2.actorCollider[i], false);
                     if (hitPoint.hasCollision)
                     {
                         j = rayDistance;
@@ -487,7 +521,7 @@ int main()
         for (int i = 0; i < enemy3.actorCollider.size(); ++i)
         {
 
-            ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], deltaTime, false);
+            ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
                 finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
@@ -496,7 +530,7 @@ int main()
                 {
 
                     point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy3.actorCollider[i], deltaTime, false);
+                    hitPoint = GJK(point, enemy3.actorCollider[i], false);
                     if (hitPoint.hasCollision)
                     {
                         j = rayDistance;
@@ -533,14 +567,13 @@ int main()
 
             }
         }
-        enemy3.setTransform(glm::vec3(gameServer.Data[0] * 0.01,0.0,gameServer.Data[1] * 0.01), glm::vec3(0.0f, 0.0f, 0.0f));
         if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
         {
             finalPoint = closestPoint;
         }
         for (int i = 0; i < shipment.collisionMap.size(); ++i)
         {
-            ResolutionData rayCast = GJK(ray, shipment.collisionMap[i], deltaTime, false);
+            ResolutionData rayCast = GJK(ray, shipment.collisionMap[i], false);
             if (rayCast.hasCollision && p->primary->shootRay)
             {
                 finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
@@ -549,7 +582,7 @@ int main()
                 {
 
                     point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, shipment.collisionMap[i], deltaTime, false);
+                    hitPoint = GJK(point, shipment.collisionMap[i], false);
                     if (hitPoint.hasCollision)
                     {
                         if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
@@ -564,6 +597,7 @@ int main()
         {
             finalPoint = closestPoint;
         }
+        
         
         ///DEFFERED////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///RENDER  ////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -583,16 +617,17 @@ int main()
         //STATIC MODELS
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
-        enemy.drawActor(p->playerCamera, depthShader);
-        enemy2.drawActor(p->playerCamera, depthShader);
-        enemy3.drawActor(p->playerCamera, depthShader);
+        //enemy.drawActor(p->playerCamera, depthShader);
+        //enemy2.drawActor(p->playerCamera, depthShader);
+        //enemy3.drawActor(p->playerCamera, depthShader);
         
         //ANIMATED MODELS
         //depthShader.setBool("isStatic", false);
         
         //glDisable(GL_CULL_FACE);
         //p->primary->render(p->playerCamera, depthShader, window);
-        
+
+
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
         glViewport(0, 0, fb_width, fb_height);
@@ -619,6 +654,8 @@ int main()
         if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shaderGeometryPass, window); }
         glEnable(GL_CULL_FACE);
 
+
+        
         // 2. generate SSAO texture
         // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -645,7 +682,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
 
-
+        /* */
         // 4. lighting pass: PBR + IBL LIGHTING
         // ------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -692,7 +729,6 @@ int main()
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBlur);
         glActiveTexture(GL_TEXTURE4);
-        glActiveTexture(GL_TEXTURE4);
         glBindTexture(GL_TEXTURE_2D_ARRAY, lightDepthMaps);
         glActiveTexture(GL_TEXTURE5);
         glBindTexture(GL_TEXTURE_2D, gPBR);
@@ -702,7 +738,6 @@ int main()
         glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
-
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
@@ -724,9 +759,9 @@ int main()
         {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             renderQuad();
-            p->renderOverlay(scope, deltaTime);
-            glClear(GL_DEPTH_BUFFER_BIT);
         }
+        p->renderOverlay(defaultShader);
+        glClear(GL_DEPTH_BUFFER_BIT);
         //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
         glDisable(GL_BLEND);
 
@@ -737,12 +772,14 @@ int main()
         //debug.debugControls(window, deltaTime);
 
         stop = clock();
+        
+        
 
         printTimer += deltaTime;
         if (printTimer > 1.0)
         {
             //PRINT FRAMERATE
-            std::cout << "\033[2J\033[1;1H" << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS |||| \nAmmo:" << p->primary->ammo << "\nPlayer Position: "  << gameState;
+            //std::cout << "\033[2J\033[1;1H" << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS |||| \nAmmo:" << p->primary->ammo;
             printTimer = 0.0f;
         }
     }

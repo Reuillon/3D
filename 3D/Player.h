@@ -12,6 +12,7 @@
 #include "utility.h"
 #include "SoundBuffer.h"
 #include "SoundSource.h"
+#include "Global.h"
 
 class Player
 {
@@ -235,7 +236,7 @@ class Player
 			0.334314, -1.421372, 0.807106
 		};
 
-
+		
 	public:
 		//PLAYER ATTRIBUTES
 		MeshCollider playerCollider;
@@ -246,6 +247,11 @@ class Player
 		GLFWwindow* pWindow;
 		ResolutionData r;
 
+		//OVERLAYS
+		Shader* scope;
+
+		int swapWeapon = -1;
+		
 		//PLAYER STATES
 		bool latch = false;
 		bool isJump = false;
@@ -253,7 +259,7 @@ class Player
 		bool isFalling = false;
 		bool movingVertical = false;
 		bool movingHorizontal = false;
-		
+
 		//MOUSE OFFSET FOR MOUSE CONTROLS
 		float screenX, screenY;
 		double lastX, lastY;
@@ -283,7 +289,11 @@ class Player
 		float groundAcceleration = 70.0;
 		float airAcceleration = 0.0;
 		float fallAcceleration = 1.0;
+		
 
+		float fovZoom = 0.0;
+		float footstepSpeed = 0.4;
+		float footStepAcceleration;
 		double mouseSensitivity = 0.033f;
 
 		//PLAYER INFORMATION
@@ -292,9 +302,13 @@ class Player
 		camera playerCamera;
 
 		Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window);
-		void renderOverlay(Shader &shader, float deltaTime);
-		void update(float deltaTime, std::vector<MeshCollider>& collisionMap);
+		void renderOverlay(Shader &shader);
+		void update(std::vector<MeshCollider>& collisionMap);
 		void playerControls();
+		void MoveHorizontal(int8_t direction);
+		void MoveVertical(int8_t direction);
+
+
 		void mouseControl();
 };
 #endif
