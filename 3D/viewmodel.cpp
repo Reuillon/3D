@@ -4,7 +4,6 @@
 
 Viewmodel::Viewmodel(short int animLength, std::string path)
 {
-	spread = 2;
 	length = 0.45f;
 	thickness = 0.75;
 	animation = new Animation[animLength];
@@ -25,9 +24,27 @@ Viewmodel::Viewmodel(short int animLength, std::string path)
 
 void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded)
 {
+	FixedUpdateViewmodel(c, window, speed, gravity, isGrounded);
+	
+	
+	animController();
+	//CALCULATE BONE TRANSFORM
+	transforms = animate.GetFinalBoneMatrices();
+	animate.loopAnim(true);
+	glfwGetCursorPos(window, &cposx, &cposy);
+	offsetX = (cposx - clastX) * 0.2;
+	offsetY = (clastY - cposy) * 0.2;
+	clastX = cposx;
+	clastY = cposy;
+}
+
+void Viewmodel::FixedUpdateViewmodel(camera & c, GLFWwindow * window, float speed, float gravity, bool isGrounded)
+{
+
+
+	
 	if (speed != 0)
 	{
-
 		swayX += deltaTime * speed * 1 * 8;
 		swayY += deltaTime * speed * 2 * 8;
 	}
@@ -39,75 +56,51 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 	if (swayX > 2 * PI) { swayX = swayX - (2 * PI); }
 	if (swayY > 2 * PI) { swayY = swayY - (2 * PI); }
 
-
-	glfwGetCursorPos(window, &cposx, &cposy);
-	offsetX = ((double)cposx - (double)clastX) * 0.2;
-	offsetY = ((double)clastY - (double)cposy) * 0.2;
-	clastX = (double)cposx;
-	clastY = (double)cposy;
-
-	if (offsetX > 2.0) {
-		offsetX = 2.0;
-	}
-	if (offsetY > 1.2) {
-		offsetY = 1.2;
-	}
-	if (offsetX < -2.0) {
-		offsetX = -2.0;
-	}
-	if (offsetY < -1.2) {
-		offsetY = -1.2;
-	}
-	totalAMT_X += offsetX * 0.35 * globalTimeStep;
-	totalAMT_Y += offsetY * 0.35 * globalTimeStep;
-
-	totalAMT_X /= (1 + (10.26 * globalTimeStep));
-	totalAMT_Y /= (1 + (10.26 * globalTimeStep));
-
-	c.pitch += recoil * 1001 * globalTimeStep;
-	c.yaw += recoilX * 1001 * globalTimeStep;
+	offsetX = glm::clamp(offsetX,-4.0f,4.0f);
+	offsetY = glm::clamp(offsetY,-2.4f,2.4f);
 
 
-	if (spread > 1.5)
+	for (int steps = iterations; steps > 0; --steps)
 	{
-		spread /= 1 * (1.65 + globalTimeStep);
+		totalAMT_X += offsetX * 0.35 * globalTimeStep;
+		totalAMT_Y += offsetY * 0.35 * globalTimeStep;
+
+		totalAMT_X /= (1 + (10.26 * globalTimeStep));
+		totalAMT_Y /= (1 + (10.26 * globalTimeStep));
+
+		c.pitch += recoil * 1001 * globalTimeStep;
+		c.yaw += recoilX * 1001 * globalTimeStep;
+
+		//INITIALIZE OBJECT ORIENTATIONS
+		if (gravity == 0)
+		{
+			fallSpeed /= 1 + (deltaTime * 2);
+		}
+		if (gravity > 0)
+		{
+			fallSpeed += 0.1 * deltaTime;
+		}
+		else if (gravity < 0)
+		{
+			fallSpeed -= 0.1 * deltaTime;
+		}
+		fallSpeed = 0;
+		WeaponBehavior(window);
 	}
-	if (spread < 1.5)
-	{
-		spread = 1.5;
-	}
-	//INITIALIZE OBJECT ORIENTATIONS
-    model = glm::mat4(1.0f);
+	model = glm::mat4(1.0f);
 	model = glm::inverse(model) * glm::inverse(c.view);
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
-	if (gravity == 0)
-	{
-		fallSpeed /= 1 + (globalTimeStep * 2);
-	}
-	if (gravity > 0)
-	{
-		fallSpeed += 0.1 * globalTimeStep;
-	}
-	else if (gravity < 0)
-	{
-		fallSpeed -= 0.1 * globalTimeStep;
-	}
-	fallSpeed = 0;
 	if (isGrounded)
 	{
 		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed)-(gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));
 	}
 	else
 	{
-		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * globalTimeStep) + ((-totalAMT_Y * 2) / (1 - globalTimeStep))) - (fallSpeed) - (gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * globalTimeStep) + ((-totalAMT_X * 2) / (1 - globalTimeStep)))));
+		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime))) - (fallSpeed)-(gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime)))));
 	}
 	model = glm::rotate(model, (float)(((0.4 * sin(swayY * 0.5))) * 0.0174533f), glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::rotate(model, (float)(0.2 * sin(swayX * 0.5) * 0.0174533f), glm::vec3(0.0f, 1.0f, 0.0f));
 	normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
-	animController(window);
-	//CALCULATE BONE TRANSFORM
-	transforms = animate.GetFinalBoneMatrices();
-	animate.loopAnim(true);
 }
 
 void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
@@ -127,9 +120,104 @@ void Viewmodel::render(camera& c, Shader& shader, GLFWwindow* window)
 }
 
 
-void Viewmodel::animController(GLFWwindow* window)
+void Viewmodel::WeaponBehavior(GLFWwindow* window)
 {
-	//accumulator += globalTimeStep;
+	if (glfwGetKey(window, GLFW_KEY_R) && thisTimer == 0.0)
+	{
+		if (ammo < 6)
+		{
+			if (animBuffer)
+			{
+				reset = 1;
+				if (ammo > 0)
+				{
+					playerSpeaker[1].Play(reload);
+					thisAnim = 5;
+				}
+				else
+				{
+					playerSpeaker[2].Play(reloadEmpty);
+					thisAnim = 6;
+				}
+			}
+			animBuffer = false;
+		}
+	}
+	bool hasShot = false;
+	if (thisTimer != 0)
+	{
+		shootRay = false;
+	}
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) && ammo > 0 && animBuffer && !hasShot)
+	{
+		if (thisTimer == 0)
+		{
+			hasShot = true;
+			shootRay = true;
+			ammo -= 1;
+			reset = 1;
+			if (ammo > 0)
+			{
+				animate.loopAnim(false);
+				animate.PlayAnimation(&animation[7]);
+				thisAnim = 4;
+			}
+			else
+			{
+				animate.loopAnim(false);
+				animate.PlayAnimation(&animation[8]);
+				thisAnim = 4;
+			}
+			playerSpeaker[0].Play(shoot);
+		}
+
+		if (thisTimer < 1.6)
+		{
+			thisTimer += globalTimeStep;
+		}
+
+	}
+	else
+	{
+
+		if (thisTimer > 0.0)
+		{
+			thisTimer += globalTimeStep;
+		}
+
+		if (thisTimer > 1.6)
+		{
+			thisTimer = 0;
+		}
+
+
+	}
+
+	if (!glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1))
+	{
+		hasShot = false;
+	}
+
+	if (thisTimer == 0.0 || thisTimer > 0.165)
+	{
+		recoil = 0;
+		recoilX = 0;
+		randomNum = ((rand() % 41) - 20);
+	}
+	if (thisTimer < 0.045 && thisTimer > 0.035)
+	{
+		recoil = (30.5f * globalTimeStep);
+		recoilX = (randomNum * 0.1f * globalTimeStep);
+	}
+	if (thisTimer < 0.08 && thisTimer > 0.065)
+	{
+		recoil = (-(10.5f * globalTimeStep));
+		recoilX = (-(recoilX / 3) * globalTimeStep * 0.1f);
+	}
+}
+
+void Viewmodel::animController()
+{
 	//SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
 	
 
@@ -195,102 +283,6 @@ void Viewmodel::animController(GLFWwindow* window)
 	}
 	*/
 
-	if (glfwGetKey(window, GLFW_KEY_R) && thisTimer == 0.0)
-	{
-		if (ammo < 6)
-		{
-			if (animBuffer)
-			{
-				reset = 1;
-				if (ammo > 0)
-				{
-					playerSpeaker[1].Play(reload);
-					thisAnim = 5;
-				}
-				else
-				{
-					playerSpeaker[2].Play(reloadEmpty);
-					thisAnim = 6;
-				}
-			}
-			animBuffer = false;
-		}
-	}
-	bool hasShot = false;
-	if (thisTimer != 0)
-	{
-		shootRay = false;
-	}
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) && ammo > 0 && animBuffer && !hasShot)
-	{
-		if (thisTimer == 0)
-		{
-			hasShot = true;
-			shootRay = true;
-			ammo -= 1;
-			spread = 5;
-			reset = 1;
-			if (ammo > 0)
-			{
-				animate.loopAnim(false);
-				animate.PlayAnimation(&animation[7]);
-				thisAnim = 4;
-			}
-			else
-			{
-				animate.loopAnim(false);
-				animate.PlayAnimation(&animation[8]);
-				thisAnim = 4;
-			}
-			playerSpeaker[0].Play(shoot);
-		}
-		
-		if (thisTimer < 1.6)
-		{
-			thisTimer += globalTimeStep;
-		}
-		
-	}
-	else
-	{
-		
-		if (thisTimer > 0.0)
-		{
-			thisTimer += globalTimeStep;
-		}
-		
-		if (thisTimer > 1.6)
-		{
-			thisTimer = 0;
-		}
-		
-		
-	}
-	
-	if (!glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1))
-	{
-		hasShot = false;
-	}
-
-	if (thisTimer == 0.0 || thisTimer > 0.165)
-	{
-		recoil = 0;
-		recoilX = 0;
-		randomNum = ((rand() % 41) - 20);
-	}
-	if (thisTimer < 0.045 && thisTimer > 0.035)
-	{
-		recoil = (30.5f * globalTimeStep) ;
-		recoilX = (randomNum * 0.1f * globalTimeStep) ;
-	}
-	if (thisTimer < 0.08 && thisTimer > 0.065)
-	{
-		recoil = ( -(10.5f * globalTimeStep)) ;
-		recoilX = (-(recoilX / 3) * globalTimeStep * 0.1f) ;
-	}
-	
-	
-		//accumulator = 0;
 	
 	switch (thisAnim)
 	{
@@ -424,8 +416,3 @@ void Viewmodel::setState(int set)
 	}
 }
 
-double mSway(double offset)
-{
-	double swayAmt = 0.0;
-	return 1.0;
-}

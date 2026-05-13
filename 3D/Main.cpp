@@ -5,6 +5,8 @@
 #include <thread>
 #include <time.h>
 
+
+
 //ENGINE CLASSES
 #include "Actor.h"
 #include "Animator.h"
@@ -17,6 +19,8 @@
 #include "Player.h"
 #include "stb_image.h"
 #include "Shader.h"
+
+//GLOBAL HEADER FOR ALL VITAL DATA
 #include "Global.h"
 
 //THESE NEED TO BE WORKED ON
@@ -84,8 +88,7 @@ std::vector<float> shadowCascadeLevels{ 2500.0f / 100.0f, 2500.0f / 75.0f, 2500.
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
 std::vector<glm::mat4> getLightSpaceMatrices();
 
-//DELTATIME VALUES
-float lastFrame = 0.0f;
+
 
 //FRAME TIMER
 double currtime;
@@ -215,9 +218,11 @@ int toggleDebug = -1;
 //std::thread networkThread;
 int main()
 {
-    std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
-    // glfw window creation
-    // --------------------
+    std::cout << "\033[2J\033[1;1H";
+    //WINDOW///    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    //INITIALIZATION/////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+    ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
+
     GLFWwindow* window = windowInit();
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
@@ -240,8 +245,6 @@ int main()
     ////SHADERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-
-
 
     //SHADOWS
     Shader depthShader("SHADERS/depth.vs", "SHADERS/depth.fs", "SHADERS/depth.gs");
@@ -336,9 +339,7 @@ int main()
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
     glViewport(0, 0, scrWidth, scrHeight);
-    clock_t start, stop;
     lightDir = glm::normalize(glm::vec3(1.25, 1.25, 0.85));
-    double Timer = 0.0f;
     glm::vec3 spawns[8] = 
     {
         glm::vec3(3.85,0.0,54.82),
@@ -350,6 +351,7 @@ int main()
         glm::vec3(-38.475,0.0,-29.65),
         glm::vec3(28.8, 0.0,-24.8)
     };
+
     srand(time(0));
     int enemyRespawn = rand() % 8;
     int lastSpawn = enemyRespawn;
@@ -366,25 +368,14 @@ int main()
     glm::vec3 finalPoint = glm::vec3(0.0);
     float rayDistance = 100.0f;
 
-    float fixedTimer = 0.0f;
 
-
-    float printTimer = 0.0f;
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
-        Timer += glfwGetTime();
-        start = clock();
-
-        //DELTA TIME CALCULATION
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
         //CALCULATES UPDATES PER FRAME
-        FixedUpdate(deltaTime);
+        FixedUpdate();
 
         p->update(shipment.collisionMap);
         
@@ -622,10 +613,11 @@ int main()
         //enemy3.drawActor(p->playerCamera, depthShader);
         
         //ANIMATED MODELS
-        //depthShader.setBool("isStatic", false);
-        
-        //glDisable(GL_CULL_FACE);
-        //p->primary->render(p->playerCamera, depthShader, window);
+        depthShader.setBool("isStatic", false);
+
+        glEnable(GL_CULL_FACE);
+        p->primary->render(p->playerCamera, depthShader, window);
+        glDisable(GL_CULL_FACE);
 
 
         // 1. geometry pass: render scene's geometry/color data into gbuffer
@@ -654,8 +646,6 @@ int main()
         if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shaderGeometryPass, window); }
         glEnable(GL_CULL_FACE);
 
-
-        
         // 2. generate SSAO texture
         // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
@@ -673,6 +663,7 @@ int main()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, noiseTexture);
         renderQuad();
+
         // 3. blur SSAO texture to remove noise
         // ------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
@@ -682,7 +673,6 @@ int main()
         glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
         renderQuad();
 
-        /* */
         // 4. lighting pass: PBR + IBL LIGHTING
         // ------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -743,7 +733,8 @@ int main()
         
         if (toggleDebug == 1)
         {
-
+            //debug.drawCollider(p->floorCollider, p->playerCamera);
+            debug.drawCollider(p->playerCollider, p->playerCamera);
             for (int i = 0; i < enemy.actorCollider.size(); ++i)
             {
                 debug.drawCollider(enemy.actorCollider[i], p->playerCamera);
@@ -761,8 +752,9 @@ int main()
             renderQuad();
         }
         p->renderOverlay(defaultShader);
+        
         glClear(GL_DEPTH_BUFFER_BIT);
-        //DISABLES TRANSPARENCY SO GEOMETRY RENDERS
+        //DISABLES TRANSPARENCY ALLOWING FOR SKYBOX AND MODEL RENDERING
         glDisable(GL_BLEND);
 
         // input
@@ -770,24 +762,21 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
         //debug.debugControls(window, deltaTime);
-
-        stop = clock();
+        showFPS();
         
-        
-
-        printTimer += deltaTime;
-        if (printTimer > 1.0)
-        {
-            //PRINT FRAMERATE
-            //std::cout << "\033[2J\033[1;1H" << "GPU: " << (int)(1000 / ((glfwGetTime() - currentFrame) * 1000)) << " FPS |||||| " << "CPU: " << (int)(1000 / ((double(stop - start) / CLOCKS_PER_SEC) * 1000)) << "FPS |||| \nAmmo:" << p->primary->ammo;
-            printTimer = 0.0f;
-        }
     }
 
 
     //glfw: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
     return 0;
+}
+
+
+//UPDATES GAME STATE
+void GameUpdate()
+{
+
 }
 
 //INITIALIZERS //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////

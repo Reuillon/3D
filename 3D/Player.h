@@ -3,7 +3,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
-
 #include "Viewmodel.h"
 #include "Collision.h"
 #include "MeshDraw.h"
@@ -304,11 +303,18 @@ class Player
 		Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window);
 		void renderOverlay(Shader &shader);
 		void update(std::vector<MeshCollider>& collisionMap);
-		void playerControls();
+		
+		//PERFORMS ALL OF THE PLAYERS ACTIONS SUCH AS MOVING AND SHOOTING
+		void PlayerBehavior();
+
+		//MOVE PLAYER IN DIRECTION
 		void MoveHorizontal(int8_t direction);
 		void MoveVertical(int8_t direction);
+		
+		//DEBUG: MOVE PLAYER VIEWMODEL
+		void MoveViewModel();
 
-
-		void mouseControl();
+		//GETS MOUSE MOVEMENT 
+		glm::vec2  mouseControl();
 };
 #endif

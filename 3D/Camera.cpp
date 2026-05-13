@@ -20,16 +20,15 @@ void camera::init(const unsigned int width, const unsigned int height, const uns
 	projection = glm::perspective(glm::radians(fov), (float)scrWidth / (float)scrHeight, cameraNear, cameraFar);
 }
 
-void camera::camRot(float xOffset, float yOffset)
+void camera::camRot(glm::vec2 cameraTurn)
 {
-	yaw += xOffset;
-	pitch += yOffset;
+	yaw += cameraTurn.x;
+	pitch += cameraTurn.y;
 }
-void camera::update(float deltaTime)
+void camera::update()
 {
 	//PREVENTS CAMERA FROM FLIPPING UPSIDE DOWN
 	pitch = glm::clamp(pitch, -89.0f, 89.0f);
-
 	//update view matrix
 	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
 	front.y = sin(glm::radians(pitch));

@@ -10,7 +10,7 @@
 #include <string>
 
 
-
+//DATA ASSOCIATED WITH OBJECT COLLISION 
 struct ResolutionData 
 {
     glm::vec3 Normal;
@@ -89,7 +89,7 @@ bool NextSimplex(Simplex& points, glm::vec3& direction);
 
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float deltaTime, bool resolve);
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve);
 
 //EPA COLLISION AND HELPER FUNCTIONS
 void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& faces, size_t a, size_t b);

@@ -1,10 +1,9 @@
 #pragma once
-#include "Global.h"
 #include "Model.h"
 #include "Animator.h"
 #include "Shader.h"
 #include "Camera.h"
-#include <GLFW/glfw3.h>
+#include "Global.h"
 #include "Input.h"
 #include "SoundBuffer.h"
 #include "SoundSource.h"
@@ -45,7 +44,7 @@ class Viewmodel
 		float recoilX = 0.0;
 		double cposx = 0.0, cposy = 0.0;
 		double clastX = 1.0, clastY = 1.0;
-		double offsetX, offsetY;
+		float offsetX, offsetY;
 		double totalAMT_X = 0.0, totalAMT_Y = 0.0;
 		double delta = 0.0;
 		double swayX = 0.0, swayY = 0.0;
@@ -56,13 +55,18 @@ class Viewmodel
 		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 initializedModel = glm::mat4(1.0f);
 		glm::mat3 normalMatrix = glm::mat3(1.0f);
+
 		Viewmodel(short int animLength, std::string path);
 
+		void WeaponBehavior(GLFWwindow* window);
+
 		void updateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded);
+		
+		void FixedUpdateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded);
 
 		void render(camera& c, Shader& shader, GLFWwindow* window);
 
-		void animController(GLFWwindow* window);
+		void animController();
 
 		void setState(int set);
 }; 

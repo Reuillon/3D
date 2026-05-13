@@ -249,8 +249,8 @@ class camera
 
 		
 		
-		void update(float deltaTime);
-		void camRot(float xOffset, float yOffset);
+		void update();
+		void camRot(glm::vec2 cameraTurn);
 		void fovMod(float val);
 		void init(const unsigned int width, const unsigned int height, const unsigned int cFov);
 };

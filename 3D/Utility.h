@@ -7,7 +7,7 @@ class Utility
 
 
 	public:
-		bool checkBounds(float min, float max, float value)
+		inline bool checkBounds(float min, float max, float value)
 		{
 			if (value > min && value < max)
 			{
@@ -18,7 +18,7 @@ class Utility
 				return false;
 			}
 		}
-		bool oppositeDirection(float marginX, float marginY, glm::vec2 direction, glm::vec2 direction2)
+		inline bool oppositeDirection(float marginX, float marginY, glm::vec2 direction, glm::vec2 direction2)
 		{
 			if (direction.x < (-direction2.x + marginX) && direction.x > (-direction2.x - marginX))
 			{

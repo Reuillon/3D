@@ -12,7 +12,7 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
     scope->use();
     scope->setFloat("x", SCR_WIDTH);
     scope->setFloat("y", SCR_HEIGHT);
-	playerCamera.init(SCR_WIDTH, SCR_HEIGHT, 52);
+	playerCamera.init(SCR_WIDTH, SCR_HEIGHT, 70);
 	pWindow = window;
 	playerCollider.init(capsule, sizeof(capsule) / sizeof(*capsule));
 	floorCollider.init(floor, sizeof(floor) / sizeof(*floor));
@@ -27,20 +27,25 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
     playerCamera.cameraNear = 0.1;
 }
 
-Debug debugger;
 Utility u;
 void Player::update(std::vector<MeshCollider>& collisionMap)
 {
+    normalizedSpeed = glm::vec2(0);
+    playerPosition = playerCollider.pos;
+    playerRotation = playerCollider.rot;
+    playerForward.x = cos(glm::radians(playerCamera.yaw));
+    playerForward.z = sin(glm::radians(playerCamera.yaw));
+    
+
+
+
+    
+    //START FIXED UPDATE:
+    // 
     for (int steps = iterations; steps > 0; --steps)
     {
-        normalizedSpeed = glm::vec2(0);
-        playerPosition = playerCollider.pos;
-        playerRotation = playerCollider.rot;
-        
 
-        
-        playerForward.x = cos(glm::radians(playerCamera.yaw));
-        playerForward.z = sin(glm::radians(playerCamera.yaw));
+        PlayerBehavior();
         //RESET POSITION IF OUT OF BOUNDS
         if (playerCollider.pos.y < -100)
         {
@@ -61,17 +66,12 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                 fallAcceleration = 1.0f;
             }
             gravity.y -= (30 * fallAcceleration * globalTimeStep);
-            if (gravity.y < -300)
-            {
-                gravity.y = -300;
-            }
+            
+            //CAPS SPEED FOR WHEN PLAYER IS FALLING
+            if (gravity.y < -300){  gravity.y = -300;   }
         }
 
-
-
-
-
-        //CHECK IF PLAYER IS ON THE GROUND
+        //PLAYER BEHAVIOR WHEN PLAYER IS ON THE GROUND
         if (isGrounded)
         {
             footStepAcceleration = (glm::clamp((double)(abs(verticalSpeed / 15) + abs(horizontalSpeed / 15)), 0.0, 1.0));
@@ -109,7 +109,6 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
             
             //KEEPS PLAYER MOMENTUM WHEN JUMPING AS LONG AS NEXT JUMP IS FAST ENOUGH
             airMomentumTimer += globalTimeStep;
-
             if (airMomentumTimer > 0.025f)
             {
                 airVelocity = glm::vec2(0);
@@ -117,7 +116,6 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                 MAXSPEED = 1.0;
                 if (u.checkBounds(-1,1, horizontalSpeed) && u.checkBounds(-1, 1, verticalSpeed)) { airAcceleration /= 1 + (globalTimeStep * 10); }
             }
-   
         }
         else
         {
@@ -140,32 +138,28 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
             momentum = glm::vec2(normalAirVector.x * airAcceleration * MAXSPEED, normalAirVector.y * airAcceleration * MAXSPEED);
             playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * globalTimeStep , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * globalTimeStep));
         }
-  
-        playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.035 * (sin(primary->swayY))), playerCollider.pos.z);
-        floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
+       
+        //RESETS PLAYER MOVMENT FLAG TO FALSE
         movingHorizontal = false;
         movingVertical = false;
 
 
-        
 
-        //START FIXED UPDATE:
-        // 
+        
         //COLLISION CHECKS
-        ResolutionData r;
+        ResolutionData playerCollisionData;
         isFalling = false;
         isGrounded = false;
-        for (int i = 0; i < collisionMap.size(); i++)
+        for (int i = 0; i < collisionMap.size(); ++i)
         {
-            r = GJK(floorCollider, collisionMap[i], false);
-            if (r.hasCollision && !isJump)
+            playerCollisionData = GJK(floorCollider, collisionMap[i], false);
+            if (playerCollisionData.hasCollision && !isJump)
             {
                 gravity = glm::vec3(0.0);
 
             }
-            if (r.hasCollision)
+            if (playerCollisionData.hasCollision)
             {
-
                 isGrounded = true;
                 if (fallAcceleration > 1.0)
                 {
@@ -175,37 +169,32 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                     playerSpeaker.Play(sound1);
                     fallAcceleration = 1.0f;
                 }
-
                 if (isJump)
                 {
                     gravity.y = 11;
                 }
-
-            }
-            r = GJK(playerCollider, collisionMap[i], true);
-            if (r.hasCollision)
-            {
-
-                //COLLISION RESOLUTION FOR HITTING THE WALL IN AIR
-                if (lastSpeed != glm::vec3(0.0) && !movingHorizontal && !movingVertical)
-                {
-                    lastSpeed = (glm::normalize(-r.Normal) + (lastSpeed * 0.4f));
-                    airAcceleration /= 1 + (globalTimeStep * 80);
-
-                }
-
-
-                normalizedSpeed = glm::vec3(normalizedSpeed.x, 0, normalizedSpeed.y) - r.Normal;
-                isFalling = false;
             }
             else
             {
                 isFalling = true;
             }
+            playerCollisionData = GJK(playerCollider, collisionMap[i], true);
+            if (playerCollisionData.hasCollision)
+            {
+                //COLLISION RESOLUTION FOR HITTING THE WALL IN AIR
+                if (lastSpeed != glm::vec3(0.0) && !movingHorizontal && !movingVertical)
+                {
+                    lastSpeed = (glm::normalize(-playerCollisionData.Normal) + (lastSpeed * 0.4f));
+                    airAcceleration /= 1 + (globalTimeStep * 80);
 
+                }
+                normalizedSpeed = glm::vec3(normalizedSpeed.x, 0, normalizedSpeed.y) - playerCollisionData.Normal; 
+            }
         }
-        playerControls();
     }
+    //SETS CAMERA POSITION AND COLLIDER POSITIONS
+    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.035 * (sin(primary->swayY))), playerCollider.pos.z);
+    floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     //RESET POSITION OF PLAYER
     if (glfwGetKey(pWindow, GLFW_KEY_P))
     {
@@ -213,21 +202,21 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
         lastSpeed = glm::vec3(0.0);
         playerCollider.pos = glm::vec3(0, 5, 0);
     }
-
-    //SETS MINIMUM AND MAXIMUM POSITION VALUES FOR AIMING DOWN SIGHTS
+    //SETS MINIMUM AND MAXIMUM VALUES FOR AIMING DOWN SIGHTS
     scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
-    MAX_WALKING_SPEED = 15.0f * (1 - (scopedIn * 0.25));
-    mouseSensitivity = 0.033f * (1 - (scopedIn * 0.5));
     fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
-    playerCamera.fov = 70.0 - fovZoom;
     primary->viewPos.x = glm::clamp(primary->viewPos.x, 4.07f, 4.85f);
     primary->viewPos.y = glm::clamp(primary->viewPos.y, -0.548f, -0.286f);
     primary->viewPos.z = glm::clamp(primary->viewPos.z, -0.405f, 0.443f);
+    MAX_WALKING_SPEED = 15.0f * (1 - (scopedIn * 0.25));
+    mouseSensitivity = 0.033f * (1 - (scopedIn * 0.5));
+    playerCamera.fov = 70.0 - fovZoom;
+    playerCamera.camRot(mouseControl());
     playerCamera.update();
-    mouseControl();
     primary->updateViewmodel(playerCamera, pWindow, (footStepAcceleration * 15) / 14.0f, gravity.y, isGrounded);
 }
 
+//RENDERS SCREEN OVERLAY FOR WEAPON SCOPE
 void Player::renderOverlay(Shader &shader)
 {
     scope->use();
@@ -238,6 +227,7 @@ void Player::renderOverlay(Shader &shader)
     renderQuad();
 }
 
+//MOVES PLAYER LEFT AND RIGHT
 void Player::MoveHorizontal(int8_t direction)
 {
     movingHorizontal = true;
@@ -269,6 +259,7 @@ void Player::MoveHorizontal(int8_t direction)
     }
 }
 
+//MOVES PLAYER FORWARD AND BACK
 void Player::MoveVertical(int8_t direction)
 {
     movingVertical = true;
@@ -300,8 +291,11 @@ void Player::MoveVertical(int8_t direction)
     }
 }
 
-void Player::playerControls()
+
+//PERFORMS ALL OF THE PLAYERS ACTIONS SUCH AS MOVING AND SHOOTING
+void Player::PlayerBehavior()
 {
+    //AIMS DOWN SIGHTS WHEN BUTTON IS PRESSED
     if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2) && primary->thisTimer < 0.155 && primary->thisAnim != 6 && primary->thisAnim != 5)
     {
         scopedIn += (5.0 * globalTimeStep);
@@ -320,6 +314,8 @@ void Player::playerControls()
         primary->viewPos.y -= (2 * globalTimeStep);
         primary->viewPos.z += (6 * globalTimeStep);
     }
+
+    //MOVE PLAYER WITH KEYPRESS
     if (glfwGetKey(pWindow, GLFW_KEY_W))
     {
         MoveVertical(1);
@@ -328,7 +324,6 @@ void Player::playerControls()
     {
         MoveVertical(-1);
     }
-
     if (glfwGetKey(pWindow, GLFW_KEY_A))
     {
         MoveHorizontal(-1);
@@ -338,7 +333,7 @@ void Player::playerControls()
         MoveHorizontal(1);
     }
 
-    //SLOWS PLAYER DOWN WHEN NO INPUTS ARE PRESENT
+    //SLOWS PLAYER DOWN WHEN NO MOVEMENT INPUTS ARE PRESENT AND PLAYER IS STANDING ON THE GROUND
     if (!movingVertical && isGrounded)
     {
         verticalSpeed /= (1 + (globalTimeStep * 10));
@@ -368,8 +363,8 @@ void Player::playerControls()
         isJump = false;
     }
 
-    /*
     //SINGLE INPUT CONTROL FOR JUMPING
+    /*
     if (glfwGetKey(pWindow, GLFW_KEY_SPACE))
     {
         if (!latch)
@@ -392,7 +387,13 @@ void Player::playerControls()
         swapWeapon *= -1;
     }
     */
-    /*
+    
+}
+
+
+//MOVES VIEWMODEL BASED ON KEYPRESS
+void Player::MoveViewModel()
+{
     if (glfwGetKey(pWindow, GLFW_KEY_UP))
     {
         primary->viewPos.z += 0.1 * globalTimeStep;
@@ -418,9 +419,9 @@ void Player::playerControls()
         primary->viewPos.y -= 0.1 * globalTimeStep;
     }
     std::cout << primary->viewPos.x << " " << primary->viewPos.y << " " << primary->viewPos.z  << "\n";
-    */
 }
-void Player::mouseControl()
+
+glm::vec2 Player::mouseControl()
 {
     GLdouble xPos, yPos;
     glfwGetCursorPos(pWindow, &xPos, &yPos);
@@ -435,5 +436,5 @@ void Player::mouseControl()
     lastY = ypos;
     xoffsetS *= mouseSensitivity;
     yoffsetS *= mouseSensitivity;
-    playerCamera.camRot(xoffsetS, yoffsetS);
+    return glm::vec2(xoffsetS, yoffsetS);
 }
