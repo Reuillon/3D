@@ -25,27 +25,99 @@ Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFW
     lastY = screenY / 2.0f;
     playerCamera.cameraFar = 2500;
     playerCamera.cameraNear = 0.1;
+    playerPosition = playerCollider.pos;
+    playerRotation = playerCollider.rot;
+    
 }
 
 Utility u;
 void Player::update(std::vector<MeshCollider>& collisionMap)
 {
-    normalizedSpeed = glm::vec2(0);
-    playerPosition = playerCollider.pos;
-    playerRotation = playerCollider.rot;
-    playerForward.x = cos(glm::radians(playerCamera.yaw));
-    playerForward.z = sin(glm::radians(playerCamera.yaw));
+    //GETS INPUT AND SETS PLAYER FLAGS
+    PlayerControls();
+    PlayerFixedUpdate(collisionMap);
+
+
+
+    //RESET POSITION OF PLAYER
+    if (glfwGetKey(pWindow, GLFW_KEY_P))
+    {
+        gravity = glm::vec3(0);
+        lastSpeed = glm::vec3(0.0);
+        playerCollider.pos = glm::vec3(0, 5, 0);
+    }
+    //SETS MINIMUM AND MAXIMUM VALUES FOR AIMING DOWN SIGHTS
+    scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
+    fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
+    primary->viewPos.x = glm::clamp(primary->viewPos.x, 4.07f, 4.85f);
+    primary->viewPos.y = glm::clamp(primary->viewPos.y, -0.548f, -0.286f);
+    primary->viewPos.z = glm::clamp(primary->viewPos.z, -0.405f, 0.443f);
+    MAX_WALKING_SPEED = 15.0f * (1 - (scopedIn * 0.25));
+    mouseSensitivity = 0.033f * (1 - (scopedIn * 0.5));
     
-
-
+    //SETS CAMERA POSITION AND COLLIDER POSITIONS
+    glm::vec3 interpolatedPos = Lerp(preFrame, fixedTimer / globalTimeStep, nextFrame);
+    playerCamera.cameraPos = glm::vec3(interpolatedPos.x, interpolatedPos.y + 2.38 + (0.035 * (sin(primary->swayY))), interpolatedPos.z);
+    floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
 
     
+    playerCamera.fov = 70.0 - fovZoom;
+    playerCamera.camRot(mouseControl());
+    playerCamera.update();
+    primary->updateViewmodel(playerCamera, pWindow, (footStepAcceleration * 15) / 14.0f, gravity.y, isGrounded);
+}
+
+void Player::PlayerFixedUpdate(std::vector<MeshCollider>& collisionMap)
+{
     //START FIXED UPDATE:
     // 
     for (int steps = iterations; steps > 0; --steps)
     {
+        preFrame = playerCollider.pos;
+        normalizedSpeed = glm::vec2(0);
+        playerForward.x = cos(glm::radians(playerCamera.yaw));
+        playerForward.z = sin(glm::radians(playerCamera.yaw));
+        if (isScoped)
+        {
+            scopedIn += (5.0 * globalTimeStep);
+            fovZoom += (300.0 * globalTimeStep);
+            primary->viewPos.x -= (4 * globalTimeStep);
+            primary->viewPos.y += (2 * globalTimeStep);
+            primary->viewPos.z -= (5 * globalTimeStep);
+            playerCamera.pitch += sin(glfwGetTime() * 1.8154f) * 0.35f * globalTimeStep;
+            playerCamera.yaw += cos(glfwGetTime() * 1.045f) * 0.35f * globalTimeStep;
+        }
+        else
+        {
+            scopedIn -= (5.0 * globalTimeStep);
+            fovZoom -= (300.0 * globalTimeStep);
+            primary->viewPos.x += (6 * globalTimeStep);
+            primary->viewPos.y -= (2 * globalTimeStep);
+            primary->viewPos.z += (6 * globalTimeStep);
+        }
 
-        PlayerBehavior();
+        MoveVertical(forwardMotion);
+        MoveHorizontal(horizontalMotion);
+
+        //SPEED CAPS FOR GROUND MOVEMENT
+        horizontalSpeed = glm::clamp(horizontalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
+        if (u.checkBounds(-0.01, 0.01, horizontalSpeed)) { horizontalSpeed = 0; }
+        verticalSpeed = glm::clamp(verticalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
+        if (u.checkBounds(-0.01, 0.01, verticalSpeed)) { verticalSpeed = 0; }
+
+        //SPEED CAPS FOR AIR MOVEMENT
+        if (airAcceleration > 15) { airAcceleration = 15; }
+
+        //SLOWS PLAYER DOWN WHEN NO MOVEMENT INPUTS ARE PRESENT AND PLAYER IS STANDING ON THE GROUND
+        if (!movingVertical && isGrounded)
+        {
+            verticalSpeed /= (1 + (globalTimeStep * 10));
+        }
+        if (!movingHorizontal && isGrounded)
+        {
+            horizontalSpeed /= (1 + (globalTimeStep * 10));
+        }
+
         //RESET POSITION IF OUT OF BOUNDS
         if (playerCollider.pos.y < -100)
         {
@@ -66,9 +138,9 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                 fallAcceleration = 1.0f;
             }
             gravity.y -= (30 * fallAcceleration * globalTimeStep);
-            
+
             //CAPS SPEED FOR WHEN PLAYER IS FALLING
-            if (gravity.y < -300){  gravity.y = -300;   }
+            if (gravity.y < -300) { gravity.y = -300; }
         }
 
         //PLAYER BEHAVIOR WHEN PLAYER IS ON THE GROUND
@@ -78,14 +150,14 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
             footstepSpeed = 1.0 - (footStepAcceleration * 0.6);
 
             //KEEPS VALUE SMALL ENOUGH FOR AIR STRAFE TO BE MORE CONTROLLABLE
-            if (lastSpeed != glm::vec3(0)) {lastSpeed /= 1 + (globalTimeStep * 350);}
+            if (lastSpeed != glm::vec3(0)) { lastSpeed /= 1 + (globalTimeStep * 350); }
             if (movingHorizontal && movingVertical) { groundAcceleration = 105; }
             else { groundAcceleration = 70; }
 
-            
+
             //PLAY WALKING SOUNDS
             stepTimer += globalTimeStep;
-            if ((abs(verticalSpeed/MAX_WALKING_SPEED) >= 0.5  || abs(horizontalSpeed / MAX_WALKING_SPEED) >= 0.5) && stepTimer > footstepSpeed)
+            if ((abs(verticalSpeed / MAX_WALKING_SPEED) >= 0.5 || abs(horizontalSpeed / MAX_WALKING_SPEED) >= 0.5) && stepTimer > footstepSpeed)
             {
                 float randomValue = ((((double)(rand() % 21)) / 100)) + 0.9f;
                 playerSpeaker.p_Pitch = randomValue * (1.0 - (footStepAcceleration * 0.1));
@@ -93,7 +165,7 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                 playerSpeaker.Play(sound1);
                 stepTimer = 0;
             }
-            
+
             //WASD CONTROLS ON THE GROUND
             glm::vec3 temp = glm::cross(playerForward, glm::vec3(0.0, 1.0, 0.0));
             glm::vec2 hori = glm::vec2(temp.x, temp.z);
@@ -106,7 +178,7 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
             playerCollider.moveCollider(glm::vec3(normalizedSpeed.x * globalTimeStep, 0.0, normalizedSpeed.y * globalTimeStep));
             playerCollider.moveCollider(glm::vec3(momentum.x * globalTimeStep, 0.0, momentum.y * globalTimeStep));
             momentum /= 1 + (globalTimeStep * 10);
-            
+
             //KEEPS PLAYER MOMENTUM WHEN JUMPING AS LONG AS NEXT JUMP IS FAST ENOUGH
             airMomentumTimer += globalTimeStep;
             if (airMomentumTimer > 0.025f)
@@ -114,7 +186,7 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                 airVelocity = glm::vec2(0);
                 lastSpeed = glm::vec3(0);
                 MAXSPEED = 1.0;
-                if (u.checkBounds(-1,1, horizontalSpeed) && u.checkBounds(-1, 1, verticalSpeed)) { airAcceleration /= 1 + (globalTimeStep * 10); }
+                if (u.checkBounds(-1, 1, horizontalSpeed) && u.checkBounds(-1, 1, verticalSpeed)) { airAcceleration /= 1 + (globalTimeStep * 10); }
             }
         }
         else
@@ -133,19 +205,19 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
             }
             verticalSpeed = 0;
             horizontalSpeed = 0;
-            
+
             airMomentumTimer = 0.0;
             momentum = glm::vec2(normalAirVector.x * airAcceleration * MAXSPEED, normalAirVector.y * airAcceleration * MAXSPEED);
-            playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * globalTimeStep , 0.0, normalAirVector.y * airAcceleration * MAXSPEED * globalTimeStep));
+            playerCollider.moveCollider(glm::vec3(normalAirVector.x * airAcceleration * MAXSPEED * globalTimeStep, 0.0, normalAirVector.y * airAcceleration * MAXSPEED * globalTimeStep));
         }
-       
+
         //RESETS PLAYER MOVMENT FLAG TO FALSE
         movingHorizontal = false;
         movingVertical = false;
 
 
 
-        
+
         //COLLISION CHECKS
         ResolutionData playerCollisionData;
         isFalling = false;
@@ -188,32 +260,12 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
                     airAcceleration /= 1 + (globalTimeStep * 80);
 
                 }
-                normalizedSpeed = glm::vec3(normalizedSpeed.x, 0, normalizedSpeed.y) - playerCollisionData.Normal; 
+                normalizedSpeed = glm::vec3(normalizedSpeed.x, 0, normalizedSpeed.y) - playerCollisionData.Normal;
             }
         }
+        nextFrame = playerCollider.pos;
     }
-    //SETS CAMERA POSITION AND COLLIDER POSITIONS
-    playerCamera.cameraPos = glm::vec3(playerCollider.pos.x, playerCollider.pos.y + 2.38 + (0.035 * (sin(primary->swayY))), playerCollider.pos.z);
-    floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
-    //RESET POSITION OF PLAYER
-    if (glfwGetKey(pWindow, GLFW_KEY_P))
-    {
-        gravity = glm::vec3(0);
-        lastSpeed = glm::vec3(0.0);
-        playerCollider.pos = glm::vec3(0, 5, 0);
-    }
-    //SETS MINIMUM AND MAXIMUM VALUES FOR AIMING DOWN SIGHTS
-    scopedIn = glm::clamp(scopedIn, 0.0f, 1.0f);
-    fovZoom = glm::clamp(fovZoom, 0.0f, 55.0f);
-    primary->viewPos.x = glm::clamp(primary->viewPos.x, 4.07f, 4.85f);
-    primary->viewPos.y = glm::clamp(primary->viewPos.y, -0.548f, -0.286f);
-    primary->viewPos.z = glm::clamp(primary->viewPos.z, -0.405f, 0.443f);
-    MAX_WALKING_SPEED = 15.0f * (1 - (scopedIn * 0.25));
-    mouseSensitivity = 0.033f * (1 - (scopedIn * 0.5));
-    playerCamera.fov = 70.0 - fovZoom;
-    playerCamera.camRot(mouseControl());
-    playerCamera.update();
-    primary->updateViewmodel(playerCamera, pWindow, (footStepAcceleration * 15) / 14.0f, gravity.y, isGrounded);
+    //END FIXED UPDATE
 }
 
 //RENDERS SCREEN OVERLAY FOR WEAPON SCOPE
@@ -230,6 +282,10 @@ void Player::renderOverlay(Shader &shader)
 //MOVES PLAYER LEFT AND RIGHT
 void Player::MoveHorizontal(int8_t direction)
 {
+    if (direction == 0)
+    {
+        return;
+    }
     movingHorizontal = true;
     if (isGrounded)
     {
@@ -262,6 +318,10 @@ void Player::MoveHorizontal(int8_t direction)
 //MOVES PLAYER FORWARD AND BACK
 void Player::MoveVertical(int8_t direction)
 {
+    if (direction == 0)
+    {
+        return;
+    }
     movingVertical = true;
     if (isGrounded)
     {
@@ -293,64 +353,53 @@ void Player::MoveVertical(int8_t direction)
 
 
 //PERFORMS ALL OF THE PLAYERS ACTIONS SUCH AS MOVING AND SHOOTING
-void Player::PlayerBehavior()
+void Player::PlayerControls()
 {
     //AIMS DOWN SIGHTS WHEN BUTTON IS PRESSED
     if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2) && primary->thisTimer < 0.155 && primary->thisAnim != 6 && primary->thisAnim != 5)
     {
-        scopedIn += (5.0 * globalTimeStep);
-        fovZoom += (300.0 * globalTimeStep);
-        primary->viewPos.x -= (4 * globalTimeStep);
-        primary->viewPos.y += (2 * globalTimeStep);
-        primary->viewPos.z -= (5 * globalTimeStep);
-        playerCamera.pitch += sin(glfwGetTime() * 1.8154f) * 0.35f * globalTimeStep;
-        playerCamera.yaw += cos(glfwGetTime() * 1.045f) * 0.35f * globalTimeStep;
+        isScoped = true;
+
+       
     }
     else
     {
-        scopedIn -= (5.0 * globalTimeStep);
-        fovZoom -= (300.0 * globalTimeStep);
-        primary->viewPos.x += (6 * globalTimeStep);
-        primary->viewPos.y -= (2 * globalTimeStep);
-        primary->viewPos.z += (6 * globalTimeStep);
+        isScoped = false;
+
+
     }
 
     //MOVE PLAYER WITH KEYPRESS
     if (glfwGetKey(pWindow, GLFW_KEY_W))
     {
-        MoveVertical(1);
+        forwardMotion = 1;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_S))
     {
-        MoveVertical(-1);
+        forwardMotion = -1;
     }
+
+    if ((glfwGetKey(pWindow, GLFW_KEY_W) && glfwGetKey(pWindow, GLFW_KEY_S)) || (!glfwGetKey(pWindow, GLFW_KEY_W) && !glfwGetKey(pWindow, GLFW_KEY_S)))
+    {
+        forwardMotion = 0;
+    }
+
     if (glfwGetKey(pWindow, GLFW_KEY_A))
     {
-        MoveHorizontal(-1);
+        horizontalMotion = -1;
     }
     if (glfwGetKey(pWindow, GLFW_KEY_D))
     {
-        MoveHorizontal(1);
+        horizontalMotion = 1;
     }
-
-    //SLOWS PLAYER DOWN WHEN NO MOVEMENT INPUTS ARE PRESENT AND PLAYER IS STANDING ON THE GROUND
-    if (!movingVertical && isGrounded)
+    
+    if ((glfwGetKey(pWindow, GLFW_KEY_A) && glfwGetKey(pWindow, GLFW_KEY_D)) || (!glfwGetKey(pWindow, GLFW_KEY_A) && !glfwGetKey(pWindow, GLFW_KEY_D)))
     {
-        verticalSpeed /= (1 + (globalTimeStep * 10));
-    }
-    if (!movingHorizontal && isGrounded)
-    {
-        horizontalSpeed /= (1 + (globalTimeStep * 10));
+        horizontalMotion = 0;
     }
 
-    //SPEED CAPS FOR GROUND MOVEMENT
-    horizontalSpeed = glm::clamp(horizontalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
-    if (u.checkBounds(-0.01, 0.01, horizontalSpeed)) { horizontalSpeed = 0; }
-    verticalSpeed = glm::clamp(verticalSpeed, -MAX_WALKING_SPEED, MAX_WALKING_SPEED);
-    if (u.checkBounds(-0.01, 0.01, verticalSpeed)) { verticalSpeed = 0; }
 
-    //SPEED CAPS FOR AIR MOVEMENT
-    if (airAcceleration > 15) { airAcceleration = 15; }
+
 
     //SET FLAG FOR PLAYER ATTEMPTING TO JUMP
     //AUTO HOP JUMPING

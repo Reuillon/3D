@@ -80,7 +80,7 @@ unsigned int prefilterMap;
 unsigned int lightFBO;
 unsigned int matricesUBO;
 unsigned int lightDepthMaps;
-constexpr unsigned int depthMapResolution = 1024 * 2;
+constexpr unsigned int depthMapResolution = 1024 * 4;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
@@ -172,6 +172,7 @@ static GLFWwindow* windowInit()
     srand(time(NULL));
     int skybox = rand() % 3;
     std::cout << skybox << "\n";
+    skybox = 1;
     switch (skybox)
     {
         case 0:
@@ -378,7 +379,199 @@ int main()
         FixedUpdate();
 
         p->update(shipment.collisionMap);
-        
+
+        for (int i = iterations; iterations > 0; iterations--)
+        {
+            ray.vertices[0] = p->playerCamera.cameraPos;
+            ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
+            point.vertices[0] = p->playerCamera.cameraPos;
+            glm::vec3 closestPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+            for (int i = 0; i < enemy.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    if (i == 0)
+                    {
+                        headSpeaker.Play(headshot);
+                    }
+
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, enemy.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            j = rayDistance;
+
+                            if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                            {
+                                closestPoint = point.vertices[1];
+                            }
+
+                        }
+                    }
+
+                    hitSpeaker.Play(hit);
+                    worldSpeaker.Play(hurt);
+                    randRot = rand() % 360;
+                    enemyRespawn = rand() % 8;
+
+                    if (lastSpawn == enemyRespawn)
+                    {
+                        if (enemyRespawn == 7)
+                        {
+                            enemyRespawn -= 1;
+                        }
+                        else
+                        {
+                            enemyRespawn += 1;
+                        }
+                    }
+                    lastSpawn = enemyRespawn;
+                    enemy.setTransform(spawns[enemyRespawn], glm::vec3(0.0));
+                }
+            }
+            enemy.setTransform(enemy.actorPosition, glm::vec3((float)glfwGetTime() * -1.16548f, (float)glfwGetTime() * 3.16548f, (float)glfwGetTime() * 1.16548f));
+            if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+            {
+                finalPoint = closestPoint;
+            }
+            for (int i = 0; i < enemy2.actorCollider.size(); ++i)
+            {
+
+                ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, enemy2.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            j = rayDistance;
+                            if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                            {
+                                closestPoint = point.vertices[1];
+                            }
+                        }
+                    }
+
+                    if (i == 0)
+                    {
+                        headSpeaker.Play(headshot);
+                    }
+                    hitSpeaker.Play(hit);
+                    worldSpeaker.Play(hurt);
+                    randRot = rand() % 360;
+                    enemyRespawn = rand() % 8;
+
+                    if (lastSpawn == enemyRespawn)
+                    {
+                        if (enemyRespawn == 7)
+                        {
+                            enemyRespawn -= 1;
+                        }
+                        else
+                        {
+                            enemyRespawn += 1;
+                        }
+                    }
+                    lastSpawn = enemyRespawn;
+                    enemy2.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
+
+                }
+
+            }
+            if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+            {
+                finalPoint = closestPoint;
+            }
+            for (int i = 0; i < enemy3.actorCollider.size(); ++i)
+            {
+
+                ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, enemy3.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            j = rayDistance;
+                            if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                            {
+                                closestPoint = point.vertices[1];
+                            }
+                        }
+                    }
+
+                    if (i == 0)
+                    {
+                        headSpeaker.Play(headshot);
+                    }
+                    hitSpeaker.Play(hit);
+
+                    worldSpeaker.Play(hurt);
+                    randRot = rand() % 360;
+                    enemyRespawn = rand() % 8;
+
+                    if (lastSpawn == enemyRespawn)
+                    {
+                        if (enemyRespawn == 7)
+                        {
+                            enemyRespawn -= 1;
+                        }
+                        else
+                        {
+                            enemyRespawn += 1;
+                        }
+                    }
+                    lastSpawn = enemyRespawn;
+
+
+                }
+            }
+            if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+            {
+                finalPoint = closestPoint;
+            }
+            for (int i = 0; i < shipment.collisionMap.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, shipment.collisionMap[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, shipment.collisionMap[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
+                            {
+                                closestPoint = point.vertices[1];
+                            }
+                        }
+                    }
+                }
+            }
+            if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
+            {
+                finalPoint = closestPoint;
+            }
+        }
+
         //RESET FIXED UPDATE ITERATOR
         iterations = 0;
 
@@ -400,195 +593,7 @@ int main()
         ///BEHAVIOR ///             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///PIPELINE ///             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
 
-        ray.vertices[0] = p->playerCamera.cameraPos;
-        ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
-        point.vertices[0] = p->playerCamera.cameraPos;
-        glm::vec3 closestPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-        for (int i = 0; i < enemy.actorCollider.size(); ++i)
-        {
-            ResolutionData rayCast = GJK(ray, enemy.actorCollider[i], false);
-            if (rayCast.hasCollision && p->primary->shootRay)
-            {
-                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-                if (i == 0)
-                {
-                    headSpeaker.Play(headshot);
-                }
-
-                ResolutionData hitPoint;
-                for (float j = 0.0f; j < rayDistance; j += 0.1)
-                {
-                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy.actorCollider[i], false);
-                    if (hitPoint.hasCollision)
-                    {
-                        j = rayDistance;
-
-                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
-                        {
-                            closestPoint = point.vertices[1];
-                        }
-
-                    }
-                }
-
-                hitSpeaker.Play(hit);
-                worldSpeaker.Play(hurt);
-                randRot = rand() % 360;
-                enemyRespawn = rand() % 8;
-
-                if (lastSpawn == enemyRespawn)
-                {
-                    if (enemyRespawn == 7)
-                    {
-                        enemyRespawn -= 1;
-                    }
-                    else
-                    {
-                        enemyRespawn += 1;
-                    }
-                }
-                lastSpawn = enemyRespawn;
-                enemy.setTransform(spawns[enemyRespawn], glm::vec3(0.0));
-            }
-        }
-        enemy.setTransform(enemy.actorPosition, glm::vec3((float)glfwGetTime() * -1.16548f, (float)glfwGetTime() * 3.16548f, (float)glfwGetTime() * 1.16548f));
-        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
-        {
-            finalPoint = closestPoint;
-        }
-        for (int i = 0; i < enemy2.actorCollider.size(); ++i)
-        {
-
-            ResolutionData rayCast = GJK(ray, enemy2.actorCollider[i], false);
-            if (rayCast.hasCollision && p->primary->shootRay)
-            {
-                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-                ResolutionData hitPoint;
-                for (float j = 0.0f; j < rayDistance; j += 0.1)
-                {
-                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy2.actorCollider[i], false);
-                    if (hitPoint.hasCollision)
-                    {
-                        j = rayDistance;
-                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
-                        {
-                            closestPoint = point.vertices[1];
-                        }
-                    }
-                }
-
-                if (i == 0)
-                {
-                    headSpeaker.Play(headshot);
-                }
-                hitSpeaker.Play(hit);
-                worldSpeaker.Play(hurt);
-                randRot = rand() % 360;
-                enemyRespawn = rand() % 8;
-
-                if (lastSpawn == enemyRespawn)
-                {
-                    if (enemyRespawn == 7)
-                    {
-                        enemyRespawn -= 1;
-                    }
-                    else
-                    {
-                        enemyRespawn += 1;
-                    }
-                }
-                lastSpawn = enemyRespawn;
-                enemy2.setTransform(spawns[enemyRespawn], glm::vec3((float)glfwGetTime(), (float)glfwGetTime(), (float)glfwGetTime()));
-
-            }
-
-        }
-        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
-        {
-            finalPoint = closestPoint;
-        }
-        for (int i = 0; i < enemy3.actorCollider.size(); ++i)
-        {
-
-            ResolutionData rayCast = GJK(ray, enemy3.actorCollider[i], false);
-            if (rayCast.hasCollision && p->primary->shootRay)
-            {
-                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-                ResolutionData hitPoint;
-                for (float j = 0.0f; j < rayDistance; j += 0.1)
-                {
-
-                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, enemy3.actorCollider[i], false);
-                    if (hitPoint.hasCollision)
-                    {
-                        j = rayDistance;
-                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
-                        {
-                            closestPoint = point.vertices[1];
-                        }
-                    }
-                }
-
-                if (i == 0)
-                {
-                    headSpeaker.Play(headshot);
-                }
-                hitSpeaker.Play(hit);
-                
-                worldSpeaker.Play(hurt);
-                randRot = rand() % 360;
-                enemyRespawn = rand() % 8;
-
-                if (lastSpawn == enemyRespawn)
-                {
-                    if (enemyRespawn == 7)
-                    {
-                        enemyRespawn -= 1;
-                    }
-                    else
-                    {
-                        enemyRespawn += 1;
-                    }
-                }
-                lastSpawn = enemyRespawn;
-                
-
-            }
-        }
-        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
-        {
-            finalPoint = closestPoint;
-        }
-        for (int i = 0; i < shipment.collisionMap.size(); ++i)
-        {
-            ResolutionData rayCast = GJK(ray, shipment.collisionMap[i], false);
-            if (rayCast.hasCollision && p->primary->shootRay)
-            {
-                finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
-                ResolutionData hitPoint;
-                for (float j = 0.0f; j < rayDistance; j += 0.1)
-                {
-
-                    point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
-                    hitPoint = GJK(point, shipment.collisionMap[i], false);
-                    if (hitPoint.hasCollision)
-                    {
-                        if (glm::distance(p->playerCamera.cameraPos, point.vertices[1]) < glm::distance(p->playerCamera.cameraPos, closestPoint))
-                        {
-                            closestPoint = point.vertices[1];
-                        }
-                    }
-                }
-            }
-        }
-        if (glm::distance(p->playerCamera.cameraPos, closestPoint) < glm::distance(p->playerCamera.cameraPos, finalPoint))
-        {
-            finalPoint = closestPoint;
-        }
-        
+     
         
         ///DEFFERED////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
         ///RENDER  ////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////             ///////////////
@@ -630,6 +635,7 @@ int main()
         
         //STATIC MODELS
         shaderGeometryPass.setBool("isStatic", true);
+        
         shipment.mapRender(p->playerCamera, shaderGeometryPass);
         enemy.drawActor(p->playerCamera, shaderGeometryPass);
         enemy2.drawActor(p->playerCamera, shaderGeometryPass);

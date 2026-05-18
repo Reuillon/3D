@@ -263,16 +263,16 @@ class Player
 		float screenX, screenY;
 		double lastX, lastY;
 
+		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/steps.mp3");
+		SoundSource playerSpeaker;
+		
+		
 		//PLAYER MOVEMENT BEHAVIOR
-		float newDelta;
 		float airMomentumTimer = 0.0f;
 		float horizontalSpeed = 0.0f;
 		float verticalSpeed = 0.0f;
 		float scopedIn = 0.0;
 		
-		uint32_t sound1 = SoundBuffer::get()->addSoundEffect("SOUNDS/steps.mp3");
-
-		SoundSource playerSpeaker;
 		float stepTimer = 0;
 		glm::vec3 gravity = glm::vec3(0.0);
 		glm::vec3 lastSpeed = glm::vec3(0);
@@ -295,17 +295,29 @@ class Player
 		float footStepAcceleration;
 		double mouseSensitivity = 0.033f;
 
+		int forwardMotion = 0;
+		int horizontalMotion = 0;
+
+		bool isScoped = false;
+		
+		glm::vec3 preFrame;
+		glm::vec3 nextFrame;
+
 		//PLAYER INFORMATION
 		glm::vec3 playerPosition = glm::vec3(1000.0);
 		glm::vec3 playerRotation = glm::vec3(0.0);
 		camera playerCamera;
 
+
 		Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window);
-		void renderOverlay(Shader &shader);
-		void update(std::vector<MeshCollider>& collisionMap);
 		
+		void renderOverlay(Shader &shader);
+		
+		void update(std::vector<MeshCollider>& collisionMap);
+		void PlayerFixedUpdate(std::vector<MeshCollider>& collisionMap);
+
 		//PERFORMS ALL OF THE PLAYERS ACTIONS SUCH AS MOVING AND SHOOTING
-		void PlayerBehavior();
+		void PlayerControls();
 
 		//MOVE PLAYER IN DIRECTION
 		void MoveHorizontal(int8_t direction);

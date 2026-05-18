@@ -87,9 +87,11 @@ void Viewmodel::FixedUpdateViewmodel(camera & c, GLFWwindow * window, float spee
 		fallSpeed = 0;
 		WeaponBehavior(window);
 	}
-	model = glm::mat4(1.0f);
-	model = glm::inverse(model) * glm::inverse(c.view);
+	model = glm::inverse(glm::mat4(1.0f)) * glm::inverse(c.view);
+	model = glm::scale(model, glm::vec3(2.0));
+
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
+
 	if (isGrounded)
 	{
 		model = glm::translate(model, glm::vec3(viewPos.x - (speed / 8), (viewPos.y + ((-recoil / 2) * deltaTime) + ((-totalAMT_Y * 2) / (1 - deltaTime)) + (0.010 * sin(swayY))) - (fallSpeed)-(gravity * 0.0025f), (viewPos.z + ((-recoilX / 2) * deltaTime) + ((-totalAMT_X * 2) / (1 - deltaTime))) + (0.010 * sin(swayX))));

@@ -37,9 +37,14 @@ inline void FixedUpdate()
 }
 
 //INTERPOLATES POSITIONS OF OBJECTS THAT RELY ON PHYSICS USING LINEAR INTERPOLATION
-inline void Lerp()
+inline float Lerp(float a, float t, float b)
 {
+    return a + (t * (b - a));
+}
 
+inline glm::vec3 Lerp(glm::vec3 a, float t, glm::vec3 b)
+{
+    return a + (t * (b - a));
 }
 
 //PRINTS FRAMERATE AT THE SPECIFIED RATE

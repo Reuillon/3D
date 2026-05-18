@@ -1,5 +1,6 @@
 #include "Collision.h"
 #include "Debug.h"
+#include "Global.h"
 
 MeshCollider::MeshCollider(float model[], int arraySize)
 {
@@ -41,19 +42,15 @@ void MeshCollider::setTransform(glm::vec3 newPos, glm::vec3 rotation, glm::vec3 
 
     for (int i = 0; i < vertices.size(); i++)
     {
-
-        /**/
         //SET ROTATION AND SCALE
         vertices[i].x = ((identity[i].x * newScale.x) * (cos(rotation.y) * cos(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * cos(rotation.z)) - (cos(rotation.x) * sin(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * cos(rotation.z)) + (sin(rotation.x) * sin(rotation.z))));
         vertices[i].y = ((identity[i].x * newScale.x) * (cos(rotation.y) * sin(rotation.z))) + ((identity[i].y * newScale.y) * ((sin(rotation.x) * sin(rotation.y) * sin(rotation.z)) + (cos(rotation.x) * cos(rotation.z)))) + ((identity[i].z * newScale.z) * ((cos(rotation.x) * sin(rotation.y) * sin(rotation.z)) - (sin(rotation.x) * cos(rotation.z))));
         vertices[i].z = ((identity[i].x * newScale.x) * (-sin(rotation.y))) + ((identity[i].y * newScale.y) * (sin(rotation.x) * cos(rotation.y))) + ((identity[i].z * newScale.z) * (cos(rotation.x) * cos(rotation.y)));
-        
 
         //SET POSITION
         vertices[i].x = vertices[i].x + pos.x;
         vertices[i].y = vertices[i].y + pos.y;
         vertices[i].z = vertices[i].z + pos.z;
-
     }
 }
 
@@ -201,10 +198,10 @@ bool NextSimplex(Simplex& points, glm::vec3& direction)
 }
 
 //RUNS COLLSION TEST FOR GJK ALGORITHM OF TWO CONVEX OBJECTS
-ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float deltaTime, bool resolve)
+ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolve)
 {
     Simplex points;
-    float elapsedTime = deltaTime;
+    float elapsedTime = 0.0f;
     glm::vec3 direction = collider1.pos - collider2.pos;
     if (direction == glm::vec3(0.0f))
     {
@@ -213,12 +210,10 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float delta
     glm::vec3 supportPoint = Support(collider1, collider2, direction);
     direction = -supportPoint;
     ResolutionData r;
-    r.Normal = glm::vec3(0);
-    r.PenetrationDepth = -1;
-    r.hasCollision = false;
     while (true)
     {
         elapsedTime += deltaTime;
+        
         if (elapsedTime > 0.5)
         {
             r.hasCollision = false;
@@ -235,8 +230,8 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float delta
             r.hasCollision = true;
             if (resolve == true)
             {
-                r = EPA(points, collider1, collider2, deltaTime);
-                collider1.setTransform(collider1.pos - (r.Normal * r.PenetrationDepth),glm::vec3(0.0f));
+                r = EPA(points, collider1, collider2);
+                collider1.setTransform(collider1.pos - (r.Normal * r.PenetrationDepth),collider1.rot);
             }
             return r;
         }
@@ -244,7 +239,6 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, float delta
 }
 
 //EPA COLLISION AND HELPER FUNCTIONS
-
 void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges,const std::vector<size_t>& faces,size_t a,size_t b)
 {
     auto reverse = std::find(                       //      0--<--3
@@ -293,7 +287,7 @@ std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::
     return { normals, minTriangle };
 }
 
-ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB, float deltaTime)
+ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colliderB)
 {
     float elapsedTime = deltaTime;
     std::vector<glm::vec3> polytope(simplex.begin(), simplex.end());
@@ -319,11 +313,13 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
         glm::vec3 support = Support(colliderA, colliderB, minNormal);
         float sDistance = glm::dot(minNormal, support);
 
-        if (abs(sDistance - minDistance) > 0.2f) {
+        if (abs(sDistance - minDistance) > 0.2f) 
+        {
             minDistance = FLT_MAX;
             std::vector<std::pair<size_t, size_t>> uniqueEdges;
 
-            for (size_t i = 0; i < normals.size(); i++) {
+            for (size_t i = 0; i < normals.size(); ++i) 
+            {
                 if (SameDirection(normals[i], support - polytope[faces[i * 3]]))
                 {
                     size_t f = i * 3;
@@ -339,11 +335,12 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
                     normals[i] = normals.back(); // pop-erase
                     normals.pop_back();
 
-                    i--;
+                    --i;
                 }
             }
             std::vector<size_t> newFaces;
-            for (auto [edgeIndex1, edgeIndex2] : uniqueEdges) {
+            for (auto [edgeIndex1, edgeIndex2] : uniqueEdges) 
+            {
                 newFaces.push_back(edgeIndex1);
                 newFaces.push_back(edgeIndex2);
                 newFaces.push_back(polytope.size());
@@ -353,26 +350,29 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
 
             auto [newNormals, newMinFace] = GetFaceNormals(polytope, newFaces);
             float oldMinDistance = FLT_MAX;
-            for (size_t i = 0; i < normals.size(); i++) {
-                if (normals[i].w < oldMinDistance) {
+            for (size_t i = 0; i < normals.size(); ++i) 
+            {
+                if (normals[i].w < oldMinDistance) 
+                {
                     oldMinDistance = normals[i].w;
                     minFace = i;
                 }
             }
 
-            if (newNormals[newMinFace].w < oldMinDistance) {
+            if (newNormals[newMinFace].w < oldMinDistance) 
+            {
                 minFace = newMinFace + normals.size();
             }
 
             faces.insert(faces.end(), newFaces.begin(), newFaces.end());
             normals.insert(normals.end(), newNormals.begin(), newNormals.end());
         }
-        elapsedTime += deltaTime;
         if (elapsedTime > 0.1)
         {
             epaData.hasCollision = false;
             return epaData;
         }
+        elapsedTime += deltaTime;
     }
     epaData.Normal = minNormal;
     epaData.PenetrationDepth = minDistance + 0.01f;

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -16,6 +17,13 @@ struct ResolutionData
     glm::vec3 Normal;
     float PenetrationDepth;
     bool hasCollision;
+
+    ResolutionData()
+    {
+        Normal = glm::vec3(0);
+        PenetrationDepth = -1;
+        hasCollision = false;
+    };
 };
 
 struct MeshCollider
@@ -96,7 +104,7 @@ void AddIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::v
 
 std::pair<std::vector<glm::vec4>, size_t> GetFaceNormals(const std::vector<glm::vec3>& polytope, const std::vector<size_t>& faces);
 
-ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB, float deltaTime);
+ResolutionData EPA(Simplex& simplex, MeshCollider& colliderA, MeshCollider& colliderB);
 
 std::vector<MeshCollider> initCollisionMap(std::string filePath);
 
