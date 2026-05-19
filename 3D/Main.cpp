@@ -378,9 +378,9 @@ int main()
         //CALCULATES UPDATES PER FRAME
         FixedUpdate();
 
-        p->update(shipment.collisionMap);
+   
 
-        for (int i = iterations; iterations > 0; iterations--)
+        for (int i = iterations; i > 0; --i)
         {
             ray.vertices[0] = p->playerCamera.cameraPos;
             ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
@@ -572,6 +572,8 @@ int main()
             }
         }
 
+        p->update(shipment.collisionMap);
+
         //RESET FIXED UPDATE ITERATOR
         iterations = 0;
 
@@ -637,6 +639,10 @@ int main()
         shaderGeometryPass.setBool("isStatic", true);
         
         shipment.mapRender(p->playerCamera, shaderGeometryPass);
+
+
+
+
         enemy.drawActor(p->playerCamera, shaderGeometryPass);
         enemy2.drawActor(p->playerCamera, shaderGeometryPass);
         enemy3.drawActor(p->playerCamera, shaderGeometryPass);

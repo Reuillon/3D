@@ -214,7 +214,7 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolv
     {
         elapsedTime += deltaTime;
         
-        if (elapsedTime > 0.5)
+        if (elapsedTime > 1.0)
         {
             r.hasCollision = false;
             return r;
@@ -367,7 +367,7 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
             faces.insert(faces.end(), newFaces.begin(), newFaces.end());
             normals.insert(normals.end(), newNormals.begin(), newNormals.end());
         }
-        if (elapsedTime > 0.1)
+        if (elapsedTime > 1.0)
         {
             epaData.hasCollision = false;
             return epaData;

@@ -40,9 +40,6 @@ void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, floa
 
 void Viewmodel::FixedUpdateViewmodel(camera & c, GLFWwindow * window, float speed, float gravity, bool isGrounded)
 {
-
-
-	
 	if (speed != 0)
 	{
 		swayX += deltaTime * speed * 1 * 8;
