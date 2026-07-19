@@ -36,6 +36,8 @@ void main()
     gPosition = WorldPos;
     // also store the per-fragment normals into the gbuffer
     gNormal = normalize(Normal);
+    
+    //this stores the albedo color depending on if there is a texture or solid color
     if(hasTexture < 0.5)
     {
         gAlbedo.rgb = pow(baseColor, vec3(1.0/2.2));
@@ -44,6 +46,7 @@ void main()
     {
         gAlbedo.rgb = pow(texture(albedoMap, TexCoords).rgb, vec3(2.2));
     }
+    //this stores the metallicness depending on if there is a texture or solid color
     if(hasMetallic < 0.5)
     {
         gPBR.r = metal;
@@ -52,6 +55,8 @@ void main()
     {
         gPBR.r = texture(metallicMap , TexCoords).r;
     }
+
+    //this stores the roughness depending on if there is a texture or solid color
     if(hasRoughness < 0.5)
     {
         gPBR.g = rough ;   

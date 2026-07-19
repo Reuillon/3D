@@ -75,4 +75,6 @@ void main()
             }
         }
     }
+    alpha = 0.0f;
+    FragColor = vec4(1.0f,1.0f,1.0f, alpha);
 }

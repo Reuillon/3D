@@ -68,7 +68,7 @@ float ShadowCalculation(vec3 fragPosWorldSpace, vec3 N)
     // calculate bias (based on depth map resolution and slope)
     vec3 normal = normalize(N);
     float NdotL = max(dot(normalize(N), normalize(lightDir)), 0.0);
-    float bias = max(0.0005, 0.0015 * (1.0 - NdotL));
+    float bias = max(0.00001, 0.0015 * (1.0 - NdotL));
 
     // PCF
     float shadow = 0.0;
@@ -146,7 +146,7 @@ void main()
 
 
     // retrieve data from gbuffer
-    float SSAO = pow(texture(ssao, TexCoords).r, 5.0);
+    float SSAO = texture(ssao, TexCoords).r;
 
     //NORMAL VECTOR
     vec3 N = normalize(texture(gNormal, TexCoords).rgb);
@@ -162,7 +162,7 @@ void main()
     float shadow = ShadowCalculation(WorldPos, N);
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
-    vec3 F0 = vec3(0.04); 
+    vec3 F0 = vec3(0.08 * spec); 
     F0 = mix(F0, albedo, metallic);
 
     // reflectance equation
@@ -218,10 +218,9 @@ void main()
     const float MAX_REFLECTION_LOD = 5.0;
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    spec = spec;
     
 
-    specular = prefilteredColor * (F * brdf.x + brdf.y) * spec;
+    specular = prefilteredColor * (F * brdf.x + brdf.y) * (spec * 2.0);
 
     vec3 ambient = (kD * diffuse + specular) * SSAO;
    

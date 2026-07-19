@@ -11,7 +11,7 @@ uniform sampler2D gNormal;     // world-space normals
 uniform sampler2D texNoise;
 
 uniform vec3 samples[kernelSize];
-const float radius = 0.3;   // adjust as needed for your scene
+const float radius = 0.5;   // adjust as needed for your scene
 out float FragColor;
 
 void main()
@@ -45,8 +45,9 @@ void main()
 
         vec3 sampleWorld = texture(gPosition, offset.xy).xyz;
         float sampleDepth = (view * vec4(sampleWorld, 1.0)).z;
-        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(positionDepth - sampleDepth));
+        float rangeCheck = smoothstep(0.0,1.0,0.1 / max(abs(positionDepth - sampleDepth), 0.001));
 
-        FragColor -= (sampleDepth >= samplePosView.z + 0.025 ? rangeCheck : 0.0) / adaptiveKernelSize;
+        FragColor -= (sampleDepth >= samplePosView.z + 0.05 ? rangeCheck : 0.0) * 3.0 / adaptiveKernelSize;
     }
+    FragColor = clamp(FragColor, 0.0, 1.0);
 }

@@ -1,4 +1,4 @@
-﻿#version 420 core
+#version 420 core
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoords;
@@ -24,6 +24,7 @@ void main()
     TexCoords = aTexCoords;
 
     mat4 BoneTransform = mat4(1.0);
+    mat3 skinMat;
     if(!isStatic)
     {
         BoneTransform =
@@ -31,6 +32,7 @@ void main()
             finalBonesMatrices[boneIds[1]] * weights[1] +
             finalBonesMatrices[boneIds[2]] * weights[2] +
             finalBonesMatrices[boneIds[3]] * weights[3];
+        skinMat = mat3(BoneTransform);
     }
 
     // Transform position
@@ -41,7 +43,7 @@ void main()
 
 
     // Transform normal correctly
-    vec3 skinnedNormal = (BoneTransform * vec4(aNormal, 0.0)).xyz;
+    vec3 skinnedNormal = normalize(skinMat * aNormal);
     Normal = normalize(normalMatrix * skinnedNormal);
 
     gl_Position = projection * view * model * totalPosition;
