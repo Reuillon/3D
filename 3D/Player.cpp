@@ -37,8 +37,6 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
     PlayerControls();
     PlayerFixedUpdate(collisionMap);
 
-
-
     //RESET POSITION OF PLAYER
     if (glfwGetKey(pWindow, GLFW_KEY_P))
     {
@@ -58,7 +56,7 @@ void Player::update(std::vector<MeshCollider>& collisionMap)
     //SETS CAMERA POSITION AND COLLIDER POSITIONS
     glm::vec3 interpolatedPos = Lerp(preFrame, fixedTimer / globalTimeStep, nextFrame);
     playerCamera.cameraPos = glm::vec3(interpolatedPos.x, interpolatedPos.y + 2.38 + (0.035 * (sin(primary->swayY))), interpolatedPos.z);
-    floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
+
 
     
     playerCamera.fov = 70.0 - fovZoom;
@@ -264,6 +262,7 @@ void Player::PlayerFixedUpdate(std::vector<MeshCollider>& collisionMap)
             }
         }
         nextFrame = playerCollider.pos;
+        floorCollider.setTransform(playerCollider.pos, glm::vec3(0.0));
     }
     //END FIXED UPDATE
 }

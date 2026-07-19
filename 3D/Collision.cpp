@@ -88,7 +88,7 @@ glm::vec3 Support(MeshCollider& collider1, MeshCollider& collider2, glm::vec3 di
 //GJK COLLISION AND HELPER FUNCTIONS
 bool SameDirection(const glm::vec3& direction, const glm::vec3& ao)
 {
-    return dot(direction, ao) > 0;
+    return dot(direction, ao) > 0.0;
 }
 
 bool Line(Simplex& points, glm::vec3& direction)
@@ -214,13 +214,13 @@ ResolutionData GJK(MeshCollider& collider1, MeshCollider& collider2, bool resolv
     {
         elapsedTime += deltaTime;
         
-        if (elapsedTime > 1.0)
+        if (elapsedTime > 0.2f)
         {
             r.hasCollision = false;
             return r;
         }
         supportPoint = Support(collider1, collider2, direction);
-        if (dot(supportPoint, direction) <= 0)
+        if (dot(supportPoint, direction) < 0)
         {
             return r;
         }
@@ -367,7 +367,7 @@ ResolutionData EPA(Simplex& simplex,MeshCollider& colliderA, MeshCollider& colli
             faces.insert(faces.end(), newFaces.begin(), newFaces.end());
             normals.insert(normals.end(), newNormals.begin(), newNormals.end());
         }
-        if (elapsedTime > 1.0)
+        if (elapsedTime > 0.2f)
         {
             epaData.hasCollision = false;
             return epaData;

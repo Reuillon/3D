@@ -84,7 +84,7 @@ constexpr unsigned int depthMapResolution = 1024 * 4;
 glm::vec3 lightDir;
 
 //CASCADED SHADOW MAP 
-std::vector<float> shadowCascadeLevels{ 2500.0f / 100.0f, 2500.0f / 75.0f, 2500.0f / 50.0f, 2500.0f / 25.0f };
+std::vector<float> shadowCascadeLevels{ 67.0f, 300.0f, 545.0f};
 std::vector<glm::vec4> getFrustumCornersWorldSpace(const glm::mat4& projview);
 std::vector<glm::mat4> getLightSpaceMatrices();
 
@@ -164,13 +164,13 @@ static GLFWwindow* windowInit()
     //☺
     //initPBR("TEXTURES/hdri/port.hdr", 2048);
     //initPBR("TEXTURES/hdri/german.hdr", 4096);
-    //initPBR("TEXTURES/hdri/cloudz.hdr", 4096);
-    //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
+    
+    
     //initPBR("TEXTURES/hdri/color.hdr", 2048);
     //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
     //initPBR("TEXTURES/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr", 2048);
     srand(time(NULL));
-    int skybox = rand() % 3;
+    int skybox = rand() % 4;
     std::cout << skybox << "\n";
     skybox = 1;
     switch (skybox)
@@ -183,7 +183,16 @@ static GLFWwindow* windowInit()
             initPBR("TEXTURES/hdri/meadow_16k.hdr", 2048);
             break;
         case 2:
-            initPBR("TEXTURES/hdri/canary.hdr", 4096);
+            initPBR("TEXTURES/hdri/DESERT.hdr", 2048);
+            break;
+        case 3:
+            initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
+            break;
+        case 4:
+            initPBR("TEXTURES/hdri/lakeside_night_4k.hdr", 2048);
+            break;
+        case 5:
+            initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr", 2048);
             break;
     }
 
@@ -193,7 +202,7 @@ static GLFWwindow* windowInit()
     //initPBR("TEXTURES/hdri/newport_loft.hdr");
     //initPBR("TEXTURES/hdri/snowy_forest_2k.hdr");
     //initPBR("TEXTURES/hdri/venice_sunset_2k.hdr");
-    //initPBR("TEXTURES/hdri/kloofendal_28d_misty_puresky_2k.hdr");
+
     //initPBR("TEXTURES/hdri/charolettenbrunn_park_4k.hdr");
     //initPBR("TEXTURES/hdri/autumn_field_4k.hdr");
     //initPBR("TEXTURES/hdri/preller_drive_4k.hdr");
@@ -207,7 +216,7 @@ static GLFWwindow* windowInit()
     
     //initPBR("TEXTURES/hdri/ballawley_park_4k.hdr");
     
-    //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr");
+    
     
     //initPBR("TEXTURES/hdri/lakeside_night_4k.hdr");
     //initPBR("TEXTURES/hdri/soliltude_4k.hdr");
@@ -285,7 +294,10 @@ int main()
     Model contact("Models/GUN/HITPOINT.fbx");
 
     //MAPS
-    Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    Level shipment("Models/Level_Maps/Structure.fbx", "Models/Level_Maps/StructureCollisionMap.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    
+    //SHIPMENT
+    //Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
     
     //COLLIDERS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -297,10 +309,7 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 
-    shadowCascadeLevels[0] = (p->playerCamera.cameraFar) / 100.0f;
-    shadowCascadeLevels[1] = (p->playerCamera.cameraFar) / 75.0f;
-    shadowCascadeLevels[2] = (p->playerCamera.cameraFar) / 50.0f;
-    shadowCascadeLevels[3] = (p->playerCamera.cameraFar) / 25.0f;
+
 
     //DEFERRED GEOMETRY PASS
     shaderGeometryPass.use();
@@ -353,6 +362,8 @@ int main()
         glm::vec3(28.8, 0.0,-24.8)
     };
 
+
+    //RANDOMLY SPAWNS DUMMY TARGETS
     srand(time(0));
     int enemyRespawn = rand() % 8;
     int lastSpawn = enemyRespawn;
@@ -378,7 +389,7 @@ int main()
         //CALCULATES UPDATES PER FRAME
         FixedUpdate();
 
-   
+
 
         for (int i = iterations; i > 0; --i)
         {
@@ -615,16 +626,16 @@ int main()
         //STATIC MODELS
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
-        //enemy.drawActor(p->playerCamera, depthShader);
-        //enemy2.drawActor(p->playerCamera, depthShader);
-        //enemy3.drawActor(p->playerCamera, depthShader);
+        enemy.drawActor(p->playerCamera, depthShader);
+        enemy2.drawActor(p->playerCamera, depthShader);
+        enemy3.drawActor(p->playerCamera, depthShader);
         
         //ANIMATED MODELS
         depthShader.setBool("isStatic", false);
 
-        glEnable(GL_CULL_FACE);
-        p->primary->render(p->playerCamera, depthShader, window);
-        glDisable(GL_CULL_FACE);
+        //glEnable(GL_CULL_FACE);
+        //p->primary->render(p->playerCamera, depthShader, window);
+        //glDisable(GL_CULL_FACE);
 
 
         // 1. geometry pass: render scene's geometry/color data into gbuffer
