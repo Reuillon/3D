@@ -1,5 +1,6 @@
 #include "Animator.h"
 
+
 Animator::Animator(Animation* animation) 
 {
 	m_CurrentTime = 0.0;
@@ -34,22 +35,22 @@ void Animator::loopAnim(bool loop)
 
 float timerA = 0;
 
-void Animator::UpdateAnimation(float dt) 
+void Animator::UpdateAnimation() 
 {
-	m_DeltaTime = dt;
+	m_DeltaTime = deltaTime;
 	if (m_CurrentAnimation)
 	{
 		if (isLoop)
 		{
 			hasEnded = false;
-			m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt;
+			m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * deltaTime;
 		}
 		else
 		{
 
 			if (fTime <= (m_CurrentAnimation->GetDuration() - (1.0f)))
 			{
-				m_CurrentTime = (fTime += m_CurrentAnimation->GetTicksPerSecond() * dt);
+				m_CurrentTime = (fTime += m_CurrentAnimation->GetTicksPerSecond() * deltaTime);
 				hasEnded = false;
 			}
 			else
@@ -75,7 +76,6 @@ float Animator::getFrameTime()
 
 void Animator::PauseAnim()
 {
-
 	if (m_CurrentAnimation)
 	{
 		m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration());

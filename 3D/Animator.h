@@ -7,13 +7,14 @@
 #include <assimp/Importer.hpp>
 #include "Animation.h"
 #include "Bone.h"
+#include "Global.h"
 
 class Animator
 {
 	public:
 		Animator(Animation* animation);
 		Animator();
-		void UpdateAnimation(float dt);
+		void UpdateAnimation();
 		void PlayAnimation(Animation* pAnimation);
 		void initialize(Animation* animation);
 		void loopAnim(bool loop);
@@ -28,7 +29,7 @@ class Animator
 		bool hasEnded;
 		float fTime = 0;
 		std::vector<glm::mat4> m_FinalBoneMatrices;
-		Animation* m_CurrentAnimation;
+		std::unique_ptr<Animation> m_CurrentAnimation;
 		float m_CurrentTime;
 		float m_DeltaTime;
 };

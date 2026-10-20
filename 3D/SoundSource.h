@@ -7,7 +7,7 @@ public:
 	~SoundSource();
 	float p_Pitch = 1.f;
 	float p_Gain = 1.f;
-	void Play(const ALuint buffer_to_play);
+	void Play(ALuint& buffer_to_play);
 
 private:
 	ALuint p_Source;

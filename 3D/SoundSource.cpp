@@ -17,7 +17,7 @@ SoundSource::~SoundSource()
 	alDeleteSources(1, &p_Source);
 }
 
-void SoundSource::Play(const ALuint buffer_to_play)
+void SoundSource::Play(ALuint& buffer_to_play)
 {
 	alSourcef(p_Source, AL_PITCH, p_Pitch);
 	alSourcef(p_Source, AL_GAIN, p_Gain);

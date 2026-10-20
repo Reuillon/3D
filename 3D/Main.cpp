@@ -59,8 +59,6 @@ unsigned int gPosition, gNormal, gAlbedo, gPBR, gShadow;
 unsigned int shadowFBO;
 unsigned int shadowMap;
 
-
-
 //SSAO
 unsigned int ssaoFBO, ssaoBlurFBO;
 unsigned int ssaoColorBuffer, ssaoColorBufferBlur;
@@ -113,9 +111,9 @@ Debug debug;
 static GLFWwindow* windowInit()
 {
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
 
     //SETS WINDOW SETTINGS
     glfwInit();
@@ -172,7 +170,7 @@ static GLFWwindow* windowInit()
     srand(time(NULL));
     int skybox = rand() % 4;
     std::cout << skybox << "\n";
-    skybox = 1;
+    skybox = 2;
     switch (skybox)
     {
         case 0:
@@ -192,7 +190,12 @@ static GLFWwindow* windowInit()
             initPBR("TEXTURES/hdri/lakeside_night_4k.hdr", 2048);
             break;
         case 5:
-            initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr", 2048);
+            //initPBR("TEXTURES/hdri/qwantani_dusk_2_4k.hdr", 2048);
+            initPBR("TEXTURES/hdri/SKY.hdr",2048);
+            //initPBR("TEXTURES/hdri/soliltude_4k.hdr", 2048);
+            //initPBR("TEXTURES/hdri/soliltude_4k.hdr", 2048);
+            //initPBR("TEXTURES/hdri/rosendal_park_sunset_puresky_2k.hdr", 2048);
+            //initPBR("TEXTURES/hdri/belfast_sunset_puresky_2k.hdr", 2048);
             break;
     }
 
@@ -223,7 +226,9 @@ static GLFWwindow* windowInit()
 
     return window;
 }
-Player* p;
+
+std::unique_ptr<Player> p;
+
 int toggleDebug = -1;
 //std::thread networkThread;
 int main()
@@ -245,10 +250,16 @@ int main()
     uint32_t hurt = SoundBuffer::get()->addSoundEffect("SOUNDS/marioHurt.mp3");
     uint32_t hit = SoundBuffer::get()->addSoundEffect("SOUNDS/HIT.mp3");
     uint32_t headshot = SoundBuffer::get()->addSoundEffect("SOUNDS/HEADSHOT.mp3");
+    uint32_t boing = SoundBuffer::get()->addSoundEffect("SOUNDS/boing.mp3");
+    uint32_t dink = SoundBuffer::get()->addSoundEffect("SOUNDS/target.mp3");
+    uint32_t wood = SoundBuffer::get()->addSoundEffect("SOUNDS/WoodBreak.mp3");
     SoundSource worldSpeaker;
     SoundSource hitSpeaker;
+    SoundSource dinkSpeaker;
+    SoundSource woodSpeaker;
     SoundSource headSpeaker;
     worldSpeaker.p_Gain = 0.25f;
+    woodSpeaker.p_Gain = 0.5f;
     hitSpeaker.p_Gain = 2.0f;
     headSpeaker.p_Gain = 0.25;
 
@@ -281,12 +292,12 @@ int main()
     //NETWORKING   //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    Server gameServer;
+    //Server gameServer;
 
     /////ACTORS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
-    p = new Player(SCR_WIDTH, SCR_HEIGHT, window);
+    p = std::make_unique<Player>(SCR_WIDTH, SCR_HEIGHT, window);
 
     /////MODELS    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -294,7 +305,8 @@ int main()
     Model contact("Models/GUN/HITPOINT.fbx");
 
     //MAPS
-    Level shipment("Models/Level_Maps/Structure.fbx", "Models/Level_Maps/StructureCollisionMap.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    //Level shipment("Models/Level_Maps/Structure.fbx", "Models/Level_Maps/StructureCollisionMap.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
+    Level shipment("Models/Level_Maps/TEST_Structure.fbx", "Models/Level_Maps/TestMap.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
     
     //SHIPMENT
     //Level shipment("Models/GUN/TESTLEVEL/SHIPMENTWIP.fbx", "Models/GUN/TESTLEVEL/COLLISIONMAP2.obj", glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1.0));
@@ -368,17 +380,71 @@ int main()
     int enemyRespawn = rand() % 8;
     int lastSpawn = enemyRespawn;
     float randRot = rand() % 360;
-    Actor enemy("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    Actor enemy(0, "Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
     enemyRespawn = rand() % 8;
-    Actor enemy2("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    Actor enemy2(0, "Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
     enemyRespawn = rand() % 8;
-    Actor enemy3("Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    Actor enemy3(0, "Models/GUN/BODY.fbx", "Models/GUN/TESTLEVEL/EnemyCollision.obj", spawns[enemyRespawn], glm::vec3(0.0, (float)glfwGetTime(), 0.0));
+    
+    Actor testAnimation(1, "Models/SOLDER/Shark2.fbx", "Models/GUN/TESTLEVEL/BOX_COLLIDER.obj", glm::vec3(10.0f, 2.0f, 185.0f), glm::vec3(0.0f, 3.141519f, 0.0f));
+    Actor board(0, "Models/Actors/board.fbx", "Models/Actors/board_col.obj", glm::vec3(0.0f, -9.0f, -230.0f), glm::vec3(0.0f));
+    Actor ball(0, "Models/Actors/ball.fbx", "Models/Actors/ball.obj", glm::vec3(0.0f, 10.0f, -230.0f), glm::vec3(0.0f));
+    
+    
+    Actor paintball(0, "Models/Actors/PBRBALLS/PaintBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 5.0f, -4.5f), glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor woodball (0,  "Models/Actors/PBRBALLS/WoodBall.fbx",  "Models/Actors/ball.obj", glm::vec3(-190.0f, 5.0f, -1.5f), glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor metalball(0, "Models/Actors/PBRBALLS/MetalBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 5.0f, 1.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor brickball(0, "Models/Actors/PBRBALLS/BrickBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 5.0f, 4.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    Actor leatherball(0, "Models/Actors/PBRBALLS/LeatherBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 2.0f, -4.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor plasticball(0, "Models/Actors/PBRBALLS/PlasticBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 2.0f, -1.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor fabricball(0, "Models/Actors/PBRBALLS/FabricBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 2.0f, 1.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor tileball(0, "Models/Actors/PBRBALLS/TileBall.fbx", "Models/Actors/ball.obj", glm::vec3(-190.0f, 2.0f, 4.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    Actor monke(0, "Models/Actors/monke.fbx", "Models/Actors/ball.obj", glm::vec3(190.0f, 2.0f, 4.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor mac(0, "Models/Actors/macc.fbx", "Models/Actors/ball.obj", glm::vec3(190.0f, 3.0f, -4.5f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    Actor Target(1, "Models/Actors/MetalTarget.fbx", "Models/Actors/target.obj", glm::vec3(0.0f, 0.0f, 195.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor Target2(1, "Models/Actors/MetalTarget.fbx", "Models/Actors/target.obj", glm::vec3(6.0f, 0.0f, 195.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor Target3(1, "Models/Actors/MetalTarget.fbx", "Models/Actors/target.obj", glm::vec3(-6.0f, 0.0f, 195.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    
+    Actor WoodenTarget(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(0.0f, 10.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor WoodenTarget2(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(0.0f, 18.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor WoodenTarget3(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(8.0f, 10.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor WoodenTarget4(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(8.0f, 18.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor WoodenTarget5(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(-8.0f, 10.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    Actor WoodenTarget6(1, "Models/Actors/WoodTarget.fbx", "Models/Actors/RoundTarget.obj", glm::vec3(-8.0f, 18.0f, 230.0f),  glm::vec3(0.0f, 0.0f, 0.0f));
+    
+
 
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
     
     glm::vec3 finalPoint = glm::vec3(0.0);
-    float rayDistance = 100.0f;
+    float rayDistance = 1000.0f;
+
+    float GravitySpeed = 0;
+
+
+    glm::vec3 force;
+
+
+    float balltimer = 0.0f;
+    float ballMass = 50.0f;
+    float wobble = 0.0f;
+    bool forward =false;
+
+    testAnimation.setTransform(testAnimation.actorPosition, glm::vec3(0.0f, 3.141519f, 0.0f));
+    Target.setTransform(Target.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    Target2.setTransform(Target2.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    Target3.setTransform(Target3.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget.setTransform(WoodenTarget.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget2.setTransform(WoodenTarget2.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget3.setTransform(WoodenTarget3.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget4.setTransform(WoodenTarget4.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget5.setTransform(WoodenTarget5.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+    WoodenTarget6.setTransform(WoodenTarget6.actorPosition, glm::vec3(0.0f, 3.141519f / 2.0f, 0.0f));
+
 
 
     ///MAINLOOP    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
@@ -386,13 +452,99 @@ int main()
     ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
     while (!glfwWindowShouldClose(window))
     {
+       
+        paintball.setTransform(paintball.actorPosition, glm::vec3(glfwGetTime() * 1.1f, glfwGetTime() * 1.2f, glfwGetTime() * 1.3f));
+        woodball.setTransform(woodball.actorPosition, glm::vec3(glfwGetTime() * 1.3f, glfwGetTime() * 1.1f, glfwGetTime() * 1.2f));
+        metalball.setTransform(metalball.actorPosition, glm::vec3(glfwGetTime() * 1.2f, glfwGetTime() * 1.3f, glfwGetTime() * 1.1f));
+        brickball.setTransform(brickball.actorPosition, glm::vec3(glfwGetTime() * 1.3f, glfwGetTime() * 1.2f, glfwGetTime() * 1.1f));
+        plasticball.setTransform(plasticball.actorPosition, glm::vec3(glfwGetTime() * 1.1f, glfwGetTime() * 1.2f, glfwGetTime() * 1.3f));
+        leatherball.setTransform(leatherball.actorPosition, glm::vec3(glfwGetTime() * 1.3f, glfwGetTime() * 1.1f, glfwGetTime() * 1.2f));
+        tileball .setTransform(tileball.actorPosition, glm::vec3(glfwGetTime() * 1.2f, glfwGetTime() * 1.3f, glfwGetTime() * 1.1f));
+        fabricball.setTransform(fabricball.actorPosition, glm::vec3(glfwGetTime() * 1.3f, glfwGetTime() * 1.2f, glfwGetTime() * 1.1f));
+        monke.setTransform(monke.actorPosition, glm::vec3(glfwGetTime() * 0.6f, glfwGetTime() * 0.3f, 0.0f));
+        mac.setTransform(mac.actorPosition, glm::vec3(glfwGetTime() * 0.4f, glfwGetTime() * 0.5f, 0.0f));
+       
+        WoodenTarget.updateActor();
+        if (WoodenTarget.actorAnimate.finishedAnim())
+        {
+            WoodenTarget.actorAnimate.ResetAnim();
+            WoodenTarget.PauseAnimation();
+        }
+        WoodenTarget2.updateActor();
+        if (WoodenTarget2.actorAnimate.finishedAnim())
+        {
+            WoodenTarget2.actorAnimate.ResetAnim();
+            WoodenTarget2.PauseAnimation();
+        }
+        WoodenTarget3.updateActor();
+        if (WoodenTarget3.actorAnimate.finishedAnim())
+        {
+            WoodenTarget3.actorAnimate.ResetAnim();
+            WoodenTarget3.PauseAnimation();
+        }
+        WoodenTarget4.updateActor();
+        if (WoodenTarget4.actorAnimate.finishedAnim())
+        {
+            WoodenTarget4.actorAnimate.ResetAnim();
+            WoodenTarget4.PauseAnimation();
+        }
+        WoodenTarget5.updateActor();
+        if (WoodenTarget5.actorAnimate.finishedAnim())
+        {
+            WoodenTarget5.actorAnimate.ResetAnim();
+            WoodenTarget5.PauseAnimation();
+        }
+        WoodenTarget6.updateActor();
+        if (WoodenTarget6.actorAnimate.finishedAnim())
+        {
+            WoodenTarget6.actorAnimate.ResetAnim();
+            WoodenTarget6.PauseAnimation();
+        }
         //CALCULATES UPDATES PER FRAME
         FixedUpdate();
-
-
-
         for (int i = iterations; i > 0; --i)
-        {
+        {             
+            board.setTransform(glm::vec3(board.actorPosition), glm::vec3((3.14159 / 8) * sin(glfwGetTime() * 1.5f), (3.14159 / 10) * sin(glfwGetTime() * 1.5f), 0.0f));
+            balltimer += globalTimeStep;
+            if (ball.actorPosition.y < -20 || balltimer > 4.0f)
+            {
+                GravitySpeed = 0.0f * globalTimeStep;
+                ball.actorPosition = glm::vec3(0.0f, 10.0f, -230.0f);
+                balltimer = 0.0f;
+                force = glm::vec3(0.0f);
+            }
+
+
+            
+            ResolutionData ballBounce = GJK(ball.actorCollider[0], board.actorCollider[0], true);
+            if (ballBounce.hasCollision)
+            {   
+                ball.setTransform( ball.actorPosition + (-ballBounce.Normal * ballBounce.PenetrationDepth), ball.actorRotation);
+                force = (-ballBounce.Normal) * (ballMass);
+                GravitySpeed = 0.0f;
+            }
+            else
+            {
+                GravitySpeed -= 4.5f;
+            }
+           
+
+            ball.actorPosition += force * globalTimeStep;
+            
+            if (GravitySpeed < -400.6f)
+            {
+                GravitySpeed = -400.6f;
+            }
+
+            force.y += GravitySpeed * globalTimeStep;
+            
+            ball.setTransform(ball.actorPosition, glm::vec3(0, 0, 0));
+
+
+            
+
+            
+            /**/
             ray.vertices[0] = p->playerCamera.cameraPos;
             ray.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance);
             point.vertices[0] = p->playerCamera.cameraPos;
@@ -581,10 +733,199 @@ int main()
             {
                 finalPoint = closestPoint;
             }
+            for (int i = 0; i < Target.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, Target.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, Target.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            dinkSpeaker.Play(dink);
+                            Target.resetAnimation = true;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < Target2.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, Target2.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, Target2.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            dinkSpeaker.Play(dink);
+                            Target2.resetAnimation = true;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < Target3.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, Target3.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, Target3.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            dinkSpeaker.Play(dink);
+                            Target3.resetAnimation = true;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget.resetAnimation = true;
+                            WoodenTarget.PlayAnimation();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget2.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget2.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget2.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget2.resetAnimation = true;
+                            WoodenTarget2.PlayAnimation();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget3.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget3.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget3.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget3.resetAnimation = true;
+                            WoodenTarget3.PlayAnimation();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget4.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget4.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget4.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget4.resetAnimation = true;
+                            WoodenTarget4.PlayAnimation();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget5.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget5.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget5.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget5.resetAnimation = true;
+                            WoodenTarget5.PlayAnimation();
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < WoodenTarget6.actorCollider.size(); ++i)
+            {
+                ResolutionData rayCast = GJK(ray, WoodenTarget6.actorCollider[i], false);
+                if (rayCast.hasCollision && p->primary->shootRay)
+                {
+                    finalPoint = glm::vec3(p->playerCamera.cameraPos + (p->playerCamera.cameraFront * rayDistance * 2.0f));
+                    ResolutionData hitPoint;
+                    for (float j = 0.0f; j < rayDistance; j += 0.1)
+                    {
+
+                        point.vertices[1] = p->playerCamera.cameraPos + (p->playerCamera.cameraFront * (j));
+                        hitPoint = GJK(point, WoodenTarget6.actorCollider[i], false);
+                        if (hitPoint.hasCollision)
+                        {
+                            woodSpeaker.Play(wood);
+                            WoodenTarget6.resetAnimation = true;
+                            WoodenTarget6.PlayAnimation();
+                        }
+                    }
+                }
+            }
         }
 
         p->update(shipment.collisionMap);
-
+        testAnimation.updateActor();
+        Target.updateActor();
+        Target2.updateActor();
+        Target3.updateActor();
         //RESET FIXED UPDATE ITERATOR
         iterations = 0;
 
@@ -626,16 +967,38 @@ int main()
         //STATIC MODELS
         depthShader.setBool("isStatic", true);
         shipment.mapRender(p->playerCamera, depthShader);
+        ball.drawActor(p->playerCamera, depthShader);
+        board.drawActor(p->playerCamera, depthShader);
+        paintball.drawActor(p->playerCamera, depthShader);
+        woodball.drawActor(p->playerCamera, depthShader);
+        metalball.drawActor(p->playerCamera, depthShader);
+        brickball.drawActor(p->playerCamera, depthShader);
+        plasticball.drawActor(p->playerCamera, depthShader);
+        fabricball.drawActor(p->playerCamera, depthShader);
+        tileball.drawActor(p->playerCamera, depthShader);
+        leatherball.drawActor(p->playerCamera, depthShader);
+        monke.drawActor(p->playerCamera, depthShader);
+        mac.drawActor(p->playerCamera, depthShader);
+
         enemy.drawActor(p->playerCamera, depthShader);
         enemy2.drawActor(p->playerCamera, depthShader);
         enemy3.drawActor(p->playerCamera, depthShader);
         
         //ANIMATED MODELS
         depthShader.setBool("isStatic", false);
-
-        //glEnable(GL_CULL_FACE);
-        //p->primary->render(p->playerCamera, depthShader, window);
-        //glDisable(GL_CULL_FACE);
+        //testAnimation.drawActor(p->playerCamera, depthShader);
+        Target.drawActor(p->playerCamera, depthShader);
+        Target2.drawActor(p->playerCamera, depthShader);
+        Target3.drawActor(p->playerCamera, depthShader);
+        WoodenTarget.drawActor(p->playerCamera, depthShader);
+        WoodenTarget2.drawActor(p->playerCamera, depthShader);
+        WoodenTarget3.drawActor(p->playerCamera, depthShader);
+        WoodenTarget4.drawActor(p->playerCamera, depthShader);
+        WoodenTarget5.drawActor(p->playerCamera, depthShader);
+        WoodenTarget6.drawActor(p->playerCamera, depthShader);
+        glEnable(GL_CULL_FACE);
+        p->primary->render(p->playerCamera, depthShader, window);
+        glDisable(GL_CULL_FACE);
 
 
         // 1. geometry pass: render scene's geometry/color data into gbuffer
@@ -659,13 +1022,39 @@ int main()
         enemy3.drawActor(p->playerCamera, shaderGeometryPass);
         
         staticRender(p->playerCamera, shaderGeometryPass, contact, finalPoint, glm::vec3(0.0f), glm::vec3(1.0f));
+        ball.drawActor(p->playerCamera, shaderGeometryPass);
+        board.drawActor(p->playerCamera, shaderGeometryPass);
+        paintball.drawActor(p->playerCamera, shaderGeometryPass);
+        woodball.drawActor(p->playerCamera,  shaderGeometryPass);
+        metalball.drawActor(p->playerCamera, shaderGeometryPass);
+        brickball.drawActor(p->playerCamera, shaderGeometryPass);
+        plasticball.drawActor(p->playerCamera, shaderGeometryPass);
+        fabricball.drawActor(p->playerCamera, shaderGeometryPass);
+        tileball.drawActor(p->playerCamera, shaderGeometryPass);
+        leatherball.drawActor(p->playerCamera, shaderGeometryPass);
+        monke.drawActor(p->playerCamera, shaderGeometryPass);
+        mac.drawActor(p->playerCamera, shaderGeometryPass);
         
+
         //ANIMATED MODELS
         shaderGeometryPass.setBool("isStatic", false);
         
+        
+
         //RENDERS VIEWMODEL (CLEARS DEPTH BUFFER SO MODEL ALWAYS RENDERS ON TOP)
-        glClear(GL_DEPTH_BUFFER_BIT);
         glDisable(GL_CULL_FACE);
+        Target.drawActor(p->playerCamera, shaderGeometryPass);
+        Target2.drawActor(p->playerCamera, shaderGeometryPass);
+        Target3.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget2.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget3.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget4.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget5.drawActor(p->playerCamera, shaderGeometryPass);
+        WoodenTarget6.drawActor(p->playerCamera, shaderGeometryPass);
+        //testAnimation.drawActor(p->playerCamera, shaderGeometryPass);
+        
+        glClear(GL_DEPTH_BUFFER_BIT);
         if (p->scopedIn < 0.8) { p->primary->render(p->playerCamera, shaderGeometryPass, window); }
         glEnable(GL_CULL_FACE);
 
@@ -712,8 +1101,8 @@ int main()
         backgroundShader.setMat4("projection", p->playerCamera.projection);
         glActiveTexture(GL_TEXTURE0);
         //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); //DRAWS LOW RES MAP
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); //DRAWS BLURRED MAP
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); //DRAWS FULL RES CUBE MAP
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); //DRAWS BLURRED MAP
+        //glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); //DRAWS FULL RES CUBE MAP
         renderCube();
         /////////////
         /////////////
@@ -757,17 +1146,22 @@ int main()
         if (toggleDebug == 1)
         {
             //debug.drawCollider(p->floorCollider, p->playerCamera);
-            debug.drawCollider(p->playerCollider, p->playerCamera);
-            for (int i = 0; i < enemy.actorCollider.size(); ++i)
-            {
-                debug.drawCollider(enemy.actorCollider[i], p->playerCamera);
-                debug.drawCollider(enemy2.actorCollider[i], p->playerCamera);
-                debug.drawCollider(enemy3.actorCollider[i], p->playerCamera);
-            }
+            //debug.drawCollider(p->playerCollider, p->playerCamera);
+            //debug.drawCollider(testAnimation.actorCollider[0], p->playerCamera);
+            debug.drawCollider(ball.actorCollider[0], p->playerCamera);
+            debug.drawCollider(board.actorCollider[0], p->playerCamera);
+            debug.drawCollider(WoodenTarget.actorCollider[0], p->playerCamera);
+            //for (int i = 0; i < enemy.actorCollider.size(); ++i)
+            //{
+            //    debug.drawCollider(enemy.actorCollider[i], p->playerCamera);
+            //    debug.drawCollider(enemy2.actorCollider[i], p->playerCamera);
+            //    debug.drawCollider(enemy3.actorCollider[i], p->playerCamera);
+            //}
             for (int i = 0; i < shipment.collisionMap.size(); ++i)
             {
                 debug.drawCollider(shipment.collisionMap[i], p->playerCamera);
             }
+
         }
         else
         {
@@ -795,12 +1189,6 @@ int main()
     return 0;
 }
 
-
-//UPDATES GAME STATE
-void GameUpdate()
-{
-
-}
 
 //INITIALIZERS //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////
 ///////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////    //////////

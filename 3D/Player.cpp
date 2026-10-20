@@ -5,9 +5,6 @@
 Player::Player(const unsigned int SCR_WIDTH, const unsigned int SCR_HEIGHT, GLFWwindow* window)
 {
     //LOAD VIEWMODELS
-    //primary = new Viewmodel(12, "Models/GUN/PEESTOLOLD.fbx");
-    primary = new Viewmodel(8, "Models/GUN/BOLTON.fbx");
-    scope = new Shader("SHADERS/framebuffer.vs", "SHADERS/crosshair.fs");
     //OVERLAY SHADER
     scope->use();
     scope->setFloat("x", SCR_WIDTH);
@@ -355,7 +352,7 @@ void Player::MoveVertical(int8_t direction)
 void Player::PlayerControls()
 {
     //AIMS DOWN SIGHTS WHEN BUTTON IS PRESSED
-    if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2) && primary->thisTimer < 0.155 && primary->thisAnim != 6 && primary->thisAnim != 5)
+    if (glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_2) && primary->thisTimer < 0.175 && primary->thisAnim != 6 && primary->thisAnim != 5)
     {
         isScoped = true;
 

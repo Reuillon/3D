@@ -1,12 +1,10 @@
 #include "Viewmodel.h"
 
-
-
 Viewmodel::Viewmodel(short int animLength, std::string path)
 {
 	length = 0.45f;
 	thickness = 0.75;
-	animation = new Animation[animLength];
+	animation = std::make_unique<Animation[]>(animLength);
 	m.initialize(path);
 	for (int i = 0; i < animLength; i++)
 	{
@@ -15,18 +13,12 @@ Viewmodel::Viewmodel(short int animLength, std::string path)
 		animation[i].initialize(path, &m, i);
 	}
 	animate.initialize(&animation[0]);
-	animate.UpdateAnimation(deltaTime);
+	animate.UpdateAnimation();
 }
-
-
-
-
 
 void Viewmodel::updateViewmodel(camera& c, GLFWwindow* window, float speed, float gravity, bool isGrounded)
 {
 	FixedUpdateViewmodel(c, window, speed, gravity, isGrounded);
-	
-	
 	animController();
 	//CALCULATE BONE TRANSFORM
 	transforms = animate.GetFinalBoneMatrices();
@@ -56,7 +48,6 @@ void Viewmodel::FixedUpdateViewmodel(camera & c, GLFWwindow * window, float spee
 	offsetX = glm::clamp(offsetX,-4.0f,4.0f);
 	offsetY = glm::clamp(offsetY,-2.4f,2.4f);
 
-
 	for (int steps = iterations; steps > 0; --steps)
 	{
 		totalAMT_X += offsetX * 0.35 * globalTimeStep;
@@ -85,7 +76,7 @@ void Viewmodel::FixedUpdateViewmodel(camera & c, GLFWwindow * window, float spee
 		WeaponBehavior(window);
 	}
 	model = glm::inverse(glm::mat4(1.0f)) * glm::inverse(c.view);
-	model = glm::scale(model, glm::vec3(2.0));
+	model = glm::scale(model, glm::vec3(10.0));
 
 	model = glm::rotate(model, 90 * 0.0174533f, glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -188,8 +179,6 @@ void Viewmodel::WeaponBehavior(GLFWwindow* window)
 		{
 			thisTimer = 0;
 		}
-
-
 	}
 
 	if (!glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1))
@@ -203,86 +192,20 @@ void Viewmodel::WeaponBehavior(GLFWwindow* window)
 		recoilX = 0;
 		randomNum = ((rand() % 41) - 20);
 	}
-	if (thisTimer < 0.045 && thisTimer > 0.035)
+	if (thisTimer < 0.055 && thisTimer > 0.035)
 	{
-		recoil = (30.5f * globalTimeStep);
-		recoilX = (randomNum * 0.1f * globalTimeStep);
+		recoil = (30.5f * 2.5f * globalTimeStep);
+		recoilX = (randomNum * 0.8f * globalTimeStep);
 	}
-	if (thisTimer < 0.08 && thisTimer > 0.065)
+	if (thisTimer < 0.18 && thisTimer > 0.065)
 	{
-		recoil = (-(10.5f * globalTimeStep));
-		recoilX = (-(recoilX / 3) * globalTimeStep * 0.1f);
+		recoil = (-(5.5f * 2.5f * globalTimeStep));
+		recoilX = (-(recoilX / 3) * globalTimeStep * 0.8f);
 	}
 }
 
 void Viewmodel::animController()
-{
-	//SELECTS ANIMATION BASED ON WHICH VALUE THISANIM IS SET TO
-	
-
-	
-	///ANIMATION CONTROLS
-	///
-	/// 
-	///
-	/*
-	if (glfwGetKey(window, GLFW_KEY_1))
-	{
-		reset = 1;
-		thisAnim = 0;
-		
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_2))
-	{
-		reset = 1;
-		thisAnim = 1;
-	}
-	if (glfwGetKey(window, GLFW_KEY_3))
-	{
-
-
-		reset = 1;
-		thisAnim = 2;
-	}
-	if (glfwGetKey(window, GLFW_KEY_4))
-	{
-
-
-		reset = 1;
-		thisAnim = 3;
-	}
-	
-
-	if (glfwGetKey(window, GLFW_KEY_5))
-	{
-		reset = 1;
-		thisAnim = 4;
-	}
-	
-	if (glfwGetKey(window, GLFW_KEY_6))
-	{
-		reset = 1;
-		thisAnim = 5;
-	}
-	if (glfwGetKey(window, GLFW_KEY_7))
-	{
-		reset = 1;
-		thisAnim = 6;
-	}
-	if (glfwGetKey(window, GLFW_KEY_8))
-	{
-		reset = 1;
-		thisAnim = 7;
-	}
-	if (glfwGetKey(window, GLFW_KEY_0))
-	{
-		reset = 1;
-		thisAnim = 9;
-	}
-	*/
-
-	
+{	
 	switch (thisAnim)
 	{
 		case 0:
@@ -356,7 +279,7 @@ void Viewmodel::animController()
 	//SIMPLE ANIMATION CONTROLLER
 	if (playAnim == 1)
 	{
-		animate.UpdateAnimation(deltaTime);
+		animate.UpdateAnimation();
 	}
 	else
 	{

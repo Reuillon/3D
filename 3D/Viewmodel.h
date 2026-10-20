@@ -14,7 +14,7 @@ class Viewmodel
 		//OBJECT DATA
 		Model m;
 		Animator animate;
-		Animation *animation;
+		std::unique_ptr<Animation[]> animation;
 
 		//ANIMATION CONTROLLER
 		
@@ -53,7 +53,6 @@ class Viewmodel
 		//CALCULATE BONE TRANSFORM
 	    std::vector<glm::mat4> transforms = animate.GetFinalBoneMatrices();
 		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 initializedModel = glm::mat4(1.0f);
 		glm::mat3 normalMatrix = glm::mat3(1.0f);
 
 		Viewmodel(short int animLength, std::string path);
